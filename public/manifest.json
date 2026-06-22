@@ -2,57 +2,100 @@
   "id": "/",
   "scope": "/",
   "lang": "pt-BR",
+  "dir": "ltr",
   "categories": ["food", "shopping"],
   "short_name": "Supreme",
   "name": "Sorveteria Supreme",
+  "description": "App de pedidos online e delivery para a Sorveteria Supreme de Monte Mor/SP. Faça seu açaí ou peça sorvetes artesanais com agilidade e rastreamento em tempo real.",
+  "start_url": "/",
+  "background_color": "#FFFBFB",
+  "theme_color": "#ED2024",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "window-controls-overlay"
+  ],
+  "orientation": "portrait",
+  "prefer_related_applications": false,
+  "related_applications": [],
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "/apple-touch-icon.png",
+      "src": "apple-touch-icon.png",
       "type": "image/png",
       "sizes": "180x180",
       "purpose": "any"
     }
   ],
-  "start_url": "/",
-  "background_color": "#FFFBFB",
-  "theme_color": "#ED2024",
-  "display": "standalone",
-  "orientation": "portrait",
-  "description": "App de pedidos online e delivery para a Sorveteria Supreme de Monte Mor/SP. Faça seu açaí ou peça sorvetes artesanais com agilidade e rastreamento em tempo real.",
+  "shortcuts": [
+    {
+      "name": "Fazer Pedido",
+      "short_name": "Cardápio",
+      "description": "Abra diretamente o cardápio e monte seu açaí ou peça sorvete artesanal",
+      "url": "/?shortcut=order",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Meus Pedidos",
+      "short_name": "Pedidos",
+      "description": "Acompanhe seus pedidos em tempo real",
+      "url": "/?shortcut=orders",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/?share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "screenshots": [
     {
-      "src": "/assets/images/screenshot_mobile.jpg",
+      "src": "assets/images/screenshot_mobile.jpg",
       "sizes": "768x1376",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Cardápio Interativo no Celular"
     },
     {
-      "src": "/assets/images/screenshot_desktop.jpg",
+      "src": "assets/images/screenshot_desktop.jpg",
       "sizes": "1376x768",
       "type": "image/jpeg",
       "form_factor": "wide",
