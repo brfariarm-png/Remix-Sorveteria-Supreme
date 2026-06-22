@@ -15,33 +15,37 @@ service cloud.firestore {
     function isVerifiedAdmin() {
       return request.auth != null &&
              request.auth.token != null &&
+             'email' in request.auth.token &&
              request.auth.token.email == 'brfariarm@gmail.com';
+    }
+
+    // Public test connection endpoint
+    match /test/connection {
+      allow read: if true;
     }
 
     // Orders Collection
     match /orders/{orderId} {
-      allow read: if true;
       allow create: if true;
-      allow update, delete: if isSignedIn();
+      allow read: if isVerifiedAdmin() || (resource != null && (resource.data.ownerId == request.auth.uid || resource.data.ownerId.startsWith('guest-')));
+      allow update, delete: if isVerifiedAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
     }
 
     // Closeouts Collection
     match /closeouts/{closeoutId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isVerifiedAdmin();
+      allow read, write: if isVerifiedAdmin();
     }
 
     // Settings Collection
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isVerifiedAdmin();
     }
 
     // Menu Items Collection
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isVerifiedAdmin();
     }
   }
 }

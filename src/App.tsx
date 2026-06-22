@@ -420,7 +420,7 @@ export default function App() {
         handleFirestoreError(e, OperationType.WRITE, 'menu_items');
       }
     };
-    if (currentUser) {
+    if (currentUser && currentUser.email === 'brfariarm@gmail.com') {
       seedMenuIfEmpty();
     }
   }, [currentUser]);
