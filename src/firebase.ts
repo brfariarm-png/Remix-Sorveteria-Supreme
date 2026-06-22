@@ -57,8 +57,14 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Warning/Non-blocking Error: ', JSON.stringify(errInfo));
+  
+  // Only throw uncaught error for mutations where the UI needs a fallback trigger, 
+  // let reads (get, list) fall back to local caching without crashing the applet.
+  const isMutation = [OperationType.CREATE, OperationType.UPDATE, OperationType.DELETE, OperationType.WRITE].includes(operationType);
+  if (isMutation) {
+    throw new Error(JSON.stringify(errInfo));
+  }
 }
 
 export async function testConnection() {
