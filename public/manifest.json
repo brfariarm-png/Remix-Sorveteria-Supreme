@@ -21,31 +21,31 @@
   "related_applications": [],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "icon-192.png",
+      "src": "/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "apple-touch-icon.png",
+      "src": "/apple-touch-icon.png",
       "type": "image/png",
       "sizes": "180x180",
       "purpose": "any"
@@ -59,7 +59,7 @@
       "url": "/?shortcut=order",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -71,7 +71,7 @@
       "url": "/?shortcut=orders",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -88,14 +88,14 @@
   },
   "screenshots": [
     {
-      "src": "assets/images/screenshot_mobile.jpg",
+      "src": "/assets/images/screenshot_mobile.jpg",
       "sizes": "768x1376",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Cardápio Interativo no Celular"
     },
     {
-      "src": "assets/images/screenshot_desktop.jpg",
+      "src": "/assets/images/screenshot_desktop.jpg",
       "sizes": "1376x768",
       "type": "image/jpeg",
       "form_factor": "wide",
