@@ -7,6 +7,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Public test connection endpoint
+    match /test/connection {
+      allow read: if true;
+    }
+
     // 2. Helper Primitives
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
@@ -60,9 +65,14 @@ service cloud.firestore {
     }
 
     function isValidStoreSettings(data) {
-      return data.keys().hasAll(['name', 'updatedAt'])
+      return data.keys().hasAll(['name', 'shortName', 'city', 'address', 'phone', 'email'])
           && data.name is string && data.name.size() <= 150
-          && data.updatedAt == request.time;
+          && data.shortName is string && data.shortName.size() <= 150
+          && data.city is string && data.city.size() <= 150
+          && data.address is string && data.address.size() <= 400
+          && data.phone is string && data.phone.size() <= 100
+          && data.email is string && data.email.size() <= 200
+          && (!data.keys().hasAll(['updatedAt']) || data.updatedAt is string);
     }
 
     function isValidMenuItem(data) {
@@ -86,7 +96,7 @@ service cloud.firestore {
       // Allow list only to owners, verified admins, or guests retrieving their guest-prefixed orders
       allow list: if request.auth != null && isVerifiedAdmin()
                   || (request.auth != null && resource.data.ownerId == request.auth.uid)
-                  || (resource.data.ownerId.matches('^guest-.*'));
+                  || (resource.data.ownerId is string && resource.data.ownerId.matches('^guest-.*'));
 
       // Create rule using validation blueprint
       allow create: if isValidId(orderId) 
