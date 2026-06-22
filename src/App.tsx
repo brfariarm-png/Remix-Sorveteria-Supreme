@@ -360,6 +360,7 @@ export default function App() {
       }
     }, (error) => {
       console.log('Read settings skipped or restricted (admin setting):', error.message);
+      handleFirestoreError(error, OperationType.GET, 'settings/store_config');
     });
     return () => unsub();
   }, []);
@@ -384,6 +385,7 @@ export default function App() {
       }
     }, (error) => {
       console.error('Failed to listen to menu_items from Firestore:', error);
+      handleFirestoreError(error, OperationType.LIST, 'menu_items');
     });
     return () => unsub();
   }, []);
@@ -415,6 +417,7 @@ export default function App() {
         }
       } catch (e) {
         console.error("Error seeding default menu_items collection:", e);
+        handleFirestoreError(e, OperationType.WRITE, 'menu_items');
       }
     };
     if (currentUser) {
@@ -719,6 +722,7 @@ export default function App() {
       }
     }, (error) => {
       console.error('Failed to subscribe to orders query:', error);
+      handleFirestoreError(error, OperationType.LIST, 'orders');
       // Fallback: Load saved local orders when offline/restricted
       const savedOrders = localStorage.getItem('supreme_orders');
       if (savedOrders) {

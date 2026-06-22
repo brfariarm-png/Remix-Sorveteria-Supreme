@@ -22,7 +22,7 @@ import {
   Archive
 } from 'lucide-react';
 import { collection, addDoc, getDocs, query, orderBy, writeBatch, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Order } from '../types';
 import { printCloseoutReceipt as printCloseoutExternal } from '../utils/printHelper';
 
@@ -152,6 +152,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
       setPastCloseouts(list);
     } catch (err: any) {
       console.error('Failed to fetch past closeouts, loading local cash instead:', err);
+      handleFirestoreError(err, OperationType.LIST, 'closeouts');
       // Fallback to local closeouts
       const cachedCloseoutsStr = localStorage.getItem('supreme_completed_closeouts');
       if (cachedCloseoutsStr) {
@@ -254,6 +255,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
       onRefreshOrders();
     } catch (err: any) {
       console.error('Error performing closeout in Firestore, falling back to local closeout:', err);
+      handleFirestoreError(err, OperationType.WRITE, 'closeouts');
       
       // Contingency Local Fallback: Save to localStorage and update state!
       try {
