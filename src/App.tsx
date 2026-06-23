@@ -1251,16 +1251,17 @@ export default function App() {
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) 
       : window.location.origin;
     const trackingLink = `${cleanDomain}?track=${order.id}`;
+    const logoLink = "https://sorveteriasupreme.vercel.app";
 
     switch (status) {
       case 'waiting':
-        return `Olá, ${customerName}! Recebemos o seu pedido #${orderIdShort} na ${shopName}! 🍨 Já recebemos aqui e logo daremos início à montagem. Agradecemos a sua preferência!\n\nAcompanhe seu pedido em tempo real pelo link:\n${trackingLink}`;
+        return `Olá, ${customerName}! Recebemos o seu pedido #${orderIdShort} na ${shopName}! 🍨 Já recebemos aqui e logo daremos início à montagem. Agradecemos a sua preferência!\n\nAcompanhe seu pedido em tempo real pelo link:\n${trackingLink}\n\n🌐 Visite nosso cardápio oficial: ${logoLink}`;
       case 'preparing':
-        return `Olá, ${customerName}! Boas notícias! Seu pedido #${orderIdShort} na ${shopName} já entrou em preparo! 🥣 Nossos atendentes estão montando tudo caprichado com muito carinho!\n\nAcompanhe progresso em tempo real:\n${trackingLink}`;
+        return `Olá, ${customerName}! Boas notícias! Seu pedido #${orderIdShort} na ${shopName} já entrou em preparo! 🥣 Nossos atendentes estão montando tudo caprichado com muito carinho!\n\nAcompanhe progresso em tempo real:\n${trackingLink}\n\n🌐 Visite nosso cardápio oficial: ${logoLink}`;
       case 'delivering':
-        return `Olá, ${customerName}! Seu delicioso açaí/sorvete do pedido #${orderIdShort} na ${shopName} já foi montado com sucesso e está a caminho do seu endereço com o motoboy! 🛵 Prepare-se para se refrescar!\n\nAcompanhe a entrega em tempo real:\n${trackingLink}`;
+        return `Olá, ${customerName}! Seu delicioso açaí/sorvete do pedido #${orderIdShort} na ${shopName} já foi montado com sucesso e está a caminho do seu endereço com o motoboy! 🛵 Prepare-se para se refrescar!\n\nAcompanhe a entrega em tempo real:\n${trackingLink}\n\n🌐 Visite nosso cardápio oficial: ${logoLink}`;
       case 'completed':
-        return `Olá, ${customerName}! Seu pedido #${orderIdShort} na ${shopName} foi entregue com sucesso! 🎉 Esperamos que você ame o nosso açaí gourmet e sorvetes premium. Se puder, nos divulgue no Instagram @sorveteria.supreme! Obrigado pela preferência e até a próxima! 🍦\n\nDetalhes do seu pedido finalizado:\n${trackingLink}`;
+        return `Olá, ${customerName}! Seu pedido #${orderIdShort} na ${shopName} foi entregue com sucesso! 🎉 Esperamos que você ame o nosso açaí gourmet e sorvetes premium. Se puder, nos divulgue no Instagram @sorveteria.supreme! Obrigado pela preferência e até a próxima! 🍦\n\nDetalhes do seu pedido finalizado:\n${trackingLink}\n\n🌐 Visite nosso cardápio oficial: ${logoLink}`;
       default:
         return '';
     }
@@ -2138,7 +2139,7 @@ export default function App() {
                         <div className="shrink-0">
                           <button
                             onClick={() => {
-                              const sharedUrl = "https://ais-pre-3gtsc2fb25ezd7dmeqiyre-576759142795.us-west2.run.app";
+                              const sharedUrl = "https://sorveteriasupreme.vercel.app";
                               navigator.clipboard.writeText(sharedUrl);
                               alert("🍦 Link oficial de clientes copiado com sucesso!\n\nEnvie este link para que seus clientes façam pedidos online:\n" + sharedUrl);
                             }}
