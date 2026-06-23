@@ -10,7 +10,8 @@ service cloud.firestore {
     function isVerifiedAdmin() {
       return request.auth != null &&
              request.auth.token != null &&
-             request.auth.token.email == 'brfariarm@gmail.com';
+             request.auth.token.email == 'brfariarm@gmail.com' &&
+             request.auth.token.email_verified == true;
     }
 
     // Public test connection endpoint
