@@ -3739,13 +3739,13 @@ E-mail: ${storeSettings.email}`;
                         <label className="block text-[10px] font-black uppercase text-rose-550 tracking-wider">Domínio Personalizado (Link de Rastreio)</label>
                         <input
                           type="text"
-                          placeholder="sorveteriasupreme.vercel.app"
+                          placeholder="Sorveteria-Supreme.vercel.app"
                           value={storeSettings.customDomain || ''}
                           onChange={(e) => setStoreSettings({ ...storeSettings, customDomain: e.target.value })}
                           className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white font-medium text-rose-650"
                         />
                         <p className="text-[9.5px] text-slate-400 font-semibold mt-0.5">
-                          Os links de status do WhatsApp enviados ao cliente usarão este domínio (ex: <span className="font-extrabold text-rose-600">sorveteriasupreme.vercel.app</span>).
+                          Os links de status do WhatsApp enviados ao cliente usarão este domínio (ex: <span className="font-extrabold text-rose-600">Sorveteria-Supreme.vercel.app</span>).
                         </p>
                       </div>
 
