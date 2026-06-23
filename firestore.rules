@@ -28,6 +28,7 @@ service cloud.firestore {
                     
       allow read: if isVerifiedAdmin() || 
                   (isSignedIn() && (
+                    resource == null ||
                     resource.data.ownerId == request.auth.uid || 
                     (resource.data.ownerId is string && resource.data.ownerId.matches('^guest-.*'))
                   ));
