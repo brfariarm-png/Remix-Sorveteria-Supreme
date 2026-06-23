@@ -8,7 +8,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Download, Star, ShieldCheck, Laptop, Smartphone, Tablet, ExternalLink, HelpCircle, AlertCircle, Copy, Check } from 'lucide-react';
 import SupremeLogo from './SupremeLogo';
 
-export default function PlayStoreMobileHub() {
+interface PlayStoreMobileHubProps {
+  customDomain?: string;
+}
+
+export default function PlayStoreMobileHub({ customDomain }: PlayStoreMobileHubProps) {
   const [devicePreview, setDevicePreview] = useState<'ios' | 'android'>('android');
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -36,6 +40,12 @@ export default function PlayStoreMobileHub() {
   };
 
   const getPublicShareUrl = () => {
+    if (customDomain) {
+      const domain = customDomain.trim();
+      return domain.startsWith('http://') || domain.startsWith('https://') 
+        ? domain 
+        : `https://${domain}`;
+    }
     const currentUrl = window.location.href;
     if (currentUrl.includes('ais-dev-')) {
       return currentUrl.replace('ais-dev-', 'ais-pre-');
@@ -100,8 +110,13 @@ export default function PlayStoreMobileHub() {
             </div>
           </div>
 
-          <div className="pt-1 select-all font-mono text-[11px] text-rose-600 bg-white border border-slate-100 p-2.5 rounded-xl break-all font-bold">
-            {getPublicShareUrl()}
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 bg-white p-1 rounded-full border border-slate-150 shadow-xs">
+              <SupremeLogo size={42} />
+            </div>
+            <div className="flex-1 select-all font-mono text-[11px] text-rose-600 bg-white border border-slate-100 p-2.5 rounded-xl break-all font-bold">
+              {getPublicShareUrl()}
+            </div>
           </div>
           <button
             onClick={copyAppUrl}

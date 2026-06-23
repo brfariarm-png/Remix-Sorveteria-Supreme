@@ -208,6 +208,12 @@ export default function App() {
   }, []);
 
   const getPublicShareUrl = () => {
+    if (storeSettings?.customDomain) {
+      const domain = storeSettings.customDomain.trim();
+      return domain.startsWith('http://') || domain.startsWith('https://') 
+        ? domain 
+        : `https://${domain}`;
+    }
     const currentUrl = window.location.href;
     if (currentUrl.includes('ais-dev-')) {
       return currentUrl.replace('ais-dev-', 'ais-pre-');
@@ -2323,7 +2329,7 @@ export default function App() {
                         orders={orders} 
                       />
                     ) : adminSubTab === 'playstore' ? (
-                      <PlayStoreMobileHub />
+                      <PlayStoreMobileHub customDomain={storeSettings.customDomain} />
                     ) : (
                       <div className="space-y-6">
 
@@ -3641,8 +3647,13 @@ E-mail: ${storeSettings.email}`;
                           <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
                             Este QR Code redireciona automaticamente para a experiência do cliente. Você também pode enviá-lo nas suas redes sociais! Referente a:
                           </p>
-                          <div className="select-all font-mono text-[10.5px] text-rose-600 bg-white border border-slate-150 p-2.5 rounded-xl break-all font-bold">
-                            {getPublicShareUrl()}
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 bg-white p-1 rounded-full border border-slate-150 shadow-xs">
+                              <SupremeLogo size={42} />
+                            </div>
+                            <div className="flex-1 select-all font-mono text-[10.5px] text-rose-600 bg-white border border-slate-150 p-2.5 rounded-xl break-all font-bold">
+                              {getPublicShareUrl()}
+                            </div>
                           </div>
                           
                           <button
