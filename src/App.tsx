@@ -670,24 +670,19 @@ export default function App() {
 
   // 4. Real-time sync of orders from Firestore
   useEffect(() => {
-    let guestUid = localStorage.getItem('guest_uid');
-    if (!guestUid || !guestUid.startsWith('guest-')) {
-      guestUid = `guest-${Math.random().toString(36).substring(2, 11)}`;
-      localStorage.setItem('guest_uid', guestUid);
+    if (!currentUser) {
+      // Avoid subscribing to orders until currentUser is initialized to prevent permissions errors
+      return;
     }
 
     const ordersCol = collection(db, 'orders');
 
-    // Connect to Firestore orders matching current user or guest fallback
+    // Connect to Firestore orders matching current user
     let q;
-    if (currentUser) {
-      if (currentUser.email === 'brfariarm@gmail.com') {
-        q = query(ordersCol);
-      } else {
-        q = query(ordersCol, where('ownerId', 'in', [currentUser.uid, guestUid]));
-      }
+    if (currentUser.email === 'brfariarm@gmail.com') {
+      q = query(ordersCol);
     } else {
-      q = query(ordersCol, where('ownerId', '==', guestUid));
+      q = query(ordersCol, where('ownerId', '==', currentUser.uid));
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -1436,7 +1431,7 @@ export default function App() {
 
     const guestUid = localStorage.getItem('guest_uid') || `guest-${Math.random().toString(36).substring(2, 11)}`;
     localStorage.setItem('guest_uid', guestUid);
-    const ownerId = (currentUser && !currentUser.isAnonymous) ? currentUser.uid : guestUid;
+    const ownerId = currentUser ? currentUser.uid : guestUid;
 
     try {
       await setDoc(doc(db, 'orders', orderId), {

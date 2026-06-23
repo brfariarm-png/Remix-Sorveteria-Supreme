@@ -3,10 +3,6 @@
     {
       "database": "remixed-firestore-database-id",
       "rules": "firestore.rules"
-    },
-    {
-      "database": "(default)",
-      "rules": "firestore.rules"
     }
   ]
 }
