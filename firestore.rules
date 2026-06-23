@@ -10,7 +10,8 @@ service cloud.firestore {
     function isVerifiedAdmin() {
       return request.auth != null &&
              request.auth.token != null &&
-             request.auth.token.email == 'brfariarm@gmail.com';
+             request.auth.token.email == 'brfariarm@gmail.com' &&
+             request.auth.token.email_verified == true;
     }
 
     // Public test connection endpoint
@@ -20,9 +21,28 @@ service cloud.firestore {
 
     // Orders Collection
     match /orders/{orderId} {
-      allow create: if true;
-      allow read: if isVerifiedAdmin() || (resource != null && (resource.data.ownerId == request.auth.uid || resource.data.ownerId.startsWith('guest-')));
-      allow update, delete: if isVerifiedAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow create: if isVerifiedAdmin() || 
+                    (isSignedIn() && (
+                      request.resource.data.ownerId == request.auth.uid || 
+                      request.resource.data.ownerId.matches('^guest-.*')
+                    ));
+                    
+      allow read: if isVerifiedAdmin() || 
+                  (isSignedIn() && (
+                    resource.data.ownerId == request.auth.uid || 
+                    resource.data.ownerId.matches('^guest-.*')
+                  ));
+                  
+      allow update: if isVerifiedAdmin() || 
+                    (isSignedIn() && 
+                     resource.data.ownerId == request.auth.uid && 
+                     request.resource.data.ownerId == resource.data.ownerId &&
+                     request.resource.data.createdAt == resource.data.createdAt &&
+                     request.resource.data.total == resource.data.total &&
+                     (resource.data.status != 'completed' || request.resource.data.status == 'completed')
+                    );
+                    
+      allow delete: if isVerifiedAdmin();
     }
 
     // Closeouts Collection
