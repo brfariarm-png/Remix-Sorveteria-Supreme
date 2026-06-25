@@ -34,11 +34,18 @@ export interface FlavorOption {
 }
 
 export interface CustomCupConfig {
-  size: '300ml':18, | '400ml':21, | '500ml':25, | '700ml':35;
+  size: '300ml' | '400ml' | '500ml' | '700ml';
   base: 'acai' | 'sorvete' | 'casadinho'; // casadinho = açaí + sorvete
   flavors: string[]; // flavor IDs
   toppings: string[]; // topping IDs
 }
+
+export const CUP_PRICES = {
+  '300ml': 18,
+  '400ml': 21,
+  '500ml': 25,
+  '700ml': 35
+} as const;
 
 export interface CartItem {
   id: string; // unique item instance ID
