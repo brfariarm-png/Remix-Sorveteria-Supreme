@@ -39,7 +39,6 @@ export interface CustomCupConfig {
   flavors: string[]; // flavor IDs
   toppings: string[]; // topping IDs
 }
-
 export const CUP_PRICES = {
   '300ml': 18,
   '400ml': 21,
