@@ -34,7 +34,7 @@ export interface FlavorOption {
 }
 
 export interface CustomCupConfig {
-  size: '300ml' | '400ml' | '500ml' | '700ml';
+  size: '300ml':18, | '400ml':21, | '500ml':25, | '700ml':35;
   base: 'acai' | 'sorvete' | 'casadinho'; // casadinho = açaí + sorvete
   flavors: string[]; // flavor IDs
   toppings: string[]; // topping IDs
