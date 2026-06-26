@@ -139,5 +139,13 @@ export interface StoreSettings {
   whatsappBotMenuMessage?: string;
   whatsappBotSupportMessage?: string;
   whatsappBotMenuLink?: string;
+
+  // Custom cup sizes editable base prices
+  cupPrices?: {
+    '300ml': number;
+    '400ml': number;
+    '500ml': number;
+    '700ml': number;
+  };
 }
 

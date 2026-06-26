@@ -143,7 +143,7 @@ export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, on
     if (!customizingItem) return;
 
     // Base price based on size
-    const basePrice = getCustomCupBasePrice(customSize);
+    const basePrice = getCustomCupBasePrice(customSize, storeSettings?.cupPrices);
     
     // Add additional toppings cost
     const toppingsCost = selectedToppings.reduce((acc, tid) => {
@@ -784,7 +784,7 @@ export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, on
                       }`}
                     >
                       <span>{sz}</span>
-                      <span className="text-[9px] font-black opacity-60">R$ {getCustomCupBasePrice(sz).toFixed(2)}</span>
+                      <span className="text-[9px] font-black opacity-60">R$ {getCustomCupBasePrice(sz, storeSettings?.cupPrices).toFixed(2)}</span>
                     </button>
                   ))}
                 </div>
@@ -929,7 +929,7 @@ export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, on
                 onClick={handleConfirmCustomCup}
                 className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center text-xs shadow-md shadow-rose-250/20"
               >
-                Adicionar Cup • R$ {(getCustomCupBasePrice(customSize) + selectedToppings.reduce((acc, tid) => acc + (TOPPING_OPTIONS.find(t=>t.id === tid)?.price || 0), 0)).toFixed(2)}
+                Adicionar Cup • R$ {(getCustomCupBasePrice(customSize, storeSettings?.cupPrices) + selectedToppings.reduce((acc, tid) => acc + (TOPPING_OPTIONS.find(t=>t.id === tid)?.price || 0), 0)).toFixed(2)}
               </button>
             </div>
 

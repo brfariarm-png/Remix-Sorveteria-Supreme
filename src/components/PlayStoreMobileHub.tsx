@@ -151,15 +151,7 @@ export default function PlayStoreMobileHub({ customDomain }: PlayStoreMobileHubP
             id="playStoreMockAppIcon"
           >
             <div className="absolute inset-0 bg-white/5 opacity-10 rounded-[22%]" />
-            <img 
-              src="/assets/images/supreme_logo_1780583608054.png" 
-              alt="Logo Oficial" 
-              className="w-full h-full object-contain filter drop-shadow-md"
-              onError={(e) => {
-                // Failback to SVG if real file is absent
-                e.currentTarget.style.display = 'none';
-              }}
-            />
+            <SupremeLogo size={80} className="w-full h-full filter drop-shadow-md relative z-10" />
           </div>
 
           <div className="flex-1 space-y-2">

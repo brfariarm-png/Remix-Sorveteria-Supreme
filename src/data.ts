@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MenuItem, ToppingOption, FlavorOption } from './types';
+import { MenuItem, ToppingOption, FlavorOption, StoreSettings, CUP_PRICES } from './types';
 
 export const MENU_ITEMS: MenuItem[] = [
   {
@@ -133,14 +133,14 @@ export const TOPPING_OPTIONS: ToppingOption[] = [
 ];
 
 // Helper to calculate total for a custom cup base size
-export const getCustomCupBasePrice = (size: '300ml' | '400ml' | '500ml' | '700ml'): number => {
-  switch (size) {
-    case '300ml': return 15.00;
-    case '400ml': return 18.00;
-    case '500ml': return 21.00;
-    case '700ml': return 25.00;
-    default: return 15.00;
+export const getCustomCupBasePrice = (
+  size: '300ml' | '400ml' | '500ml' | '700ml',
+  customPrices?: StoreSettings['cupPrices']
+): number => {
+  if (customPrices && typeof customPrices[size] === 'number') {
+    return customPrices[size];
   }
+  return CUP_PRICES[size] || 18;
 };
 
 export const STORE_CONFIG = {
