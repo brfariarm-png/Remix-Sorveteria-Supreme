@@ -19,9 +19,18 @@ interface AdminPDVProps {
   storeSettings: any;
   menuItems?: MenuItem[];
   onClose?: () => void;
+  flavorOptions?: any[];
+  toppingOptions?: any[];
 }
 
-export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, onClose }: AdminPDVProps) {
+export default function AdminPDV({ 
+  onPlacePDVOrder, 
+  storeSettings, 
+  menuItems, 
+  onClose,
+  flavorOptions = FLAVOR_OPTIONS,
+  toppingOptions = TOPPING_OPTIONS
+}: AdminPDVProps) {
   // Toggle for Immersive Full Screen layout versus embedded window
   const [isFullscreen, setIsFullscreen] = useState(true);
 
@@ -815,7 +824,7 @@ export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, on
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">3. Escolha os Sabores de Sorvete (Opcional)</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {FLAVOR_OPTIONS.filter((f) => 
+                  {flavorOptions.filter((f) => 
                     !customizingItem?.allowedFlavors || 
                     customizingItem.allowedFlavors.length === 0 || 
                     customizingItem.allowedFlavors.includes(f.id)
@@ -853,7 +862,7 @@ export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, on
                   <span className="text-[9.5px] text-zinc-500 bg-zinc-200 px-1.5 py-0.5 rounded font-bold">Cobrança Automática</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {TOPPING_OPTIONS.filter((t) => 
+                  {toppingOptions.filter((t) => 
                     !customizingItem?.allowedToppings || 
                     customizingItem.allowedToppings.length === 0 || 
                     customizingItem.allowedToppings.includes(t.id)
@@ -929,7 +938,7 @@ export default function AdminPDV({ onPlacePDVOrder, storeSettings, menuItems, on
                 onClick={handleConfirmCustomCup}
                 className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center text-xs shadow-md shadow-rose-250/20"
               >
-                Adicionar Cup • R$ {(getCustomCupBasePrice(customSize, storeSettings?.cupPrices) + selectedToppings.reduce((acc, tid) => acc + (TOPPING_OPTIONS.find(t=>t.id === tid)?.price || 0), 0)).toFixed(2)}
+                Adicionar Cup • R$ {(getCustomCupBasePrice(customSize, storeSettings?.cupPrices) + selectedToppings.reduce((acc, tid) => acc + (toppingOptions.find(t=>t.id === tid)?.price || 0), 0)).toFixed(2)}
               </button>
             </div>
 

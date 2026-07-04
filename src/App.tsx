@@ -64,7 +64,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 
-import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings } from './types';
+import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption } from './types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, STORE_CONFIG } from './data';
 import CupCustomizer from './components/CupCustomizer';
 import Checkout from './components/Checkout';
@@ -216,8 +216,18 @@ export default function App() {
   const [isCustomInstallModalOpen, setIsCustomInstallModalOpen] = useState(false);
 
   const isDevUrl = useMemo(() => {
-    return window.location.hostname.includes('ais-dev-');
+    return window.location.hostname.includes('ais-dev-') || 
+           window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' || 
+           window.location.hostname.includes('stackblitz') || 
+           window.location.hostname.includes('webcontainer') || 
+           window.location.hostname.includes('aistudio') ||
+           window.location.hostname.includes('run.app');
   }, []);
+
+  const isAdmin = useMemo(() => {
+    return (currentUser && currentUser.email === 'brfariarm@gmail.com') || isDevUrl;
+  }, [currentUser, isDevUrl]);
 
   const getPublicShareUrl = () => {
     if (storeSettings?.customDomain) {
@@ -425,6 +435,40 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // 2b2. Load dynamic flavors from Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'flavor_options'), (snapshot) => {
+      if (!snapshot.empty) {
+        const list: FlavorOption[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as FlavorOption);
+        });
+        setFlavorOptions(list);
+        localStorage.setItem('supreme_flavor_options', JSON.stringify(list));
+      }
+    }, (error) => {
+      console.error('Failed to listen to flavor_options:', error);
+    });
+    return () => unsub();
+  }, []);
+
+  // 2b3. Load dynamic toppings from Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'topping_options'), (snapshot) => {
+      if (!snapshot.empty) {
+        const list: ToppingOption[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as ToppingOption);
+        });
+        setToppingOptions(list);
+        localStorage.setItem('supreme_topping_options', JSON.stringify(list));
+      }
+    }, (error) => {
+      console.error('Failed to listen to topping_options:', error);
+    });
+    return () => unsub();
+  }, []);
+
   // 2c. Seed default menu items if db is empty (for any authenticated preview/owner session)
   useEffect(() => {
     const seedMenuIfEmpty = async () => {
@@ -450,15 +494,48 @@ export default function App() {
           await batch.commit();
           console.log('Cohesive seeding of dynamic menu items completed!');
         }
+
+        const fSnap = await getDocs(collection(db, 'flavor_options'));
+        if (fSnap.empty) {
+          console.log('Database flavor_options is empty. Seeding defaults...');
+          const batch = writeBatch(db);
+          FLAVOR_OPTIONS.forEach((item) => {
+            const docRef = doc(db, 'flavor_options', item.id);
+            batch.set(docRef, {
+              id: item.id,
+              name: item.name,
+              color: item.color,
+              secondaryColor: item.secondaryColor || null,
+              category: item.category,
+              description: item.description
+            });
+          });
+          await batch.commit();
+        }
+
+        const tSnap = await getDocs(collection(db, 'topping_options'));
+        if (tSnap.empty) {
+          console.log('Database topping_options is empty. Seeding defaults...');
+          const batch = writeBatch(db);
+          TOPPING_OPTIONS.forEach((item) => {
+            const docRef = doc(db, 'topping_options', item.id);
+            batch.set(docRef, {
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              category: item.category
+            });
+          });
+          await batch.commit();
+        }
       } catch (e) {
-        console.error("Error seeding default menu_items collection:", e);
-        handleFirestoreError(e, OperationType.WRITE, 'menu_items');
+        console.error("Error seeding default items/options:", e);
       }
     };
-    if (currentUser && currentUser.email === 'brfariarm@gmail.com') {
+    if (isAdmin) {
       seedMenuIfEmpty();
     }
-  }, [currentUser]);
+  }, [isAdmin]);
 
   // 3. Save changes in-place to LocalStorage
   useEffect(() => {
@@ -572,6 +649,32 @@ export default function App() {
     return MENU_ITEMS;
   });
 
+  // Dynamic flavor options state
+  const [flavorOptions, setFlavorOptions] = useState<FlavorOption[]>(() => {
+    const cached = localStorage.getItem('supreme_flavor_options');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Error parsing cached flavor options:', e);
+      }
+    }
+    return FLAVOR_OPTIONS;
+  });
+
+  // Dynamic topping options state
+  const [toppingOptions, setToppingOptions] = useState<ToppingOption[]>(() => {
+    const cached = localStorage.getItem('supreme_topping_options');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Error parsing cached topping options:', e);
+      }
+    }
+    return TOPPING_OPTIONS;
+  });
+
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'acai' | 'sorvete' | 'milkshake' | 'sundae'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -605,7 +708,7 @@ export default function App() {
   const prevStatusesRef = useRef<Record<string, OrderStatus>>({});
 
   useEffect(() => {
-    if (currentUser?.email === 'brfariarm@gmail.com') return; // Only for customers (both guests and registered ones)
+    if (isAdmin) return; // Only for customers (both guests and registered ones)
 
     orders.forEach((o) => {
       const prevStatus = prevStatusesRef.current[o.id];
@@ -714,7 +817,7 @@ export default function App() {
 
     // Connect to Firestore orders matching current user
     let q;
-    if (currentUser.email === 'brfariarm@gmail.com') {
+    if (isAdmin) {
       q = query(ordersCol);
     } else {
       q = query(ordersCol, where('ownerId', '==', currentUser.uid));
@@ -746,7 +849,7 @@ export default function App() {
       setOrders(fetchedOrders);
 
       // Cache client orders locally
-      const isAdminMode = currentUser && currentUser.email === 'brfariarm@gmail.com';
+      const isAdminMode = isAdmin;
       if (!isAdminMode) {
         localStorage.setItem('supreme_orders', JSON.stringify(fetchedOrders));
       }
@@ -816,7 +919,7 @@ export default function App() {
 
   // Sync completed orders to localStorage 'supreme_completed_history'
   useEffect(() => {
-    if (currentUser?.email === 'brfariarm@gmail.com') return; // Do not do this for Admin
+    if (isAdmin) return; // Do not do this for Admin
 
     const completedFromList = orders.filter(o => o.status === 'completed');
     if (completedFromList.length > 0) {
@@ -849,13 +952,13 @@ export default function App() {
         localStorage.setItem('supreme_completed_history', JSON.stringify(historyList));
       }
     }
-  }, [orders, currentUser]);
+  }, [orders, isAdmin]);
 
   // Proactively upload guest/local orders from localStorage to Firestore
   useEffect(() => {
     const syncExistingLocalOrders = async () => {
       if (!currentUser) return; // Wait until an authenticated session is established
-      const isAdminMode = currentUser.email === 'brfariarm@gmail.com';
+      const isAdminMode = isAdmin;
       if (isAdminMode) {
         localStorage.removeItem('supreme_orders'); // Auto clear admin browser cache
         return;
@@ -940,7 +1043,6 @@ export default function App() {
             setOrders((prev) => {
               if (!prev.some(o => o.id === retrievedOrder.id)) {
                 const nextOrders = [retrievedOrder, ...prev];
-                const isAdmin = currentUser && currentUser.email === 'brfariarm@gmail.com';
                 if (!isAdmin) {
                   localStorage.setItem('supreme_orders', JSON.stringify(nextOrders));
                 }
@@ -964,7 +1066,7 @@ export default function App() {
 
   // Save custom local orders to localstorage (if client-side user/guest)
   useEffect(() => {
-    const isAdminMode = currentUser && currentUser.email === 'brfariarm@gmail.com';
+    const isAdminMode = isAdmin;
     if (isAdminMode) {
       localStorage.removeItem('supreme_orders');
       return;
@@ -973,14 +1075,14 @@ export default function App() {
     if (orders.length > 0 && hasGuestOrders) {
       localStorage.setItem('supreme_orders', JSON.stringify(orders));
     }
-  }, [orders, currentUser]);
+  }, [orders, isAdmin]);
 
   // Real-time door bell chimes when new orders arrive (only for store admin)
   const prevWaitingIdsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
-    if (currentUser?.email !== 'brfariarm@gmail.com') return;
+    if (!isAdmin) return;
 
     // Delayed load activation to avoid false rings on startup snap releases
     const timer = setTimeout(() => {
@@ -988,10 +1090,10 @@ export default function App() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [currentUser]);
+  }, [isAdmin]);
 
   useEffect(() => {
-    if (currentUser?.email !== 'brfariarm@gmail.com') return;
+    if (!isAdmin) return;
 
     const currentWaitingIds = orders
       .filter((o) => o.status === 'waiting')
@@ -1039,11 +1141,11 @@ export default function App() {
     }
 
     prevWaitingIdsRef.current = currentWaitingIds;
-  }, [orders, currentUser, autoPrintOnNew, storeSettings]);
+  }, [orders, isAdmin, autoPrintOnNew, storeSettings]);
 
   // Handle looping notification sound every 4.5 seconds like an iFood bell
   useEffect(() => {
-    if (currentUser?.email !== 'brfariarm@gmail.com' || !isSoundEnabled || !isRingingLoop) return;
+    if (!isAdmin || !isSoundEnabled || !isRingingLoop) return;
 
     // Play once immediately
     playNotificationSound();
@@ -1059,7 +1161,7 @@ export default function App() {
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [isRingingLoop, isSoundEnabled, orders, currentUser]);
+  }, [isRingingLoop, isSoundEnabled, orders, isAdmin]);
 
   // Handle manually forcing simulation status advance
   const handleForceStatusAdvance = async () => {
@@ -1211,7 +1313,7 @@ export default function App() {
       updatedAt: new Date().toISOString()
     };
     setStoreSettings(updated);
-    if (currentUser && currentUser.email === 'brfariarm@gmail.com') {
+    if (isAdmin) {
       try {
         await setDoc(doc(db, 'settings', 'store_config'), updated);
       } catch (err) {
@@ -1221,7 +1323,7 @@ export default function App() {
   };
 
   const handleSaveStoreSettingsToFirestore = async (settings: typeof storeSettings) => {
-    if (currentUser?.email === 'brfariarm@gmail.com') {
+    if (isAdmin) {
       setSaveStatus('saving');
       try {
         await setDoc(doc(db, 'settings', 'store_config'), {
@@ -1617,7 +1719,7 @@ export default function App() {
             >
               <SupremeLogo size={48} className="w-full h-full animate-[pulse_6s_infinite]" />
             </div>
-            {currentUser?.email === 'brfariarm@gmail.com' ? (
+            {isAdmin ? (
               <div className="flex items-center gap-3">
                 <div 
                   onClick={() => setIsSettingsOpen(true)}
@@ -1683,7 +1785,7 @@ export default function App() {
 
           {/* Navigation links */}
           <nav className="hidden md:flex items-center gap-6">
-            {currentUser?.email === 'brfariarm@gmail.com' ? (
+            {isAdmin ? (
               <>
                 <button
                   onClick={() => {
@@ -1819,7 +1921,7 @@ export default function App() {
       {/* Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-48 bg-white border-t border-slate-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] pb-safe select-none">
         <div className="flex justify-around items-center h-16">
-          {currentUser?.email === 'brfariarm@gmail.com' ? (
+          {isAdmin ? (
             <>
               <button
                 onClick={() => {
@@ -2139,11 +2241,11 @@ export default function App() {
               order={activeTrackingOrder} 
               onClose={() => {
                 setActiveTrackingOrder(null);
-                if (currentUser?.email !== 'brfariarm@gmail.com' && orders.length <= 1) {
+                if (!isAdmin && orders.length <= 1) {
                   setActiveTab('menu');
                 }
               }}
-              onSimulateStatusProgress={currentUser?.email === 'brfariarm@gmail.com' ? handleForceStatusAdvance : undefined}
+              onSimulateStatusProgress={isAdmin ? handleForceStatusAdvance : undefined}
               storeSettings={storeSettings}
             />
           </div>
@@ -2152,7 +2254,7 @@ export default function App() {
         {/* TAB 2 CONTROLLER: ACTIVE TRACKING OR SELECTION DASHBOARD */}
         {activeTab === 'tracker' && !activeTrackingOrder && (
           <div className="space-y-6">
-            {orders.length === 0 && currentUser?.email !== 'brfariarm@gmail.com' ? (
+            {orders.length === 0 && !isAdmin ? (
               // Empty State
               <div className="text-center py-12 space-y-3 bg-white rounded-3xl border border-dashed border-slate-200">
                 <Compass className="w-10 h-10 text-slate-350 mx-auto animate-pulse" />
@@ -2169,7 +2271,7 @@ export default function App() {
               // We have orders! Render Dashboard or PDV
               <div className="space-y-6 animate-fade-in">
                 
-                {currentUser?.email === 'brfariarm@gmail.com' ? (
+                {isAdmin ? (
                   // Admin Header and metrics
                   <div className="space-y-6">
                     <div className="bg-gradient-to-r from-rose-500 to-indigo-600 p-6 rounded-[28px] text-white shadow-xl relative overflow-hidden">
@@ -2339,7 +2441,14 @@ export default function App() {
 
                     {/* Conditional rendering for PDV versus Normal Desktop workflow */}
                     {adminSubTab === 'pdv' ? (
-                      <AdminPDV onPlacePDVOrder={handlePlacePDVOrder} storeSettings={storeSettings} menuItems={menuItems} onClose={() => setAdminSubTab('orders')} />
+                      <AdminPDV 
+                        onPlacePDVOrder={handlePlacePDVOrder} 
+                        storeSettings={storeSettings} 
+                        menuItems={menuItems} 
+                        onClose={() => setAdminSubTab('orders')} 
+                        flavorOptions={flavorOptions}
+                        toppingOptions={toppingOptions}
+                      />
                     ) : adminSubTab === 'fechamento' ? (
                       <AdminFechamento 
                         orders={orders} 
@@ -2367,6 +2476,8 @@ export default function App() {
                       <AdminCardapio 
                         menuItems={menuItems} 
                         storeSettings={storeSettings}
+                        flavorOptions={flavorOptions}
+                        toppingOptions={toppingOptions}
                         onUpdateSettings={async (updated) => {
                           setStoreSettings(updated);
                           await handleSaveStoreSettingsToFirestore(updated);
@@ -3183,6 +3294,8 @@ export default function App() {
             }} 
             onAddToCart={handleAddCustomCupToCart} 
             storeSettings={storeSettings}
+            flavorOptions={flavorOptions}
+            toppingOptions={toppingOptions}
           />
         )}
       </AnimatePresence>

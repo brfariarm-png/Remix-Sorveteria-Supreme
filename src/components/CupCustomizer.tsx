@@ -21,9 +21,18 @@ interface CupCustomizerProps {
   onClose: () => void;
   customizingItem?: MenuItem | null;
   storeSettings?: StoreSettings;
+  flavorOptions: FlavorOption[];
+  toppingOptions: ToppingOption[];
 }
 
-export default function CupCustomizer({ onAddToCart, onClose, customizingItem, storeSettings }: CupCustomizerProps) {
+export default function CupCustomizer({ 
+  onAddToCart, 
+  onClose, 
+  customizingItem, 
+  storeSettings,
+  flavorOptions = FLAVOR_OPTIONS,
+  toppingOptions = TOPPING_OPTIONS
+}: CupCustomizerProps) {
   const isMilkshake = customizingItem?.category === 'milkshake';
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
 
@@ -83,21 +92,21 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
 
   // Filter flavors based on base type chosen
   const availableFlavors = useMemo(() => {
-    let list = FLAVOR_OPTIONS;
+    let list = flavorOptions;
     if (base === 'acai') {
-      list = FLAVOR_OPTIONS.filter((f) => f.id === 'acai-puro-organico');
+      list = flavorOptions.filter((f) => f.id === 'acai-puro-organico');
     } else if (base === 'sorvete') {
-      list = FLAVOR_OPTIONS.filter((f) => f.category === 'sorvete');
+      list = flavorOptions.filter((f) => f.category === 'sorvete');
     } else if (base === 'casadinho') {
       // For casadinho (açaí + ice cream), we fix Açaí Puro Orgânico and let them select a sorvete flavour!
-      list = FLAVOR_OPTIONS.filter((f) => f.id === 'acai-puro-organico' || f.category === 'sorvete');
+      list = flavorOptions.filter((f) => f.id === 'acai-puro-organico' || f.category === 'sorvete');
     }
 
     if (customizingItem?.allowedFlavors && customizingItem.allowedFlavors.length > 0) {
       list = list.filter((f) => customizingItem.allowedFlavors?.includes(f.id));
     }
     return list;
-  }, [base, customizingItem]);
+  }, [base, customizingItem, flavorOptions]);
 
   // Toppings sorted by category for clean tabs/sections
   const toppingsByCategory = useMemo(() => {
@@ -109,9 +118,9 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
       calda: [],
     };
 
-    let list = TOPPING_OPTIONS;
+    let list = toppingOptions;
     if (customizingItem?.allowedToppings && customizingItem.allowedToppings.length > 0) {
-      list = TOPPING_OPTIONS.filter((t) => customizingItem.allowedToppings?.includes(t.id));
+      list = toppingOptions.filter((t) => customizingItem.allowedToppings?.includes(t.id));
     }
 
     list.forEach((topping) => {
@@ -124,7 +133,7 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
       }
     });
     return categories;
-  }, [isMilkshake, customizingItem]);
+  }, [isMilkshake, customizingItem, toppingOptions]);
 
   const basePrice = useMemo(() => {
     if (isLinhaBrownie) {
@@ -145,10 +154,10 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
 
   const toppingsPrice = useMemo(() => {
     return selectedToppings.reduce((total, id) => {
-      const topping = TOPPING_OPTIONS.find((t) => t.id === id);
+      const topping = toppingOptions.find((t) => t.id === id);
       return total + (topping ? topping.price : 0);
     }, 0);
-  }, [selectedToppings]);
+  }, [selectedToppings, toppingOptions]);
 
   const extraProductsPrice = useMemo(() => {
     if (!isLinhaBrownie) return 0;
@@ -219,12 +228,12 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
       name: finalName,
       description: `${descriptionBase} Sabores/Sorvetes: ${
         finalFlavors
-          .map((fId) => FLAVOR_OPTIONS.find((f) => f.id === fId)?.name)
+          .map((fId) => flavorOptions.find((f) => f.id === fId)?.name)
           .filter(Boolean)
           .join(', ') || 'Nenhum'
       }. Adicionais: ${
         selectedToppings
-          .map((tId) => TOPPING_OPTIONS.find((t) => t.id === tId)?.name)
+          .map((tId) => toppingOptions.find((t) => t.id === tId)?.name)
           .filter(Boolean)
           .join(', ') || 'Nenhum'
       }.${extraProductsString ? ` Outros: ${extraProductsString}.` : ''}`,
@@ -258,17 +267,17 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
   // Render liquid layers in the cup based on flavors selected
   const renderedFlavorsForVisual = useMemo(() => {
     if (selectedFlavors.length > 0) {
-      return selectedFlavors.map((fid) => FLAVOR_OPTIONS.find((f) => f.id === fid));
+      return selectedFlavors.map((fid) => flavorOptions.find((f) => f.id === fid));
     }
     // Default preview layers based on base selection
     if (base === 'acai') {
-      return [FLAVOR_OPTIONS[0]]; // Açaí Puro
+      return [flavorOptions[0] || FLAVOR_OPTIONS[0]]; // Açaí Puro
     }
     if (base === 'sorvete') {
-      return [FLAVOR_OPTIONS[2], FLAVOR_OPTIONS[3]]; // Chocolate and Ninho
+      return [flavorOptions[2] || FLAVOR_OPTIONS[2], flavorOptions[3] || FLAVOR_OPTIONS[3]]; // Chocolate and Ninho
     }
-    return [FLAVOR_OPTIONS[0], FLAVOR_OPTIONS[3]]; // Casadinho (Açaí & Ninho)
-  }, [selectedFlavors, base]);
+    return [flavorOptions[0] || FLAVOR_OPTIONS[0], flavorOptions[3] || FLAVOR_OPTIONS[3]]; // Casadinho (Açaí & Ninho)
+  }, [selectedFlavors, base, flavorOptions]);
 
   return (
     <div 
