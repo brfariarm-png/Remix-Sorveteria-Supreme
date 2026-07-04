@@ -380,6 +380,17 @@ export default function App() {
             '500ml': 25,
             '700ml': 35
           },
+          milkshakePrices: data.milkshakePrices ?? prev.milkshakePrices ?? {
+            '300ml': 15,
+            '400ml': 18,
+            '500ml': 21,
+            '700ml': 25
+          },
+          browniePrices: data.browniePrices ?? prev.browniePrices ?? {
+            '400ml': 22.90,
+            '500ml': 28.90,
+            '700ml': 34.90
+          },
         }));
       }
     }, (error) => {
@@ -1250,6 +1261,17 @@ export default function App() {
             '400ml': 21,
             '500ml': 25,
             '700ml': 35
+          },
+          milkshakePrices: settings.milkshakePrices || {
+            '300ml': 15,
+            '400ml': 18,
+            '500ml': 21,
+            '700ml': 25
+          },
+          browniePrices: settings.browniePrices || {
+            '400ml': 22.90,
+            '500ml': 28.90,
+            '700ml': 34.90
           },
           updatedAt: serverTimestamp()
         });

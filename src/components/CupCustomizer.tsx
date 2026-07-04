@@ -128,20 +128,20 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
 
   const basePrice = useMemo(() => {
     if (isLinhaBrownie) {
-      if (size === '300ml') return 16.90;
-      if (size === '400ml') return 22.90;
-      if (size === '500ml') return 28.90;
-      if (size === '700ml') return 34.90;
-      return 22.90;
+      if (size === '300ml') return storeSettings?.browniePrices?.['300ml'] ?? 16.90;
+      if (size === '400ml') return storeSettings?.browniePrices?.['400ml'] ?? 22.90;
+      if (size === '500ml') return storeSettings?.browniePrices?.['500ml'] ?? 28.90;
+      if (size === '700ml') return storeSettings?.browniePrices?.['700ml'] ?? 34.90;
+      return storeSettings?.browniePrices?.['400ml'] ?? 22.90;
     }
     if (isMilkshake) {
-      return size === '300ml' ? 15.00
-        : size === '400ml' ? 18.00
-        : size === '500ml' ? 21.00
-        : 25.00;
+      return size === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
+        : size === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
+        : size === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
+        : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00);
     }
     return getCustomCupBasePrice(size, storeSettings?.cupPrices);
-  }, [isMilkshake, isLinhaBrownie, size, storeSettings?.cupPrices]);
+  }, [isMilkshake, isLinhaBrownie, size, storeSettings?.cupPrices, storeSettings?.milkshakePrices, storeSettings?.browniePrices]);
 
   const toppingsPrice = useMemo(() => {
     return selectedToppings.reduce((total, id) => {
@@ -394,11 +394,15 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem, s
 
                   // Custom price logic
                   const price = isLinhaBrownie
-                    ? sz === '400ml' ? 22.90
-                      : sz === '500ml' ? 28.90
-                      : 34.90
+                    ? sz === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
+                      : sz === '400ml' ? (storeSettings?.browniePrices?.['400ml'] ?? 22.90)
+                      : sz === '500ml' ? (storeSettings?.browniePrices?.['500ml'] ?? 28.90)
+                      : (storeSettings?.browniePrices?.['700ml'] ?? 34.90)
                     : isMilkshake
-                      ? sz === '300ml' ? 15.00 : sz === '400ml' ? 18.00 : sz === '500ml' ? 21.00 : 25.00
+                      ? sz === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
+                        : sz === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
+                        : sz === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
+                        : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00)
                       : getCustomCupBasePrice(sz, storeSettings?.cupPrices);
 
                   return (

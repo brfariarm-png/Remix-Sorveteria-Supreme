@@ -40,6 +40,16 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
   const [price400, setPrice400] = useState<string>(() => String(storeSettings?.cupPrices?.['400ml'] ?? 21));
   const [price500, setPrice500] = useState<string>(() => String(storeSettings?.cupPrices?.['500ml'] ?? 25));
   const [price700, setPrice700] = useState<string>(() => String(storeSettings?.cupPrices?.['700ml'] ?? 35));
+
+  const [msPrice300, setMsPrice300] = useState<string>(() => String(storeSettings?.milkshakePrices?.['300ml'] ?? 15));
+  const [msPrice400, setMsPrice400] = useState<string>(() => String(storeSettings?.milkshakePrices?.['400ml'] ?? 18));
+  const [msPrice500, setMsPrice500] = useState<string>(() => String(storeSettings?.milkshakePrices?.['500ml'] ?? 21));
+  const [msPrice700, setMsPrice700] = useState<string>(() => String(storeSettings?.milkshakePrices?.['700ml'] ?? 25));
+
+  const [brPrice400, setBrPrice400] = useState<string>(() => String(storeSettings?.browniePrices?.['400ml'] ?? 22.90));
+  const [brPrice500, setBrPrice500] = useState<string>(() => String(storeSettings?.browniePrices?.['500ml'] ?? 28.90));
+  const [brPrice700, setBrPrice700] = useState<string>(() => String(storeSettings?.browniePrices?.['700ml'] ?? 34.90));
+
   const [savingPrices, setSavingPrices] = useState(false);
 
   React.useEffect(() => {
@@ -49,7 +59,18 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
       setPrice500(String(storeSettings.cupPrices['500ml']));
       setPrice700(String(storeSettings.cupPrices['700ml']));
     }
-  }, [storeSettings?.cupPrices]);
+    if (storeSettings?.milkshakePrices) {
+      setMsPrice300(String(storeSettings.milkshakePrices['300ml']));
+      setMsPrice400(String(storeSettings.milkshakePrices['400ml']));
+      setMsPrice500(String(storeSettings.milkshakePrices['500ml']));
+      setMsPrice700(String(storeSettings.milkshakePrices['700ml']));
+    }
+    if (storeSettings?.browniePrices) {
+      setBrPrice400(String(storeSettings.browniePrices['400ml']));
+      setBrPrice500(String(storeSettings.browniePrices['500ml']));
+      setBrPrice700(String(storeSettings.browniePrices['700ml']));
+    }
+  }, [storeSettings?.cupPrices, storeSettings?.milkshakePrices, storeSettings?.browniePrices]);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -161,6 +182,51 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
       const docRef = doc(db, 'menu_items', parsedId);
       await setDoc(docRef, payload);
       
+      // Auto-sync size prices to settings if edited in this modal
+      if (isCustomizable && onUpdateSettings && storeSettings) {
+        const p300 = parseFloat(price300);
+        const p400 = parseFloat(price400);
+        const p500 = parseFloat(price500);
+        const p700 = parseFloat(price700);
+
+        const ms300 = parseFloat(msPrice300);
+        const ms400 = parseFloat(msPrice400);
+        const ms500 = parseFloat(msPrice500);
+        const ms700 = parseFloat(msPrice700);
+
+        const br400 = parseFloat(brPrice400);
+        const br500 = parseFloat(brPrice500);
+        const br700 = parseFloat(brPrice700);
+
+        if (
+          !isNaN(p300) && !isNaN(p400) && !isNaN(p500) && !isNaN(p700) &&
+          !isNaN(ms300) && !isNaN(ms400) && !isNaN(ms500) && !isNaN(ms700) &&
+          !isNaN(br400) && !isNaN(br500) && !isNaN(br700)
+        ) {
+          const updatedSettings: StoreSettings = {
+            ...storeSettings,
+            cupPrices: {
+              '300ml': p300,
+              '400ml': p400,
+              '500ml': p500,
+              '700ml': p700
+            },
+            milkshakePrices: {
+              '300ml': ms300,
+              '400ml': ms400,
+              '500ml': ms500,
+              '700ml': ms700
+            },
+            browniePrices: {
+              '400ml': br400,
+              '500ml': br500,
+              '700ml': br700
+            }
+          };
+          await onUpdateSettings(updatedSettings);
+        }
+      }
+
       setSuccessMsg(`🏆 Produto "${name}" salvo com sucesso!`);
       setTimeout(() => {
         setIsFormOpen(false);
@@ -372,7 +438,20 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
     const p500 = parseFloat(price500);
     const p700 = parseFloat(price700);
 
-    if (isNaN(p300) || isNaN(p400) || isNaN(p500) || isNaN(p700)) {
+    const ms300 = parseFloat(msPrice300);
+    const ms400 = parseFloat(msPrice400);
+    const ms500 = parseFloat(msPrice500);
+    const ms700 = parseFloat(msPrice700);
+
+    const br400 = parseFloat(brPrice400);
+    const br500 = parseFloat(brPrice500);
+    const br700 = parseFloat(brPrice700);
+
+    if (
+      isNaN(p300) || isNaN(p400) || isNaN(p500) || isNaN(p700) ||
+      isNaN(ms300) || isNaN(ms400) || isNaN(ms500) || isNaN(ms700) ||
+      isNaN(br400) || isNaN(br500) || isNaN(br700)
+    ) {
       setErrorMsg('Por favor, insira valores numéricos válidos para todos os tamanhos.');
       setSavingPrices(false);
       return;
@@ -386,6 +465,17 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
           '400ml': p400,
           '500ml': p500,
           '700ml': p700
+        },
+        milkshakePrices: {
+          '300ml': ms300,
+          '400ml': ms400,
+          '500ml': ms500,
+          '700ml': ms700
+        },
+        browniePrices: {
+          '400ml': br400,
+          '500ml': br500,
+          '700ml': br700
         }
       };
       await onUpdateSettings(updatedSettings);
@@ -404,6 +494,15 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
     setPrice400('21');
     setPrice500('25');
     setPrice700('35');
+
+    setMsPrice300('15');
+    setMsPrice400('18');
+    setMsPrice500('21');
+    setMsPrice700('25');
+
+    setBrPrice400('22.90');
+    setBrPrice500('28.90');
+    setBrPrice700('34.90');
   };
 
   const filteredItems = menuItems.filter(item => {
@@ -504,82 +603,218 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
       </div>
 
       {activeTab === 'sizes_prices' ? (
-        <form onSubmit={handleSaveCupPrices} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-xs space-y-6">
+        <form onSubmit={handleSaveCupPrices} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-xs space-y-8">
           <div className="border-b border-slate-100 pb-4">
             <h3 className="text-sm font-black text-slate-805 uppercase tracking-wide flex items-center gap-1.5">
-              📏 Ajuste de Valores dos Copos Montáveis
+              💡 Ajuste de Valores por Categoria de Produto
             </h3>
             <p className="text-[11px] text-slate-450 font-medium leading-relaxed mt-1">
-              Configure o valor base cobrado por cada tamanho de copo de açaí/sorvete customizável. Os clientes no app verão estes preços instantaneamente ao escolherem o tamanho.
+              Configure os valores base cobrados por tamanho para cada categoria de produto customizável. Os clientes verão esses valores atualizados imediatamente no aplicativo ao montarem o pedido.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {/* 300ml */}
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 300ml</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={price300}
-                  onChange={(e) => setPrice300(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
-                  placeholder="18.00"
-                />
+          {/* Section 1: Açaí e Sorvete */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-1.5">
+              <span className="text-sm">💜</span>
+              <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-705">Copos de Açaí & Sorvete Customizáveis</h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {/* 300ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 300ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={price300}
+                    onChange={(e) => setPrice300(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="18.00"
+                  />
+                </div>
+              </div>
+              {/* 400ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 400ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={price400}
+                    onChange={(e) => setPrice400(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="21.00"
+                  />
+                </div>
+              </div>
+              {/* 500ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 500ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={price500}
+                    onChange={(e) => setPrice500(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="25.00"
+                  />
+                </div>
+              </div>
+              {/* 700ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 700ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={price700}
+                    onChange={(e) => setPrice700(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="35.00"
+                  />
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* 400ml */}
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 400ml</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={price400}
-                  onChange={(e) => setPrice400(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
-                  placeholder="21.00"
-                />
+          {/* Section 2: Milkshakes */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-1.5">
+              <span className="text-sm">🥤</span>
+              <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-705">Milkshakes Gourmet Customizáveis</h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {/* 300ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 300ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={msPrice300}
+                    onChange={(e) => setMsPrice300(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="15.00"
+                  />
+                </div>
+              </div>
+              {/* 400ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 400ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={msPrice400}
+                    onChange={(e) => setMsPrice400(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="18.00"
+                  />
+                </div>
+              </div>
+              {/* 500ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 500ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={msPrice500}
+                    onChange={(e) => setMsPrice500(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="21.00"
+                  />
+                </div>
+              </div>
+              {/* 700ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 700ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={msPrice700}
+                    onChange={(e) => setMsPrice700(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="25.00"
+                  />
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* 500ml */}
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 500ml</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={price500}
-                  onChange={(e) => setPrice500(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
-                  placeholder="25.00"
-                />
-              </div>
+          {/* Section 3: Brownie */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-1.5">
+              <span className="text-sm">🍫</span>
+              <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-755">Copos / Caixas / Baldes - Linha Brownie</h4>
             </div>
-
-            {/* 700ml */}
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 700ml</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={price700}
-                  onChange={(e) => setPrice700(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
-                  placeholder="35.00"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* 400ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo Brownie 400ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={brPrice400}
+                    onChange={(e) => setBrPrice400(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="22.90"
+                  />
+                </div>
+              </div>
+              {/* 500ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Caixinha Brownie 500ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={brPrice500}
+                    onChange={(e) => setBrPrice500(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="28.90"
+                  />
+                </div>
+              </div>
+              {/* 700ml */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Balde Brownie 700ml</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={brPrice700}
+                    onChange={(e) => setBrPrice700(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="34.90"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1052,6 +1287,139 @@ export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings,
                           );
                         })}
                       </div>
+                    </div>
+
+                    {/* Preços dos Tamanhos no Modal */}
+                    <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-3">
+                      <div>
+                        <h4 className="text-[10px] uppercase font-black tracking-wider text-slate-705 flex items-center gap-1.5">
+                          📐 Preços dos Tamanhos do Copo (Compartilhado)
+                        </h4>
+                        <p className="text-[8.5px] text-slate-450 font-normal leading-tight mt-0.5">
+                          Ajuste os valores dos tamanhos deste tipo de item. Todos os produtos customizáveis desta mesma categoria usarão esses mesmos preços:
+                        </p>
+                      </div>
+
+                      {category === 'milkshake' ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">300ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={msPrice300}
+                              onChange={(e) => setMsPrice300(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={msPrice400}
+                              onChange={(e) => setMsPrice400(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">500ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={msPrice500}
+                              onChange={(e) => setMsPrice500(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">700ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={msPrice700}
+                              onChange={(e) => setMsPrice700(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                        </div>
+                      ) : (category === 'acai' && name.toLowerCase().includes('brownie')) ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={brPrice400}
+                              onChange={(e) => setBrPrice400(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">500ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={brPrice500}
+                              onChange={(e) => setBrPrice500(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">700ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={brPrice700}
+                              onChange={(e) => setBrPrice700(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">300ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={price300}
+                              onChange={(e) => setPrice300(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={price400}
+                              onChange={(e) => setPrice400(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">500ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={price500}
+                              onChange={(e) => setPrice500(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase text-slate-400">700ml</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={price700}
+                              onChange={(e) => setPrice700(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

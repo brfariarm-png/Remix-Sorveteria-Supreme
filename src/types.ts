@@ -147,5 +147,16 @@ export interface StoreSettings {
     '500ml': number;
     '700ml': number;
   };
+  milkshakePrices?: {
+    '300ml': number;
+    '400ml': number;
+    '500ml': number;
+    '700ml': number;
+  };
+  browniePrices?: {
+    '400ml': number;
+    '500ml': number;
+    '700ml': number;
+  };
 }
 
