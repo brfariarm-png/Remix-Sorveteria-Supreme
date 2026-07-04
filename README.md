@@ -8,11 +8,6 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/394250e3-c97c-4dba-be9b-43921c0168c3
 
-## 🚀 Deployments
-
-- **Vercel**: https://sorveteria-supreme.vercel.app
-- **Google Cloud Run**: https://remix-sorveteria-supreme-483979230083.us-west1.run.app/
-
 ## Run Locally
 
 **Prerequisites:**  Node.js
