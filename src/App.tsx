@@ -221,8 +221,7 @@ export default function App() {
            window.location.hostname === '127.0.0.1' || 
            window.location.hostname.includes('stackblitz') || 
            window.location.hostname.includes('webcontainer') || 
-           window.location.hostname.includes('aistudio') ||
-           window.location.hostname.includes('run.app');
+           window.location.hostname.includes('aistudio');
   }, []);
 
   const isAdmin = useMemo(() => {
@@ -1603,7 +1602,7 @@ export default function App() {
       console.error('Failed to create Firestore order, falling back to local list:', e);
       setOrders((prev) => {
         const next = [newOrder, ...prev];
-        const isAdminMode = currentUser && currentUser.email === 'brfariarm@gmail.com';
+        const isAdminMode = isAdmin;
         if (!isAdminMode) {
           localStorage.setItem('supreme_orders', JSON.stringify(next));
         }
@@ -1864,7 +1863,7 @@ export default function App() {
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] font-black leading-none text-slate-800 line-clamp-1 flex items-center gap-1">
                     {currentUser.displayName?.split(' ')[0] || 'Cliente'}
-                    {currentUser.email === 'brfariarm@gmail.com' && <span className="text-amber-500 text-xs text-shadow-xs" title="Administrador Master">👑</span>}
+                    {isAdmin && <span className="text-amber-500 text-xs text-shadow-xs" title="Administrador Master">👑</span>}
                   </span>
                   <button 
                     onClick={() => signOut(auth)} 
@@ -1884,7 +1883,7 @@ export default function App() {
             )}
 
             {/* Float Cart indicator */}
-            {currentUser?.email !== 'brfariarm@gmail.com' && (
+            {!isAdmin && (
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="bg-rose-500 hover:bg-rose-600 text-white rounded-[20px] p-3 px-5 flex items-center gap-2.5 font-black text-xs shadow-md shadow-rose-100 hover:shadow-lg transition-all"
@@ -1900,7 +1899,7 @@ export default function App() {
       </header>
 
       {/* 2. Floating Action Banner for existing active order tracking */}
-      {currentUser?.email !== 'brfariarm@gmail.com' && activeOrderToTrack && activeTab !== 'tracker' && (
+      {!isAdmin && activeOrderToTrack && activeTab !== 'tracker' && (
         <div className="bg-gradient-to-r from-amber-500 to-rose-500 text-white py-2.5 px-4 flex items-center justify-between text-xs font-bold leading-normal relative z-30 shadow-md">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-white animate-ping" />
@@ -2225,7 +2224,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setActiveTrackingOrder(null);
-                  if (currentUser?.email !== 'brfariarm@gmail.com' && orders.length <= 1) {
+                  if (!isAdmin && orders.length <= 1) {
                     setActiveTab('menu');
                   }
                 }}
@@ -2826,7 +2825,7 @@ export default function App() {
 
                 {/* ORDERS GRID LISTING */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(currentUser?.email === 'brfariarm@gmail.com'
+                  {(isAdmin
                     ? orders.filter((o) => {
                         // Filter out archived completed orders from active view
                         const isArchived = (o as any).archived === true;
@@ -2965,7 +2964,7 @@ export default function App() {
                           Abrir Detalhes 📄
                         </button>
 
-                        {currentUser?.email !== 'brfariarm@gmail.com' && (
+                        {!isAdmin && (
                           <button
                             onClick={() => handleRepeatOrder(o)}
                             className="flex-shrink-0 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] uppercase tracking-wider py-2 px-3.5 rounded-xl transition-all select-none cursor-pointer flex items-center gap-1"
@@ -2975,7 +2974,7 @@ export default function App() {
                           </button>
                         )}
 
-                        {currentUser?.email === 'brfariarm@gmail.com' && (
+                        {isAdmin && (
                           <>
                             <button
                               onClick={() => printOrderReceipt(o, storeSettings)}
@@ -2997,7 +2996,7 @@ export default function App() {
                         )}
                         
                         {/* Admin State Transitions */}
-                        {currentUser?.email === 'brfariarm@gmail.com' && (
+                        {isAdmin && (
                           <>
                             {o.status === 'waiting' && (
                               <button
@@ -3034,7 +3033,7 @@ export default function App() {
                     </div>
                   ))}
                 
-                {(currentUser?.email === 'brfariarm@gmail.com'
+                {(isAdmin
                   ? orders.filter((o) => {
                       // Filter out archived completed orders
                       const isArchived = (o as any).archived === true;
@@ -3054,7 +3053,7 @@ export default function App() {
                     )
                 ).length === 0 && (
                   <div className="col-span-1 md:col-span-2 text-center py-8 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-400 font-bold w-full">
-                    {currentUser?.email === 'brfariarm@gmail.com'
+                    {isAdmin
                       ? 'Nenhum pedido encontrado utilizando os filtros selecionados.'
                       : (customerSubTab === 'active'
                           ? 'Você não possui nenhum pedido ativo no momento.'
@@ -3689,7 +3688,7 @@ E-mail: ${storeSettings.email}`;
 
            {/* 9. Store Settings Modal */}
       <AnimatePresence>
-        {isSettingsOpen && currentUser?.email === 'brfariarm@gmail.com' && (
+        {isSettingsOpen && isAdmin && (
           <div className="fixed inset-0 z-55 overflow-y-auto flex items-center justify-center p-2 sm:p-4">
             {/* Backdrop */}
             <motion.div 
@@ -4702,7 +4701,7 @@ E-mail: ${storeSettings.email}`;
       </AnimatePresence>
 
       {/* Toast notifications container for admin */}
-      {currentUser?.email === 'brfariarm@gmail.com' && (
+      {isAdmin && (
         <div className="fixed bottom-6 right-6 z-[999] p-4 pointer-events-none flex flex-col gap-3 max-w-sm w-full">
           <AnimatePresence>
             {visualNotifications.map((toast) => (
@@ -4778,7 +4777,7 @@ E-mail: ${storeSettings.email}`;
 
       {/* Toast notifications container for CUSTOMERS */}
       <AnimatePresence>
-        {currentUser?.email !== 'brfariarm@gmail.com' && notificationToast && (
+        {!isAdmin && notificationToast && (
           <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] max-w-md w-[90%] pointer-events-none">
             <motion.div
               initial={{ opacity: 0, y: -50, scale: 0.95 }}
