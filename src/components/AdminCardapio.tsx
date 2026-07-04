@@ -22,15 +22,35 @@ import {
 } from 'lucide-react';
 import { collection, addDoc, setDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { MenuItem } from '../types';
+import { MenuItem, StoreSettings } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS } from '../data';
 
 interface AdminCardapioProps {
   menuItems: MenuItem[];
   onRefreshMenu?: () => void;
+  storeSettings?: StoreSettings;
+  onUpdateSettings?: (settings: StoreSettings) => Promise<void> | void;
 }
 
-export default function AdminCardapio({ menuItems, onRefreshMenu }: AdminCardapioProps) {
+export default function AdminCardapio({ menuItems, onRefreshMenu, storeSettings, onUpdateSettings }: AdminCardapioProps) {
+  const [activeTab, setActiveTab] = useState<'products' | 'sizes_prices'>('products');
+
+  // States for cup sizes base prices editing
+  const [price300, setPrice300] = useState<string>(() => String(storeSettings?.cupPrices?.['300ml'] ?? 18));
+  const [price400, setPrice400] = useState<string>(() => String(storeSettings?.cupPrices?.['400ml'] ?? 21));
+  const [price500, setPrice500] = useState<string>(() => String(storeSettings?.cupPrices?.['500ml'] ?? 25));
+  const [price700, setPrice700] = useState<string>(() => String(storeSettings?.cupPrices?.['700ml'] ?? 35));
+  const [savingPrices, setSavingPrices] = useState(false);
+
+  React.useEffect(() => {
+    if (storeSettings?.cupPrices) {
+      setPrice300(String(storeSettings.cupPrices['300ml']));
+      setPrice400(String(storeSettings.cupPrices['400ml']));
+      setPrice500(String(storeSettings.cupPrices['500ml']));
+      setPrice700(String(storeSettings.cupPrices['700ml']));
+    }
+  }, [storeSettings?.cupPrices]);
+
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
@@ -337,6 +357,55 @@ export default function AdminCardapio({ menuItems, onRefreshMenu }: AdminCardapi
     }
   };
 
+  const handleSaveCupPrices = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onUpdateSettings || !storeSettings) {
+      setErrorMsg('Configurações indisponíveis ou não inicializadas.');
+      return;
+    }
+    setSavingPrices(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const p300 = parseFloat(price300);
+    const p400 = parseFloat(price400);
+    const p500 = parseFloat(price500);
+    const p700 = parseFloat(price700);
+
+    if (isNaN(p300) || isNaN(p400) || isNaN(p500) || isNaN(p700)) {
+      setErrorMsg('Por favor, insira valores numéricos válidos para todos os tamanhos.');
+      setSavingPrices(false);
+      return;
+    }
+
+    try {
+      const updatedSettings: StoreSettings = {
+        ...storeSettings,
+        cupPrices: {
+          '300ml': p300,
+          '400ml': p400,
+          '500ml': p500,
+          '700ml': p700
+        }
+      };
+      await onUpdateSettings(updatedSettings);
+      setSuccessMsg('✨ Valores dos tamanhos salvos e atualizados com sucesso para todos os clientes!');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(`Erro ao salvar preços: ${err?.message || err}`);
+    } finally {
+      setSavingPrices(false);
+    }
+  };
+
+  const handleResetCupPricesToDefault = () => {
+    setPrice300('18');
+    setPrice400('21');
+    setPrice500('25');
+    setPrice700('35');
+  };
+
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) || 
                           item.description.toLowerCase().includes(search.toLowerCase());
@@ -410,152 +479,285 @@ export default function AdminCardapio({ menuItems, onRefreshMenu }: AdminCardapi
         </div>
       )}
 
-      {/* Dynamic recovery banner for users who might have lost default items when writing a custom item */}
-      {menuItems.length > 0 && menuItems.length < 8 && (
-        <div className="p-4.5 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-medium text-slate-750">
-          <div className="space-y-1">
-            <p className="font-extrabold text-rose-700 flex items-center gap-1.5 text-sm">
-              💡 Sumiram os produtos anteriores padrão?
-            </p>
-            <p className="text-slate-600 text-[11px] leading-relaxed">
-              Ao cadastrar um item no banco de dados pela primeira vez, os produtos demonstrativos locais podem ter sido ocultados do seu painel. 
-              Clique abaixo para <strong>restaurar e misturar todos os produtos anteriores padrão</strong> de volta sem perder seu novo produto criado!
-            </p>
-          </div>
-          <button
-            onClick={handleRestoreMissingDefaults}
-            disabled={loading}
-            className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white font-black text-[10px] uppercase tracking-wider rounded-xl shadow-lg shadow-rose-100 transition-all cursor-pointer whitespace-nowrap align-middle"
-          >
-            {loading ? 'Processando...' : '🔄 Restaurar Produtos Anteriores'}
-          </button>
-        </div>
-      )}
-
-      {/* Grid Filter Tools & Search */}
-      <div className="flex flex-col md:flex-row gap-3">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Pesquisar produto no cardápio..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-rose-400 rounded-xl text-xs font-bold text-slate-705 placeholder-slate-400 focus:outline-hidden transition-colors"
-          />
-        </div>
-
-        {/* Categories Bar */}
-        <div className="flex bg-slate-200/50 p-1 rounded-xl overflow-x-auto gap-0.5 max-w-full">
-          {[
-            { value: 'all', label: 'Todos' },
-            { value: 'acai', label: 'Açaí' },
-            { value: 'sorvete', label: 'Sorvete' },
-            { value: 'milkshake', label: 'Milkshake' },
-            { value: 'sundae', label: 'Sundae' },
-            { value: 'combo', label: 'Combos' }
-          ].map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setSelectedCategory(cat.value)}
-              className={`px-3.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap cursor-pointer transition-all ${
-                selectedCategory === cat.value
-                  ? 'bg-white text-rose-600 shadow-xs font-black'
-                  : 'text-slate-500 hover:text-slate-805'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+      {/* Segmented Tab Switcher inside Cardapio */}
+      <div className="flex bg-slate-200/50 p-1 rounded-2xl gap-1 max-w-md">
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === 'products'
+              ? 'bg-white text-rose-600 shadow-xs'
+              : 'text-slate-500 hover:text-slate-805'
+          }`}
+        >
+          🥣 Produtos ({menuItems.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('sizes_prices')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === 'sizes_prices'
+              ? 'bg-white text-rose-600 shadow-xs'
+              : 'text-slate-500 hover:text-slate-805'
+          }`}
+        >
+          📏 Tamanhos & Valores (Copos)
+        </button>
       </div>
 
-      {/* Products list visual grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.length === 0 ? (
-          <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 ">
-            <FolderOpen className="w-12 h-12 text-slate-300 stroke-[1.5] mb-2" />
-            <p className="text-xs font-extrabold text-slate-450 uppercase tracking-widest">Nenhum produto correspondente</p>
-            <p className="text-[10px] mt-1 text-slate-400">Insira um novo produto usando o botão "Adicionar Produto"</p>
+      {activeTab === 'sizes_prices' ? (
+        <form onSubmit={handleSaveCupPrices} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-xs space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-sm font-black text-slate-805 uppercase tracking-wide flex items-center gap-1.5">
+              📏 Ajuste de Valores dos Copos Montáveis
+            </h3>
+            <p className="text-[11px] text-slate-450 font-medium leading-relaxed mt-1">
+              Configure o valor base cobrado por cada tamanho de copo de açaí/sorvete customizável. Os clientes no app verão estes preços instantaneamente ao escolherem o tamanho.
+            </p>
           </div>
-        ) : (
-          filteredItems.map((item) => (
-            <div 
-              key={item.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col relative group hover:border-rose-100 hover:shadow-md transition-all"
-            >
-              {/* Image & Price Tag */}
-              <div className="h-32 bg-slate-100 relative overflow-hidden flex-shrink-0">
-                <img 
-                  src={item.image} 
-                  alt={item.name} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  referrerPolicy="no-referrer"
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {/* 300ml */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 300ml</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price300}
+                  onChange={(e) => setPrice300(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
+                  placeholder="18.00"
                 />
-                <div className="absolute top-2.5 right-2.5 bg-rose-600 text-white px-2.5 py-1 text-[11px] font-black tracking-widest uppercase rounded-lg shadow-sm">
-                  R$ {item.price.toFixed(2)}
-                </div>
-
-                <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
-                  <span className="bg-slate-900/90 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md">
-                    {item.category === 'acai' ? '💜 Açaí' : 
-                     item.category === 'sorvete' ? '🍧 Sorvete' :
-                     item.category === 'milkshake' ? '🥤 Shake' : 
-                     item.category === 'sundae' ? '🍒 Sundae' : '📦 Combo'}
-                  </span>
-                  {item.popular && (
-                    <span className="bg-amber-500 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md flex items-center gap-0.5">
-                      <Star className="w-2.5 h-2.5 fill-current" /> Destaque
-                    </span>
-                  )}
-                  {item.customizable && (
-                    <span className="bg-sky-500 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md">
-                      🎚️ Customizável
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Info Block */}
-              <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-800 text-xs tracking-tight line-clamp-1">{item.name}</h4>
-                  <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{item.description}</p>
-                </div>
-
-                {/* Tags inside card item */}
-                {item.tags && item.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {item.tags.map((tag, idx) => (
-                      <span key={idx} className="bg-slate-50 text-slate-550 border border-slate-100 text-[8px] font-extrabold tracking-wide uppercase px-1.5 py-0.5 rounded-sm flex items-center gap-0.5">
-                        <Tag className="w-2 h-2" /> {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Actions Bar */}
-                <div className="flex gap-2 pt-2 border-t border-slate-50 flex-shrink-0">
-                  <button
-                    onClick={() => handleOpenEdit(item)}
-                    className="flex-1 py-1.5 hover:bg-slate-100 border border-slate-150 rounded-lg text-slate-600 font-extrabold text-[9px] uppercase tracking-wide cursor-pointer transition-colors flex items-center justify-center gap-1"
-                  >
-                    <Pencil className="w-3 h-3" /> Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id, item.name)}
-                    className="py-1.5 px-3 hover:bg-rose-50 border border-rose-100 rounded-lg text-rose-600 font-extrabold text-[9px] uppercase transition-colors cursor-pointer flex items-center justify-center"
-                    title="Excluir produto"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+
+            {/* 400ml */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 400ml</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price400}
+                  onChange={(e) => setPrice400(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
+                  placeholder="21.00"
+                />
+              </div>
+            </div>
+
+            {/* 500ml */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 500ml</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price500}
+                  onChange={(e) => setPrice500(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
+                  placeholder="25.00"
+                />
+              </div>
+            </div>
+
+            {/* 700ml */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 700ml</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price700}
+                  onChange={(e) => setPrice700(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
+                  placeholder="35.00"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-50">
+            <button
+              type="button"
+              onClick={handleResetCupPricesToDefault}
+              className="px-4 py-2.5 text-[10px] font-extrabold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer uppercase font-mono"
+            >
+              ↩️ Carregar Valores Padrão (Sugestão)
+            </button>
+
+            <button
+              type="submit"
+              disabled={savingPrices}
+              className="px-6 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-extrabold text-[10px] uppercase tracking-wide shadow-md shadow-rose-100 hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              {savingPrices ? (
+                <>Salvando...</>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" /> Salvar Tamanhos & Preços
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          {/* Dynamic recovery banner for users who might have lost default items when writing a custom item */}
+          {menuItems.length > 0 && menuItems.length < 8 && (
+            <div className="p-4.5 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-medium text-slate-750">
+              <div className="space-y-1">
+                <p className="font-extrabold text-rose-700 flex items-center gap-1.5 text-sm">
+                  💡 Sumiram os produtos anteriores padrão?
+                </p>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  Ao cadastrar um item no banco de dados pela primeira vez, os produtos demonstrativos locais podem ter sido ocultados do seu painel. 
+                  Clique abaixo para <strong>restaurar e misturar todos os produtos anteriores padrão</strong> de volta sem perder seu novo produto criado!
+                </p>
+              </div>
+              <button
+                onClick={handleRestoreMissingDefaults}
+                disabled={loading}
+                className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white font-black text-[10px] uppercase tracking-wider rounded-xl shadow-lg shadow-rose-100 transition-all cursor-pointer whitespace-nowrap align-middle"
+              >
+                {loading ? 'Processando...' : '🔄 Restaurar Produtos Anteriores'}
+              </button>
+            </div>
+          )}
+
+          {/* Grid Filter Tools & Search */}
+          <div className="flex flex-col md:flex-row gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Pesquisar produto no cardápio..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-rose-400 rounded-xl text-xs font-bold text-slate-705 placeholder-slate-400 focus:outline-hidden transition-colors"
+              />
+            </div>
+
+            {/* Categories Bar */}
+            <div className="flex bg-slate-200/50 p-1 rounded-xl overflow-x-auto gap-0.5 max-w-full">
+              {[
+                { value: 'all', label: 'Todos' },
+                { value: 'acai', label: 'Açaí' },
+                { value: 'sorvete', label: 'Sorvete' },
+                { value: 'milkshake', label: 'Milkshake' },
+                { value: 'sundae', label: 'Sundae' },
+                { value: 'combo', label: 'Combos' }
+              ].map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setSelectedCategory(cat.value)}
+                  className={`px-3.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap cursor-pointer transition-all ${
+                    selectedCategory === cat.value
+                      ? 'bg-white text-rose-600 shadow-xs font-black'
+                      : 'text-slate-500 hover:text-slate-805'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Products list visual grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredItems.length === 0 ? (
+              <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 ">
+                <FolderOpen className="w-12 h-12 text-slate-300 stroke-[1.5] mb-2" />
+                <p className="text-xs font-extrabold text-slate-450 uppercase tracking-widest">Nenhum produto correspondente</p>
+                <p className="text-[10px] mt-1 text-slate-400">Insira um novo produto usando o botão "Adicionar Produto"</p>
+              </div>
+            ) : (
+              filteredItems.map((item) => (
+                <div 
+                  key={item.id}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col relative group hover:border-rose-100 hover:shadow-md transition-all"
+                >
+                  {/* Image & Price Tag */}
+                  <div className="h-32 bg-slate-100 relative overflow-hidden flex-shrink-0">
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute top-2.5 right-2.5 bg-rose-600 text-white px-2.5 py-1 text-[11px] font-black tracking-widest uppercase rounded-lg shadow-sm">
+                      R$ {item.price.toFixed(2)}
+                    </div>
+
+                    <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                      <span className="bg-slate-900/90 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md">
+                        {item.category === 'acai' ? '💜 Açaí' : 
+                         item.category === 'sorvete' ? '🍧 Sorvete' :
+                         item.category === 'milkshake' ? '🥤 Shake' : 
+                         item.category === 'sundae' ? '🍒 Sundae' : '📦 Combo'}
+                      </span>
+                      {item.popular && (
+                        <span className="bg-amber-500 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md flex items-center gap-0.5">
+                          <Star className="w-2.5 h-2.5 fill-current" /> Destaque
+                        </span>
+                      )}
+                      {item.customizable && (
+                        <span className="bg-sky-500 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md">
+                          🎚️ Customizável
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info Block */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="font-extrabold text-slate-800 text-xs tracking-tight line-clamp-1">{item.name}</h4>
+                      <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{item.description}</p>
+                    </div>
+
+                    {/* Tags inside card item */}
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {item.tags.map((tag, idx) => (
+                          <span key={idx} className="bg-slate-50 text-slate-550 border border-slate-100 text-[8px] font-extrabold tracking-wide uppercase px-1.5 py-0.5 rounded-sm flex items-center gap-0.5">
+                            <Tag className="w-2 h-2" /> {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions Bar */}
+                    <div className="flex gap-2 pt-2 border-t border-slate-50 flex-shrink-0">
+                      <button
+                        onClick={() => handleOpenEdit(item)}
+                        className="flex-1 py-1.5 hover:bg-slate-100 border border-slate-150 rounded-lg text-slate-600 font-extrabold text-[9px] uppercase tracking-wide cursor-pointer transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Pencil className="w-3 h-3" /> Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id, item.name)}
+                        className="py-1.5 px-3 hover:bg-rose-50 border border-rose-100 rounded-lg text-rose-600 font-extrabold text-[9px] uppercase transition-colors cursor-pointer flex items-center justify-center"
+                        title="Excluir produto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       {/* Editor Modal for Adding/Editing Item */}
       <AnimatePresence>

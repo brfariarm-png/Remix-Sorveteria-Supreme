@@ -142,6 +142,12 @@ export default function App() {
           pagseguroEmail: parsed.pagseguroEmail ?? '',
           pagseguroToken: parsed.pagseguroToken ?? '',
           pagseguroEnvironment: parsed.pagseguroEnvironment ?? 'sandbox',
+          cupPrices: parsed.cupPrices ?? {
+            '300ml': 18,
+            '400ml': 21,
+            '500ml': 25,
+            '700ml': 35
+          },
           deliveryFees: parsed.deliveryFees ?? [
             { neighborhood: 'Centro', fee: 5.00 },
             { neighborhood: 'Jardim Alvorada', fee: 6.00 },
@@ -180,6 +186,12 @@ export default function App() {
       pagseguroEmail: '',
       pagseguroToken: '',
       pagseguroEnvironment: 'sandbox' as 'sandbox' | 'production',
+      cupPrices: {
+        '300ml': 18,
+        '400ml': 21,
+        '500ml': 25,
+        '700ml': 35
+      },
       deliveryFees: [
         { neighborhood: 'Centro', fee: 5.00 },
         { neighborhood: 'Jardim Alvorada', fee: 6.00 },
@@ -362,6 +374,12 @@ export default function App() {
           pagseguroEmail: data.pagseguroEmail ?? prev.pagseguroEmail,
           pagseguroToken: data.pagseguroToken ?? prev.pagseguroToken,
           pagseguroEnvironment: data.pagseguroEnvironment ?? prev.pagseguroEnvironment,
+          cupPrices: data.cupPrices ?? prev.cupPrices ?? {
+            '300ml': 18,
+            '400ml': 21,
+            '500ml': 25,
+            '700ml': 35
+          },
         }));
       }
     }, (error) => {
@@ -1227,6 +1245,12 @@ export default function App() {
           pagseguroEmail: settings.pagseguroEmail || '',
           pagseguroToken: settings.pagseguroToken || '',
           pagseguroEnvironment: settings.pagseguroEnvironment || 'sandbox',
+          cupPrices: settings.cupPrices || {
+            '300ml': 18,
+            '400ml': 21,
+            '500ml': 25,
+            '700ml': 35
+          },
           updatedAt: serverTimestamp()
         });
         console.log("Settings synced successfully to Firestore!");
@@ -2318,7 +2342,14 @@ export default function App() {
                         setAutoSendWhatsAppStatus={setAutoSendWhatsAppStatus}
                       />
                     ) : adminSubTab === 'cardapio' ? (
-                      <AdminCardapio menuItems={menuItems} />
+                      <AdminCardapio 
+                        menuItems={menuItems} 
+                        storeSettings={storeSettings}
+                        onUpdateSettings={async (updated) => {
+                          setStoreSettings(updated);
+                          await handleSaveStoreSettingsToFirestore(updated);
+                        }}
+                      />
                     ) : adminSubTab === 'whatsapp' ? (
                       <AdminWhatsAppBot 
                         storeSettings={storeSettings} 
@@ -3129,6 +3160,7 @@ export default function App() {
               setCustomizingItem(null);
             }} 
             onAddToCart={handleAddCustomCupToCart} 
+            storeSettings={storeSettings}
           />
         )}
       </AnimatePresence>

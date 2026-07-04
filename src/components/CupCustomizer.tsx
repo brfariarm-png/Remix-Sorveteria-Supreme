@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Minus, Check, ShoppingBag, Sparkles, Layers, CupSoda, Ruler } from 'lucide-react';
-import { ToppingOption, FlavorOption, CustomCupConfig, CartItem, MenuItem } from '../types';
+import { ToppingOption, FlavorOption, CustomCupConfig, CartItem, MenuItem, StoreSettings } from '../types';
 import { FLAVOR_OPTIONS, TOPPING_OPTIONS, getCustomCupBasePrice } from '../data';
 
 const EXTRA_BROWNIE_PRODUCTS = [
@@ -20,9 +20,10 @@ interface CupCustomizerProps {
   onAddToCart: (item: CartItem) => void;
   onClose: () => void;
   customizingItem?: MenuItem | null;
+  storeSettings?: StoreSettings;
 }
 
-export default function CupCustomizer({ onAddToCart, onClose, customizingItem }: CupCustomizerProps) {
+export default function CupCustomizer({ onAddToCart, onClose, customizingItem, storeSettings }: CupCustomizerProps) {
   const isMilkshake = customizingItem?.category === 'milkshake';
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
 
@@ -139,8 +140,8 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem }:
         : size === '500ml' ? 21.00
         : 25.00;
     }
-    return getCustomCupBasePrice(size);
-  }, [isMilkshake, isLinhaBrownie, size]);
+    return getCustomCupBasePrice(size, storeSettings?.cupPrices);
+  }, [isMilkshake, isLinhaBrownie, size, storeSettings?.cupPrices]);
 
   const toppingsPrice = useMemo(() => {
     return selectedToppings.reduce((total, id) => {
@@ -398,7 +399,7 @@ export default function CupCustomizer({ onAddToCart, onClose, customizingItem }:
                       : 34.90
                     : isMilkshake
                       ? sz === '300ml' ? 15.00 : sz === '400ml' ? 18.00 : sz === '500ml' ? 21.00 : 25.00
-                      : getCustomCupBasePrice(sz);
+                      : getCustomCupBasePrice(sz, storeSettings?.cupPrices);
 
                   return (
                     <button
