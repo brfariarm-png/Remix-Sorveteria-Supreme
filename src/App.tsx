@@ -1558,7 +1558,7 @@ export default function App() {
   // Get total cart price
   const cartSubtotal = useMemo(() => {
     return cart.reduce((acc, item) => {
-      const price = item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price;
+      const price = Number(item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price);
       return acc + price * item.quantity;
     }, 0);
   }, [cart]);

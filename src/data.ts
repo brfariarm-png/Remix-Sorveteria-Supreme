@@ -137,8 +137,12 @@ export const getCustomCupBasePrice = (
   size: '300ml' | '400ml' | '500ml' | '700ml',
   customPrices?: StoreSettings['cupPrices']
 ): number => {
-  if (customPrices && typeof customPrices[size] === 'number') {
-    return customPrices[size];
+  if (customPrices && customPrices[size] !== undefined && customPrices[size] !== null) {
+    const rawVal = customPrices[size];
+    if (String(rawVal).trim() !== '') {
+      const val = Number(rawVal);
+      if (!isNaN(val)) return val;
+    }
   }
   return CUP_PRICES[size] || 18;
 };

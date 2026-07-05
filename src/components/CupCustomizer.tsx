@@ -137,17 +137,17 @@ export default function CupCustomizer({
 
   const basePrice = useMemo(() => {
     if (isLinhaBrownie) {
-      if (size === '300ml') return storeSettings?.browniePrices?.['300ml'] ?? 16.90;
-      if (size === '400ml') return storeSettings?.browniePrices?.['400ml'] ?? 22.90;
-      if (size === '500ml') return storeSettings?.browniePrices?.['500ml'] ?? 28.90;
-      if (size === '700ml') return storeSettings?.browniePrices?.['700ml'] ?? 34.90;
-      return storeSettings?.browniePrices?.['400ml'] ?? 22.90;
+      if (size === '300ml') return Number(storeSettings?.browniePrices?.['300ml'] ?? 16.90);
+      if (size === '400ml') return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
+      if (size === '500ml') return Number(storeSettings?.browniePrices?.['500ml'] ?? 28.90);
+      if (size === '700ml') return Number(storeSettings?.browniePrices?.['700ml'] ?? 34.90);
+      return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
     }
     if (isMilkshake) {
-      return size === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
+      return Number(size === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
         : size === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
         : size === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
-        : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00);
+        : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00));
     }
     return getCustomCupBasePrice(size, storeSettings?.cupPrices);
   }, [isMilkshake, isLinhaBrownie, size, storeSettings?.cupPrices, storeSettings?.milkshakePrices, storeSettings?.browniePrices]);
@@ -404,7 +404,7 @@ export default function CupCustomizer({
                       : (storeSettings?.cupLabels?.[sz] || sz);
 
                   // Custom price logic
-                  const price = isLinhaBrownie
+                  const price = Number(isLinhaBrownie
                     ? sz === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
                       : sz === '400ml' ? (storeSettings?.browniePrices?.['400ml'] ?? 22.90)
                       : sz === '500ml' ? (storeSettings?.browniePrices?.['500ml'] ?? 28.90)
@@ -414,7 +414,7 @@ export default function CupCustomizer({
                         : sz === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
                         : sz === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
                         : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00)
-                      : getCustomCupBasePrice(sz, storeSettings?.cupPrices);
+                      : getCustomCupBasePrice(sz, storeSettings?.cupPrices));
 
                   return (
                     <button

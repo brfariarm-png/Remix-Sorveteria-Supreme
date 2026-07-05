@@ -83,7 +83,7 @@ export default function AdminPDV({
   // PDV Cart totals
   const cartSubtotal = useMemo(() => {
     return pdvCart.reduce((acc, item) => {
-      const price = item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price;
+      const price = Number(item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price);
       return acc + price * item.quantity;
     }, 0);
   }, [pdvCart]);
@@ -527,7 +527,7 @@ export default function AdminPDV({
                 </div>
               ) : (
                 pdvCart.map((item, idx) => {
-                  const itemPrice = item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price;
+                  const itemPrice = Number(item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price);
                   return (
                     <div key={item.id} className="bg-slate-50 border border-slate-200/65 rounded-xl p-3 space-y-2 relative group text-xs text-slate-800">
                       
