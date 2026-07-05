@@ -384,7 +384,18 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                       </div>
                       {item.isCustomCup && item.customCupConfig && (
                         <div className="text-[8.5px] text-slate-500 pl-2 space-y-0.5">
-                          <p>• Tamanho: {item.customCupConfig.size} | Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'}</p>
+                          <p>• Tamanho: {(() => {
+                            const sz = item.customCupConfig.size;
+                            const isMilkshake = item.menuItem.category === 'milkshake';
+                            const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
+                            return isLinhaBrownie 
+                              ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
+                                : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
+                                : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml'))
+                              : isMilkshake
+                                ? (storeSettings?.milkshakeLabels?.[sz] || sz)
+                                : (storeSettings?.cupLabels?.[sz] || sz);
+                          })()} | Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'}</p>
                           {item.customCupConfig.flavors && item.customCupConfig.flavors.length > 0 && (
                             <p>• Sabores: {item.customCupConfig.flavors.map(fid => FLAVOR_OPTIONS.find(f => f.id === fid)?.name || fid).join(', ')}</p>
                           )}
@@ -460,7 +471,18 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                 </div>
                 {item.isCustomCup && item.customCupConfig && (
                   <div className="text-[10px] text-indigo-650 font-semibold leading-normal mt-0.5 space-y-0.5 pl-4">
-                    <p>🥣 Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'} | Tamanho: {item.customCupConfig.size}</p>
+                    <p>🥣 Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'} | Tamanho: {(() => {
+                      const sz = item.customCupConfig.size;
+                      const isMilkshake = item.menuItem.category === 'milkshake';
+                      const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
+                      return isLinhaBrownie 
+                        ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
+                          : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
+                          : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml'))
+                        : isMilkshake
+                          ? (storeSettings?.milkshakeLabels?.[sz] || sz)
+                          : (storeSettings?.cupLabels?.[sz] || sz);
+                    })()}</p>
                     {item.customCupConfig.flavors && item.customCupConfig.flavors.length > 0 && (
                       <p className="text-slate-400 font-medium font-mono text-[9px]">• Sabores: {item.customCupConfig.flavors.map(fid => FLAVOR_OPTIONS.find(f => f.id === fid)?.name || fid).join(', ')}</p>
                     )}

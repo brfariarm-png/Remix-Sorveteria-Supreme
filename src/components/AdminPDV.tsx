@@ -541,7 +541,18 @@ export default function AdminPDV({
                           {/* Inner details if customizable custom acai/icecream cup */}
                           {item.isCustomCup && item.customCupConfig && (
                             <div className="text-[9.5px] font-bold text-indigo-800 mt-1 pl-1 space-y-0.5 border-l-2 border-indigo-400 bg-indigo-50/50 p-1 rounded-r-lg">
-                              <p>Tamanho: {item.customCupConfig.size} | Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'}</p>
+                              <p>Tamanho: {(() => {
+                                const sz = item.customCupConfig.size;
+                                const isMilkshake = item.menuItem.category === 'milkshake';
+                                const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
+                                return isLinhaBrownie 
+                                  ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
+                                    : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
+                                    : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml'))
+                                  : isMilkshake
+                                    ? (storeSettings?.milkshakeLabels?.[sz] || sz)
+                                    : (storeSettings?.cupLabels?.[sz] || sz);
+                              })()} | Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'}</p>
                               {item.customCupConfig.flavors && item.customCupConfig.flavors.length > 0 && (
                                 <p>• Sabores: {item.customCupConfig.flavors.map(fid => FLAVOR_OPTIONS.find(f => f.id === fid)?.name || fid).join(', ')}</p>
                               )}
@@ -792,7 +803,7 @@ export default function AdminPDV({
                           : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
                       }`}
                     >
-                      <span>{sz}</span>
+                      <span>{storeSettings?.cupLabels?.[sz] || sz}</span>
                       <span className="text-[9px] font-black opacity-60">R$ {getCustomCupBasePrice(sz, storeSettings?.cupPrices).toFixed(2)}</span>
                     </button>
                   ))}

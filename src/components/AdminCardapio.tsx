@@ -50,14 +50,28 @@ export default function AdminCardapio({
   const [price500, setPrice500] = useState<string>(() => String(storeSettings?.cupPrices?.['500ml'] ?? 25));
   const [price700, setPrice700] = useState<string>(() => String(storeSettings?.cupPrices?.['700ml'] ?? 35));
 
+  const [label300, setLabel300] = useState<string>(() => storeSettings?.cupLabels?.['300ml'] ?? '300ml');
+  const [label400, setLabel400] = useState<string>(() => storeSettings?.cupLabels?.['400ml'] ?? '400ml');
+  const [label500, setLabel500] = useState<string>(() => storeSettings?.cupLabels?.['500ml'] ?? '500ml');
+  const [label700, setLabel700] = useState<string>(() => storeSettings?.cupLabels?.['700ml'] ?? '700ml');
+
   const [msPrice300, setMsPrice300] = useState<string>(() => String(storeSettings?.milkshakePrices?.['300ml'] ?? 15));
   const [msPrice400, setMsPrice400] = useState<string>(() => String(storeSettings?.milkshakePrices?.['400ml'] ?? 18));
   const [msPrice500, setMsPrice500] = useState<string>(() => String(storeSettings?.milkshakePrices?.['500ml'] ?? 21));
   const [msPrice700, setMsPrice700] = useState<string>(() => String(storeSettings?.milkshakePrices?.['700ml'] ?? 25));
 
+  const [msLabel300, setMsLabel300] = useState<string>(() => storeSettings?.milkshakeLabels?.['300ml'] ?? '300ml');
+  const [msLabel400, setMsLabel400] = useState<string>(() => storeSettings?.milkshakeLabels?.['400ml'] ?? '400ml');
+  const [msLabel500, setMsLabel500] = useState<string>(() => storeSettings?.milkshakeLabels?.['500ml'] ?? '500ml');
+  const [msLabel700, setMsLabel700] = useState<string>(() => storeSettings?.milkshakeLabels?.['700ml'] ?? '700ml');
+
   const [brPrice400, setBrPrice400] = useState<string>(() => String(storeSettings?.browniePrices?.['400ml'] ?? 22.90));
   const [brPrice500, setBrPrice500] = useState<string>(() => String(storeSettings?.browniePrices?.['500ml'] ?? 28.90));
   const [brPrice700, setBrPrice700] = useState<string>(() => String(storeSettings?.browniePrices?.['700ml'] ?? 34.90));
+
+  const [brLabel400, setBrLabel400] = useState<string>(() => storeSettings?.brownieLabels?.['400ml'] ?? 'Copo Brownie 400ml');
+  const [brLabel500, setBrLabel500] = useState<string>(() => storeSettings?.brownieLabels?.['500ml'] ?? 'Caixinha Brownie 500ml');
+  const [brLabel700, setBrLabel700] = useState<string>(() => storeSettings?.brownieLabels?.['700ml'] ?? 'Balde Brownie 700ml');
 
   const [savingPrices, setSavingPrices] = useState(false);
 
@@ -68,18 +82,35 @@ export default function AdminCardapio({
       setPrice500(String(storeSettings.cupPrices['500ml']));
       setPrice700(String(storeSettings.cupPrices['700ml']));
     }
+    if (storeSettings?.cupLabels) {
+      setLabel300(storeSettings.cupLabels['300ml'] || '300ml');
+      setLabel400(storeSettings.cupLabels['400ml'] || '400ml');
+      setLabel500(storeSettings.cupLabels['500ml'] || '500ml');
+      setLabel700(storeSettings.cupLabels['700ml'] || '700ml');
+    }
     if (storeSettings?.milkshakePrices) {
       setMsPrice300(String(storeSettings.milkshakePrices['300ml']));
       setMsPrice400(String(storeSettings.milkshakePrices['400ml']));
       setMsPrice500(String(storeSettings.milkshakePrices['500ml']));
       setMsPrice700(String(storeSettings.milkshakePrices['700ml']));
     }
+    if (storeSettings?.milkshakeLabels) {
+      setMsLabel300(storeSettings.milkshakeLabels['300ml'] || '300ml');
+      setMsLabel400(storeSettings.milkshakeLabels['400ml'] || '400ml');
+      setMsLabel500(storeSettings.milkshakeLabels['500ml'] || '500ml');
+      setMsLabel700(storeSettings.milkshakeLabels['700ml'] || '700ml');
+    }
     if (storeSettings?.browniePrices) {
       setBrPrice400(String(storeSettings.browniePrices['400ml']));
       setBrPrice500(String(storeSettings.browniePrices['500ml']));
       setBrPrice700(String(storeSettings.browniePrices['700ml']));
     }
-  }, [storeSettings?.cupPrices, storeSettings?.milkshakePrices, storeSettings?.browniePrices]);
+    if (storeSettings?.brownieLabels) {
+      setBrLabel400(storeSettings.brownieLabels['400ml'] || 'Copo Brownie 400ml');
+      setBrLabel500(storeSettings.brownieLabels['500ml'] || 'Caixinha Brownie 500ml');
+      setBrLabel700(storeSettings.brownieLabels['700ml'] || 'Balde Brownie 700ml');
+    }
+  }, [storeSettings?.cupPrices, storeSettings?.cupLabels, storeSettings?.milkshakePrices, storeSettings?.milkshakeLabels, storeSettings?.browniePrices, storeSettings?.brownieLabels]);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -581,20 +612,37 @@ export default function AdminCardapio({
           '500ml': p500,
           '700ml': p700
         },
+        cupLabels: {
+          '300ml': label300 || '300ml',
+          '400ml': label400 || '400ml',
+          '500ml': label500 || '500ml',
+          '700ml': label700 || '700ml'
+        },
         milkshakePrices: {
           '300ml': ms300,
           '400ml': ms400,
           '500ml': ms500,
           '700ml': ms700
         },
+        milkshakeLabels: {
+          '300ml': msLabel300 || '300ml',
+          '400ml': msLabel400 || '400ml',
+          '500ml': msLabel500 || '500ml',
+          '700ml': msLabel700 || '700ml'
+        },
         browniePrices: {
           '400ml': br400,
           '500ml': br500,
           '700ml': br700
+        },
+        brownieLabels: {
+          '400ml': brLabel400 || 'Copo Brownie 400ml',
+          '500ml': brLabel500 || 'Caixinha Brownie 500ml',
+          '700ml': brLabel700 || 'Balde Brownie 700ml'
         }
       };
       await onUpdateSettings(updatedSettings);
-      setSuccessMsg('✨ Valores dos tamanhos salvos e atualizados com sucesso para todos os clientes!');
+      setSuccessMsg('✨ Valores e nomes dos tamanhos salvos e atualizados com sucesso para todos os clientes!');
       setTimeout(() => setSuccessMsg(''), 5000);
     } catch (err: any) {
       console.error(err);
@@ -610,14 +658,28 @@ export default function AdminCardapio({
     setPrice500('25');
     setPrice700('35');
 
+    setLabel300('300ml');
+    setLabel400('400ml');
+    setLabel500('500ml');
+    setLabel700('700ml');
+
     setMsPrice300('15');
     setMsPrice400('18');
     setMsPrice500('21');
     setMsPrice700('25');
 
+    setMsLabel300('300ml');
+    setMsLabel400('400ml');
+    setMsLabel500('500ml');
+    setMsLabel700('700ml');
+
     setBrPrice400('22.90');
     setBrPrice500('28.90');
     setBrPrice700('34.90');
+
+    setBrLabel400('Copo Brownie 400ml');
+    setBrLabel500('Caixinha Brownie 500ml');
+    setBrLabel700('Balde Brownie 700ml');
   };
 
   const filteredItems = menuItems.filter(item => {
@@ -980,67 +1042,115 @@ export default function AdminCardapio({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {/* 300ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 300ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 300ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={price300}
-                    onChange={(e) => setPrice300(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="18.00"
+                    type="text"
+                    value={label300}
+                    onChange={(e) => setLabel300(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="300ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={price300}
+                      onChange={(e) => setPrice300(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="18.00"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 400ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 400ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 400ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={price400}
-                    onChange={(e) => setPrice400(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="21.00"
+                    type="text"
+                    value={label400}
+                    onChange={(e) => setLabel400(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="400ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={price400}
+                      onChange={(e) => setPrice400(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="21.00"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 500ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 500ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 500ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={price500}
-                    onChange={(e) => setPrice500(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="25.00"
+                    type="text"
+                    value={label500}
+                    onChange={(e) => setLabel500(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="500ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={price500}
+                      onChange={(e) => setPrice500(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="25.00"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 700ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo 700ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 700ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={price700}
-                    onChange={(e) => setPrice700(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="35.00"
+                    type="text"
+                    value={label700}
+                    onChange={(e) => setLabel700(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="700ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={price700}
+                      onChange={(e) => setPrice700(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="35.00"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1054,67 +1164,115 @@ export default function AdminCardapio({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {/* 300ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 300ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 300ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={msPrice300}
-                    onChange={(e) => setMsPrice300(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="15.00"
+                    type="text"
+                    value={msLabel300}
+                    onChange={(e) => setMsLabel300(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="300ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={msPrice300}
+                      onChange={(e) => setMsPrice300(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="15.00"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 400ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 400ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 400ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={msPrice400}
-                    onChange={(e) => setMsPrice400(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="18.00"
+                    type="text"
+                    value={msLabel400}
+                    onChange={(e) => setMsLabel400(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="400ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={msPrice400}
+                      onChange={(e) => setMsPrice400(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="18.00"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 500ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 500ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 500ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={msPrice500}
-                    onChange={(e) => setMsPrice500(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="21.00"
+                    type="text"
+                    value={msLabel500}
+                    onChange={(e) => setMsLabel500(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="500ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={msPrice500}
+                      onChange={(e) => setMsPrice500(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="21.00"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 700ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Milkshake 700ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: 700ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={msPrice700}
-                    onChange={(e) => setMsPrice700(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="25.00"
+                    type="text"
+                    value={msLabel700}
+                    onChange={(e) => setMsLabel700(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="700ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={msPrice700}
+                      onChange={(e) => setMsPrice700(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="25.00"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1128,51 +1286,87 @@ export default function AdminCardapio({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* 400ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Copo Brownie 400ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: Copo Brownie 400ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={brPrice400}
-                    onChange={(e) => setBrPrice400(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="22.90"
+                    type="text"
+                    value={brLabel400}
+                    onChange={(e) => setBrLabel400(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="Copo Brownie 400ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={brPrice400}
+                      onChange={(e) => setBrPrice400(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="22.90"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 500ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Caixinha Brownie 500ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: Caixinha Brownie)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={brPrice500}
-                    onChange={(e) => setBrPrice500(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="28.90"
+                    type="text"
+                    value={brLabel500}
+                    onChange={(e) => setBrLabel500(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="Caixinha Brownie"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={brPrice500}
+                      onChange={(e) => setBrPrice500(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="28.90"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 700ml */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wider">Balde Brownie 700ml</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-[11px] font-extrabold text-slate-400">R$</span>
+              <div className="space-y-2 p-3 bg-slate-50/55 border border-slate-100 rounded-xl">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nome (Ex: Balde Brownie 700ml)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={brPrice700}
-                    onChange={(e) => setBrPrice700(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
-                    placeholder="34.90"
+                    type="text"
+                    value={brLabel700}
+                    onChange={(e) => setBrLabel700(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                    placeholder="Balde Brownie 700ml"
                   />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Preço Base</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-[10px] font-extrabold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={brPrice700}
+                      onChange={(e) => setBrPrice700(e.target.value)}
+                      className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors text-xs"
+                      placeholder="34.90"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

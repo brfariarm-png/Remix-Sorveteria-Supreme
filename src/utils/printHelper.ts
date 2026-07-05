@@ -67,10 +67,21 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
         .map(tid => TOPPING_OPTIONS.find(t => t.id === tid)?.name || tid)
         .join(', ');
 
+      const sz = config.size;
+      const isMilkshake = item.menuItem.category === 'milkshake';
+      const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
+      const sizeLabel = isLinhaBrownie 
+        ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
+          : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
+          : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml'))
+        : isMilkshake
+          ? (storeSettings?.milkshakeLabels?.[sz] || sz)
+          : (storeSettings?.cupLabels?.[sz] || sz);
+
       customDetails = `
         <div style="font-size: ${fontSize - 1}px; color: #111; margin-left: 10px; margin-top: 2px; line-height: 1.3;">
           <strong>• Base:</strong> ${baseText}<br/>
-          <strong>• Tamanho:</strong> ${config.size}<br/>
+          <strong>• Tamanho:</strong> ${sizeLabel}<br/>
           ${flavorNames ? `<strong>• Sabores:</strong> ${flavorNames}<br/>` : ''}
           ${toppingNames ? `<strong>• Adicionais:</strong> ${toppingNames}<br/>` : ''}
         </div>

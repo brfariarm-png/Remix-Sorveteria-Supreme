@@ -129,7 +129,7 @@ export default function App() {
           printerHeaderMessage: parsed.printerHeaderMessage ?? "Comprovante de Pedido",
           printerFooterMessage: parsed.printerFooterMessage ?? "Muito obrigado pela preferência!",
           instagram: (!parsed.instagram || parsed.instagram === '@sorveteriagourmetsupreme') ? STORE_CONFIG.instagram : parsed.instagram,
-          customDomain: parsed.customDomain ?? STORE_CONFIG.customDomain,
+          customDomain: (parsed.customDomain === 'Sorveteria-Supreme.vercel.app' || !parsed.customDomain) ? STORE_CONFIG.customDomain : parsed.customDomain,
           pixKey: parsed.pixKey ?? 'contato@sorveteriasupreme.com.br',
           pixReceiverName: parsed.pixReceiverName ?? 'Sorveteria Gourmet Supreme',
           pixReceiverCity: parsed.pixReceiverCity ?? 'Monte Mor',
@@ -147,6 +147,34 @@ export default function App() {
             '400ml': 21,
             '500ml': 25,
             '700ml': 35
+          },
+          cupLabels: parsed.cupLabels ?? {
+            '300ml': '300ml',
+            '400ml': '400ml',
+            '500ml': '500ml',
+            '700ml': '700ml'
+          },
+          milkshakePrices: parsed.milkshakePrices ?? {
+            '300ml': 15,
+            '400ml': 18,
+            '500ml': 21,
+            '700ml': 25
+          },
+          milkshakeLabels: parsed.milkshakeLabels ?? {
+            '300ml': '300ml',
+            '400ml': '400ml',
+            '500ml': '500ml',
+            '700ml': '700ml'
+          },
+          browniePrices: parsed.browniePrices ?? {
+            '400ml': 22.90,
+            '500ml': 28.90,
+            '700ml': 34.90
+          },
+          brownieLabels: parsed.brownieLabels ?? {
+            '400ml': 'Copo Brownie 400ml',
+            '500ml': 'Caixinha Brownie 500ml',
+            '700ml': 'Balde Brownie 700ml'
           },
           deliveryFees: parsed.deliveryFees ?? [
             { neighborhood: 'Centro', fee: 5.00 },
@@ -192,6 +220,34 @@ export default function App() {
         '500ml': 25,
         '700ml': 35
       },
+      cupLabels: {
+        '300ml': '300ml',
+        '400ml': '400ml',
+        '500ml': '500ml',
+        '700ml': '700ml'
+      },
+      milkshakePrices: {
+        '300ml': 15,
+        '400ml': 18,
+        '500ml': 21,
+        '700ml': 25
+      },
+      milkshakeLabels: {
+        '300ml': '300ml',
+        '400ml': '400ml',
+        '500ml': '500ml',
+        '700ml': '700ml'
+      },
+      browniePrices: {
+        '400ml': 22.90,
+        '500ml': 28.90,
+        '700ml': 34.90
+      },
+      brownieLabels: {
+        '400ml': 'Copo Brownie 400ml',
+        '500ml': 'Caixinha Brownie 500ml',
+        '700ml': 'Balde Brownie 700ml'
+      },
       deliveryFees: [
         { neighborhood: 'Centro', fee: 5.00 },
         { neighborhood: 'Jardim Alvorada', fee: 6.00 },
@@ -217,6 +273,7 @@ export default function App() {
 
   const isDevUrl = useMemo(() => {
     return window.location.hostname.includes('ais-dev-') || 
+           window.location.hostname.includes('ais-pre-') || 
            window.location.hostname === 'localhost' || 
            window.location.hostname === '127.0.0.1' || 
            window.location.hostname.includes('stackblitz') || 
@@ -367,7 +424,7 @@ export default function App() {
           printerHeaderMessage: data.printerHeaderMessage ?? prev.printerHeaderMessage,
           printerFooterMessage: data.printerFooterMessage ?? prev.printerFooterMessage,
           deliveryFees: data.deliveryFees ?? prev.deliveryFees,
-          customDomain: data.customDomain ?? prev.customDomain,
+          customDomain: (data.customDomain === 'Sorveteria-Supreme.vercel.app') ? 'sorveteriasupreme.vercel.app' : (data.customDomain ?? prev.customDomain),
           instagram: (!data.instagram || data.instagram === '@sorveteriagourmetsupreme') 
             ? (prev.instagram === '@sorveteriagourmetsupreme' || !prev.instagram ? '@sorveteria.supreme' : prev.instagram) 
             : data.instagram,
@@ -383,11 +440,17 @@ export default function App() {
           pagseguroEmail: data.pagseguroEmail ?? prev.pagseguroEmail,
           pagseguroToken: data.pagseguroToken ?? prev.pagseguroToken,
           pagseguroEnvironment: data.pagseguroEnvironment ?? prev.pagseguroEnvironment,
-          cupPrices: data.cupPrices ?? prev.cupPrices ?? {
+           cupPrices: data.cupPrices ?? prev.cupPrices ?? {
             '300ml': 18,
             '400ml': 21,
             '500ml': 25,
             '700ml': 35
+          },
+          cupLabels: data.cupLabels ?? prev.cupLabels ?? {
+            '300ml': '300ml',
+            '400ml': '400ml',
+            '500ml': '500ml',
+            '700ml': '700ml'
           },
           milkshakePrices: data.milkshakePrices ?? prev.milkshakePrices ?? {
             '300ml': 15,
@@ -395,10 +458,21 @@ export default function App() {
             '500ml': 21,
             '700ml': 25
           },
+          milkshakeLabels: data.milkshakeLabels ?? prev.milkshakeLabels ?? {
+            '300ml': '300ml',
+            '400ml': '400ml',
+            '500ml': '500ml',
+            '700ml': '700ml'
+          },
           browniePrices: data.browniePrices ?? prev.browniePrices ?? {
             '400ml': 22.90,
             '500ml': 28.90,
             '700ml': 34.90
+          },
+          brownieLabels: data.brownieLabels ?? prev.brownieLabels ?? {
+            '400ml': 'Copo Brownie 400ml',
+            '500ml': 'Caixinha Brownie 500ml',
+            '700ml': 'Balde Brownie 700ml'
           },
         }));
       }
@@ -1396,7 +1470,7 @@ export default function App() {
     const rawDomain = storeSettings.customDomain ? storeSettings.customDomain.trim() : '';
     const cleanDomain = rawDomain 
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) 
-      : window.location.origin;
+      : "https://sorveteriasupreme.vercel.app";
     const trackingLink = `${cleanDomain}?track=${order.id}`;
     const logoLink = "https://sorveteriasupreme.vercel.app";
 
@@ -2889,7 +2963,18 @@ export default function App() {
                               </div>
                               {item.isCustomCup && item.customCupConfig && (
                                 <div className="text-[10px] text-indigo-650 font-semibold leading-normal space-y-0.5">
-                                  <p>🥣 Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'} | Tamanho: {item.customCupConfig.size}</p>
+                                  <p>🥣 Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'} | Tamanho: {(() => {
+                                    const sz = item.customCupConfig.size;
+                                    const isMilkshake = item.menuItem.category === 'milkshake';
+                                    const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
+                                    return isLinhaBrownie 
+                                      ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
+                                        : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
+                                        : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml'))
+                                      : isMilkshake
+                                        ? (storeSettings?.milkshakeLabels?.[sz] || sz)
+                                        : (storeSettings?.cupLabels?.[sz] || sz);
+                                  })()}</p>
                                   {item.customCupConfig.flavors && item.customCupConfig.flavors.length > 0 && (
                                     <p className="text-slate-500 font-medium pl-3">• Sabores: {item.customCupConfig.flavors.map(fid => FLAVOR_OPTIONS.find(f => f.id === fid)?.name || fid).join(', ')}</p>
                                   )}
@@ -3917,13 +4002,13 @@ E-mail: ${storeSettings.email}`;
                         <label className="block text-[10px] font-black uppercase text-rose-550 tracking-wider">Domínio Personalizado (Link de Rastreio)</label>
                         <input
                           type="text"
-                          placeholder="Sorveteria-Supreme.vercel.app"
+                          placeholder="sorveteriasupreme.vercel.app"
                           value={storeSettings.customDomain || ''}
                           onChange={(e) => setStoreSettings({ ...storeSettings, customDomain: e.target.value })}
                           className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white font-medium text-rose-650"
                         />
                         <p className="text-[9.5px] text-slate-400 font-semibold mt-0.5">
-                          Os links de status do WhatsApp enviados ao cliente usarão este domínio (ex: <span className="font-extrabold text-rose-600">Sorveteria-Supreme.vercel.app</span>).
+                          Os links de status do WhatsApp enviados ao cliente usarão este domínio (ex: <span className="font-extrabold text-rose-600">sorveteriasupreme.vercel.app</span>).
                         </p>
                       </div>
 

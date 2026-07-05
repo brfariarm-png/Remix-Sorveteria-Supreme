@@ -396,10 +396,12 @@ export default function CupCustomizer({
 
                   // Custom labels for Linha Brownie
                   const label = isLinhaBrownie
-                    ? sz === '400ml' ? 'Copo Brownie 400ml'
-                      : sz === '500ml' ? 'Caixinha Brownie'
-                      : 'Balde Brownie 700ml'
-                    : sz;
+                    ? sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
+                      : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
+                      : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml')
+                    : isMilkshake
+                      ? (storeSettings?.milkshakeLabels?.[sz] || sz)
+                      : (storeSettings?.cupLabels?.[sz] || sz);
 
                   // Custom price logic
                   const price = isLinhaBrownie
