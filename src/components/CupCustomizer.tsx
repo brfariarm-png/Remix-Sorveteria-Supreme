@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Minus, Check, ShoppingBag, Sparkles, Layers, CupSoda, Ruler } from 'lucide-react';
 import { ToppingOption, FlavorOption, CustomCupConfig, CartItem, MenuItem, StoreSettings } from '../types';
 import { FLAVOR_OPTIONS, TOPPING_OPTIONS, getCustomCupBasePrice } from '../data';
+import { cleanDescriptionForSingleSize } from '../utils/description';
 
 const EXTRA_BROWNIE_PRODUCTS = [
   { id: 'fatia-brownie', name: 'Fatia de Brownie Tradicional Extra', price: 9.95, desc: 'Fatia fresca de brownie artesanal' },
@@ -370,7 +371,9 @@ export default function CupCustomizer({
               {customizingItem?.sizeMode === 'single' ? 'Adicionais e Observações' : isLinhaBrownie ? 'Escolha Seu Brownie Favorito e Adicionais' : isMilkshake ? 'Escolha o Sabor e Adicionais' : 'Escolha Seu Tamanho e Adicionais'}
             </h3>
             <p className="text-[11px] text-slate-650 leading-normal bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/20">
-              {customizingItem ? customizingItem.description : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola. O melhor acai preparado com ingredientes selecionados e de boa qualidade.'}
+              {customizingItem 
+                ? (customizingItem.sizeMode === 'single' ? cleanDescriptionForSingleSize(customizingItem.description) : customizingItem.description)
+                : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola. O melhor acai preparado com ingredientes selecionados e de boa qualidade.'}
             </p>
           </div>
 
@@ -542,22 +545,18 @@ export default function CupCustomizer({
             <div>
               <div className="flex justify-between items-center mb-1">
                 {customizingItem?.sizeMode !== 'single' ? (
-                  <label className="block text-sm font-bold text-slate-700">
-                    {isMilkshake ? '2. Escolha o sabor do sorvete para bater:' : '3. Escolha seus sabores:'}{' '}
-                    <span className="text-slate-500 font-normal">
-                      ({isMilkshake ? 'Selecione exatamente 1 sabor' : `Selecione até ${maxFlavors}`})
+                  <>
+                    <label className="block text-sm font-bold text-slate-700">
+                      {isMilkshake ? '2. Escolha o sabor do sorvete para bater:' : '3. Escolha seus sabores:'}{' '}
+                      <span className="text-slate-500 font-normal">
+                        ({isMilkshake ? 'Selecione exatamente 1 sabor' : `Selecione até ${maxFlavors}`})
+                      </span>
+                    </label>
+                    <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
+                      {selectedFlavors.length}/{maxFlavors}
                     </span>
-                  </label>
-                ) : (
-                  <label className="block text-sm font-bold text-slate-700">
-                    <span className="text-slate-500 font-normal">
-                      (Selecione até {maxFlavors} {maxFlavors === 1 ? 'sabor' : 'sabores'})
-                    </span>
-                  </label>
-                )}
-                <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
-                  {selectedFlavors.length}/{maxFlavors}
-                </span>
+                  </>
+                ) : null}
               </div>
               <p className="text-xs text-slate-400 mb-2"></p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[140px] overflow-y-auto pr-1">

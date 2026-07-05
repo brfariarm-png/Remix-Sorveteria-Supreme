@@ -66,6 +66,7 @@ import { auth, db, handleFirestoreError, OperationType } from './firebase';
 
 import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption } from './types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, STORE_CONFIG } from './data';
+import { cleanDescriptionForSingleSize } from './utils/description';
 import CupCustomizer from './components/CupCustomizer';
 import Checkout from './components/Checkout';
 import OrderTracker from './components/OrderTracker';
@@ -2261,7 +2262,9 @@ export default function App() {
                           </div>
 
                           <h3 className="text-[17px] font-black text-slate-800 font-display tracking-tight leading-snug line-clamp-1">{item.name}</h3>
-                          <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-3">{item.description}</p>
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-3">
+                            {item.sizeMode === 'single' ? cleanDescriptionForSingleSize(item.description) : item.description}
+                          </p>
                         </div>
 
                         {/* Interactive price and checkout trigger */}
