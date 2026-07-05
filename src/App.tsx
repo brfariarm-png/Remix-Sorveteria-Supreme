@@ -93,6 +93,11 @@ interface VisualNotification {
 export default function App() {
   // State for authenticated firebase user
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [adminBypass, setAdminBypass] = useState<boolean>(() => {
+    return localStorage.getItem('supreme_admin_bypass') === 'true';
+  });
+  const [adminPasscode, setAdminPasscode] = useState('');
+  const [adminPasscodeError, setAdminPasscodeError] = useState('');
   // Store dynamic configurations with local persistence
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {
     const saved = localStorage.getItem('supreme_store_settings');
@@ -282,8 +287,8 @@ export default function App() {
   }, []);
 
   const isAdmin = useMemo(() => {
-    return (currentUser && currentUser.email === 'brfariarm@gmail.com') || isDevUrl;
-  }, [currentUser, isDevUrl]);
+    return (currentUser && currentUser.email === 'brfariarm@gmail.com') || isDevUrl || adminBypass;
+  }, [currentUser, isDevUrl, adminBypass]);
 
   const getPublicShareUrl = () => {
     if (storeSettings?.customDomain) {
@@ -341,6 +346,25 @@ export default function App() {
     } catch (e: any) {
       console.error("Sign-In error:", e);
       handleAuthError(e);
+    }
+  };
+
+  const handleAdminPasscodeLogin = () => {
+    const cleanPass = adminPasscode.trim().toLowerCase();
+    if (
+      cleanPass === 'supremeadmin' || 
+      cleanPass === 'supreme9741' || 
+      cleanPass === 'supreme123' || 
+      cleanPass === '19974118672' || 
+      cleanPass === 'supreme'
+    ) {
+      localStorage.setItem('supreme_admin_bypass', 'true');
+      setAdminBypass(true);
+      setIsAuthModalOpen(false);
+      setAdminPasscode('');
+      setAdminPasscodeError('');
+    } else {
+      setAdminPasscodeError('Senha administrativa incorreta!');
     }
   };
 
@@ -1920,9 +1944,9 @@ export default function App() {
           {/* Right Action panel */}
           <div className="flex items-center gap-2.5">
             {/* Firebase Auth Avatar & Controller */}
-            {currentUser && !currentUser.isAnonymous ? (
+            {(currentUser && !currentUser.isAnonymous) || adminBypass ? (
               <div className="flex items-center gap-2 bg-rose-50/55 p-1.5 pr-3.5 rounded-full border border-rose-100/40">
-                {currentUser.photoURL ? (
+                {currentUser?.photoURL ? (
                   <img 
                     src={currentUser.photoURL} 
                     alt={currentUser.displayName || 'Usuário'} 
@@ -1931,16 +1955,20 @@ export default function App() {
                   />
                 ) : (
                   <div className="w-7 h-7 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center font-black text-[10px] uppercase">
-                    {currentUser.displayName?.charAt(0) || 'U'}
+                    {(currentUser?.displayName || 'Admin').charAt(0)}
                   </div>
                 )}
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] font-black leading-none text-slate-800 line-clamp-1 flex items-center gap-1">
-                    {currentUser.displayName?.split(' ')[0] || 'Cliente'}
+                    {currentUser?.displayName?.split(' ')[0] || 'Administrador'}
                     {isAdmin && <span className="text-amber-500 text-xs text-shadow-xs" title="Administrador Master">👑</span>}
                   </span>
                   <button 
-                    onClick={() => signOut(auth)} 
+                    onClick={() => {
+                      signOut(auth);
+                      localStorage.removeItem('supreme_admin_bypass');
+                      setAdminBypass(false);
+                    }} 
                     className="text-[9px] font-black text-rose-500 hover:text-rose-700 text-left cursor-pointer uppercase tracking-wider inline-block mt-0.5"
                   >
                     Sair
@@ -3712,6 +3740,39 @@ E-mail: ${storeSettings.email}`;
                     <span className="font-black tracking-wider">SUPREME ID</span>
                     <span className="text-[10px] text-white/90 font-normal lowercase tracking-normal">(via Google Pop-up)</span>
                   </button>
+                </div>
+
+                {/* Administrative Passcode bypass */}
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-[10.5px] font-black text-amber-600 uppercase tracking-widest text-left flex items-center gap-1">
+                    👑 Acesso do Administrador
+                  </h4>
+                  <div className="space-y-1.5">
+                    <input
+                      type="password"
+                      placeholder="Digite a senha de administrador"
+                      value={adminPasscode}
+                      onChange={(e) => {
+                        setAdminPasscode(e.target.value);
+                        setAdminPasscodeError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAdminPasscodeLogin();
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-rose-300 focus:outline-none text-xs text-slate-800"
+                    />
+                    {adminPasscodeError && (
+                      <p className="text-[10px] text-rose-500 font-bold text-left">{adminPasscodeError}</p>
+                    )}
+                    <button
+                      onClick={handleAdminPasscodeLogin}
+                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition-all cursor-pointer shadow-sm"
+                    >
+                      Acessar Painel Master
+                    </button>
+                  </div>
                 </div>
 
                 {/* Guest Account option */}

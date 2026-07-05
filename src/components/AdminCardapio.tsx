@@ -1607,34 +1607,20 @@ export default function AdminCardapio({
                   />
                 </div>
 
-                {/* Price and Category */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wide">Preço (R$)</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="21.90"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wide">Categoria</label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as MenuItem['category'])}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors cursor-pointer"
-                    >
-                      <option value="acai">💜 Açaí</option>
-                      <option value="sorvete">🍧 Sorvete</option>
-                      <option value="milkshake">🥤 Milkshake</option>
-                      <option value="sundae">🍒 Sundae</option>
-                      <option value="combo">📦 Combo / Especial</option>
-                    </select>
-                  </div>
+                {/* Category only (Price is managed per size below) */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wide">Categoria</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as MenuItem['category'])}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors cursor-pointer"
+                  >
+                    <option value="acai">💜 Açaí</option>
+                    <option value="sorvete">🍧 Sorvete</option>
+                    <option value="milkshake">🥤 Milkshake</option>
+                    <option value="sundae">🍒 Sundae</option>
+                    <option value="combo">📦 Combo / Especial</option>
+                  </select>
                 </div>
 
                 {/* Description */}
