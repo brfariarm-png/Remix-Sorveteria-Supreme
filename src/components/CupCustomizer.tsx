@@ -505,11 +505,9 @@ export default function CupCustomizer({
             )}
 
             {/* 2. Base Selection (Açai vs Ice Cream) */}
-            {!isMilkshake && (
+            {!isMilkshake && customizingItem?.sizeMode !== 'single' && (
               <div>
-                {customizingItem?.sizeMode !== 'single' && (
-                  <label className="block text-sm font-bold text-slate-700 mb-2">2. Qual a base do copo?</label>
-                )}
+                <label className="block text-sm font-bold text-slate-700 mb-2">2. Qual a base do copo?</label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'acai', name: 'Açaí Puro', desc: 'Apenas polpa açaí' },
