@@ -14,10 +14,12 @@ export function cleanDescriptionForSingleSize(description: string): string {
     /temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola\.?/gi,
     /temos \d+ tamanhos\.?/gi,
     /escolha seu tamanho e adicionais\.?/gi,
-    /escolha seus ingredientes\.?/gi,
+    /escolha seus ingredientes(e)?\.?/gi,
     /qual a base do copo\??/gi,
-    /escolha seus sabores\.?/gi,
+    /escolha seus sabores(v)?\.?/gi,
     /toppings e adicionais\.?/gi,
+    /se vai açaí puro,? sorvete ou casadinho\??/gi,
+    /se vai acai puro,? sorvete ou casadinho\??/gi,
     /monte seu copo com os seus adicionais favoritos/gi,
   ];
 

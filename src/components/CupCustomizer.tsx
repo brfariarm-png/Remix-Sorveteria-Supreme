@@ -255,12 +255,18 @@ export default function CupCustomizer({
       : size;
 
     const finalName = customizingItem
-      ? `${customizingItem.name} Customizado (${sizeName})`
+      ? customizingItem.sizeMode === 'single'
+        ? `${customizingItem.name} Customizado`
+        : `${customizingItem.name} Customizado (${sizeName})`
       : `Açaí Gourmet Supreme Personalizado (${sizeName})`;
 
-    const descriptionBase = customizingItem
+    const rawDescription = customizingItem
       ? customizingItem.description
       : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola.';
+
+    const descriptionBase = customizingItem?.sizeMode === 'single'
+      ? cleanDescriptionForSingleSize(rawDescription)
+      : rawDescription;
 
     // Get extra brownie products string
     const extraProductsString = isLinhaBrownie

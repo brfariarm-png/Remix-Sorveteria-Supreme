@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { MenuItem, CartItem, Order, OrderStatus, PaymentType, CustomCupConfig } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, getCustomCupBasePrice } from '../data';
+import { cleanDescriptionForSingleSize } from '../utils/description';
 
 interface AdminPDVProps {
   onPlacePDVOrder: (order: Order, shouldPrint: boolean) => Promise<void>;
@@ -151,8 +152,13 @@ export default function AdminPDV({
   const handleConfirmCustomCup = () => {
     if (!customizingItem) return;
 
-    // Base price based on size
-    const basePrice = getCustomCupBasePrice(customSize, storeSettings?.cupPrices);
+    // Base price based on size or single price
+    let basePrice = 15;
+    if (customizingItem.sizeMode === 'single') {
+      basePrice = customizingItem.singleSizePrice || customizingItem.price || 15;
+    } else {
+      basePrice = getCustomCupBasePrice(customSize, storeSettings?.cupPrices);
+    }
     
     // Add additional toppings cost
     const toppingsCost = selectedToppings.reduce((acc, tid) => {
@@ -163,7 +169,7 @@ export default function AdminPDV({
     const calculatedPrice = basePrice + toppingsCost;
 
     const customizationObj: CustomCupConfig = {
-      size: customSize,
+      size: customizingItem.sizeMode === 'single' ? '300ml' : customSize,
       base: customBase,
       flavors: selectedFlavors,
       toppings: selectedToppings
@@ -175,7 +181,9 @@ export default function AdminPDV({
         id: `pdv-custom-${Date.now()}`,
         menuItem: {
           ...customizingItem,
-          name: `${customizingItem.name} (${customSize})`,
+          name: customizingItem.sizeMode === 'single'
+            ? customizingItem.name
+            : `${customizingItem.name} (${customSize})`,
           price: calculatedPrice
         },
         quantity: 1,
@@ -450,7 +458,7 @@ export default function AdminPDV({
                           {p.name}
                         </h4>
                         <p className="text-[10.5px] text-slate-400 leading-snug line-clamp-2">
-                          {p.description}
+                          {p.sizeMode === 'single' ? cleanDescriptionForSingleSize(p.description) : p.description}
                         </p>
                       </div>
 
@@ -789,47 +797,51 @@ export default function AdminPDV({
             <div className="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
               
               {/* Sizes */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">1. Escolha o Tamanho</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['300ml', '400ml', '500ml', '700ml'] as const).map((sz) => (
-                    <button
-                      key={sz}
-                      type="button"
-                      onClick={() => setCustomSize(sz)}
-                      className={`py-2 px-1.5 rounded-xl border flex flex-col items-center justify-center font-bold tracking-wide transition-all cursor-pointer ${
-                        customSize === sz 
-                          ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-200' 
-                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
-                      }`}
-                    >
-                      <span>{storeSettings?.cupLabels?.[sz] || sz}</span>
-                      <span className="text-[9px] font-black opacity-60">R$ {getCustomCupBasePrice(sz, storeSettings?.cupPrices).toFixed(2)}</span>
-                    </button>
-                  ))}
+              {customizingItem.sizeMode !== 'single' && (
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">1. Escolha o Tamanho</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['300ml', '400ml', '500ml', '700ml'] as const).map((sz) => (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => setCustomSize(sz)}
+                        className={`py-2 px-1.5 rounded-xl border flex flex-col items-center justify-center font-bold tracking-wide transition-all cursor-pointer ${
+                          customSize === sz 
+                            ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-200' 
+                            : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
+                        }`}
+                      >
+                        <span>{storeSettings?.cupLabels?.[sz] || sz}</span>
+                        <span className="text-[9px] font-black opacity-60">R$ {getCustomCupBasePrice(sz, storeSettings?.cupPrices).toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Base */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">2. Base Principal</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['acai', 'sorvete', 'casadinho'] as const).map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      onClick={() => setCustomBase(b)}
-                      className={`py-2 px-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer ${
-                        customBase === b 
-                          ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-200' 
-                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
-                      }`}
-                    >
-                      {b === 'acai' ? '🍇 Açaí Puro' : b === 'sorvete' ? '🍦 Sorvete Creme' : '☯️ Casadinho'}
-                    </button>
-                  ))}
+              {customizingItem.sizeMode !== 'single' && (
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">2. Base Principal</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['acai', 'sorvete', 'casadinho'] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setCustomBase(b)}
+                        className={`py-2 px-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer ${
+                          customBase === b 
+                            ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-200' 
+                            : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
+                        }`}
+                      >
+                        {b === 'acai' ? '🍇 Açaí Puro' : b === 'sorvete' ? '🍦 Sorvete Creme' : '☯️ Casadinho'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Flavors Select */}
               <div className="space-y-1.5">
