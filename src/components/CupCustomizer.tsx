@@ -367,7 +367,7 @@ export default function CupCustomizer({
               </button>
             </div>
             <h3 className="text-xl font-bold text-slate-800 leading-tight">
-              {isLinhaBrownie ? 'Escolha Seu Brownie Favorito e Adicionais' : isMilkshake ? 'Escolha o Sabor e Adicionais' : 'Escolha Seu Tamanho e Adicionais'}
+              {customizingItem?.sizeMode === 'single' ? 'Adicionais e Observações' : isLinhaBrownie ? 'Escolha Seu Brownie Favorito e Adicionais' : isMilkshake ? 'Escolha o Sabor e Adicionais' : 'Escolha Seu Tamanho e Adicionais'}
             </h3>
             <p className="text-[11px] text-slate-650 leading-normal bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/20">
               {customizingItem ? customizingItem.description : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola. O melhor acai preparado com ingredientes selecionados e de boa qualidade.'}
@@ -415,9 +415,13 @@ export default function CupCustomizer({
           <div className="space-y-6">
             {/* Header control buttons */}
             <div className="flex justify-between items-center pb-2 border-b border-neutral-100">
-              <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                <Layers className="w-5 h-5 text-rose-500" /> Escolha Seus Ingredientes
-              </h4>
+              {customizingItem?.sizeMode !== 'single' ? (
+                <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-rose-500" /> Escolha Seus Ingredientes
+                </h4>
+              ) : (
+                <div />
+              )}
               <button
                 onClick={onClose}
                 className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-xl hover:bg-slate-100 text-sm font-medium"
@@ -427,81 +431,85 @@ export default function CupCustomizer({
             </div>
 
             {/* 1. Cup Size Selection */}
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
-                <Ruler className="w-4 h-4 text-rose-500" /> 1. {isLinhaBrownie ? 'Escolha seu Brownie Favorito' : isMilkshake ? 'Escolha o Tamanho do Milkshake' : 'Escolha o Tamanho do Copo'}
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {sizeOptions.map((opt) => {
-                  const isSelected = size === opt.id;
-                  
-                  // Dynamically scale icons representing the cup volume
-                  const iconSizeClass = 
-                    opt.id === '300ml' ? 'w-4 h-4 text-rose-450' :
-                    opt.id === '400ml' ? 'w-[18px] h-[18px] text-rose-500' :
-                    opt.id === '500ml' ? 'w-5 h-5 text-rose-600 font-bold' :
-                    'w-6 h-6 text-purple-650';
+            {customizingItem?.sizeMode !== 'single' && (
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                  <Ruler className="w-4 h-4 text-rose-500" /> 1. {isLinhaBrownie ? 'Escolha seu Brownie Favorito' : isMilkshake ? 'Escolha o Tamanho do Milkshake' : 'Escolha o Tamanho do Copo'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {sizeOptions.map((opt) => {
+                    const isSelected = size === opt.id;
+                    
+                    // Dynamically scale icons representing the cup volume
+                    const iconSizeClass = 
+                      opt.id === '300ml' ? 'w-4 h-4 text-rose-450' :
+                      opt.id === '400ml' ? 'w-[18px] h-[18px] text-rose-500' :
+                      opt.id === '500ml' ? 'w-5 h-5 text-rose-600 font-bold' :
+                      'w-6 h-6 text-purple-650';
 
-                  const label = opt.label;
+                    const label = opt.label;
 
-                  // Custom price logic
-                  let price = 15;
-                  if (customizingItem?.sizeMode === 'single') {
-                    price = customizingItem.singleSizePrice || customizingItem.price || 15;
-                  } else if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
-                    price = customizingItem.customSizes[opt.id]?.price ?? 15;
-                  } else if (isLinhaBrownie) {
-                    price = Number(opt.id === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
-                      : opt.id === '400ml' ? (storeSettings?.browniePrices?.['400ml'] ?? 22.90)
-                      : opt.id === '500ml' ? (storeSettings?.browniePrices?.['500ml'] ?? 28.90)
-                      : (storeSettings?.browniePrices?.['700ml'] ?? 34.90));
-                  } else if (isMilkshake) {
-                    price = Number(opt.id === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
-                      : opt.id === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
-                      : opt.id === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
-                      : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00));
-                  } else {
-                    price = getCustomCupBasePrice(opt.id as any, storeSettings?.cupPrices);
-                  }
+                    // Custom price logic
+                    let price = 15;
+                    if (customizingItem?.sizeMode === 'single') {
+                      price = customizingItem.singleSizePrice || customizingItem.price || 15;
+                    } else if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+                      price = customizingItem.customSizes[opt.id]?.price ?? 15;
+                    } else if (isLinhaBrownie) {
+                      price = Number(opt.id === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
+                        : opt.id === '400ml' ? (storeSettings?.browniePrices?.['400ml'] ?? 22.90)
+                        : opt.id === '500ml' ? (storeSettings?.browniePrices?.['500ml'] ?? 28.90)
+                        : (storeSettings?.browniePrices?.['700ml'] ?? 34.90));
+                    } else if (isMilkshake) {
+                      price = Number(opt.id === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
+                        : opt.id === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
+                        : opt.id === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
+                        : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00));
+                    } else {
+                      price = getCustomCupBasePrice(opt.id as any, storeSettings?.cupPrices);
+                    }
 
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setSize(opt.id);
-                        if (base === 'acai' || base === 'casadinho') {
-                          setSelectedFlavors(['acai-puro-organico']);
-                        } else {
-                          setSelectedFlavors([]); // resets to avoid exceeding limits
-                        }
-                      }}
-                      className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all text-center ${
-                        isSelected
-                          ? 'border-rose-500 bg-rose-50/50 text-rose-600 font-extrabold shadow-sm scale-[1.03]'
-                          : 'border-slate-200 hover:border-slate-300 text-slate-800 font-semibold hover:bg-slate-50'
-                      }`}
-                    >
-                      <CupSoda className={`${iconSizeClass} ${isSelected ? '' : 'opacity-70'}`} />
-                      <div>
-                        {isLinhaBrownie ? (
-                          <p className="text-xs font-bold leading-tight line-clamp-2 md:truncate">{label}</p>
-                        ) : (
-                          <p className="text-sm">{label}</p>
-                        )}
-                        <p className="text-[10px] opacity-75 mt-0.5 font-medium">
-                          R$ {price.toFixed(2)}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => {
+                          setSize(opt.id);
+                          if (base === 'acai' || base === 'casadinho') {
+                            setSelectedFlavors(['acai-puro-organico']);
+                          } else {
+                            setSelectedFlavors([]); // resets to avoid exceeding limits
+                          }
+                        }}
+                        className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all text-center ${
+                          isSelected
+                            ? 'border-rose-500 bg-rose-50/50 text-rose-600 font-extrabold shadow-sm scale-[1.03]'
+                            : 'border-slate-200 hover:border-slate-300 text-slate-800 font-semibold hover:bg-slate-50'
+                        }`}
+                      >
+                        <CupSoda className={`${iconSizeClass} ${isSelected ? '' : 'opacity-70'}`} />
+                        <div>
+                          {isLinhaBrownie ? (
+                            <p className="text-xs font-bold leading-tight line-clamp-2 md:truncate">{label}</p>
+                          ) : (
+                            <p className="text-sm">{label}</p>
+                          )}
+                          <p className="text-[10px] opacity-75 mt-0.5 font-medium">
+                            R$ {price.toFixed(2)}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 2. Base Selection (Açai vs Ice Cream) */}
             {!isMilkshake && (
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">2. Qual a base do copo?</label>
+                {customizingItem?.sizeMode !== 'single' && (
+                  <label className="block text-sm font-bold text-slate-700 mb-2">2. Qual a base do copo?</label>
+                )}
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'acai', name: 'Açaí Puro', desc: 'Apenas polpa açaí' },
@@ -535,12 +543,20 @@ export default function CupCustomizer({
             {/* 3. Flavors / Polpas Selection */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-bold text-slate-700">
-                  {isMilkshake ? '2. Escolha o sabor do sorvete para bater:' : '3. Escolha seus sabores:'}{' '}
-                  <span className="text-slate-500 font-normal">
-                    ({isMilkshake ? 'Selecione exatamente 1 sabor' : `Selecione até ${maxFlavors}`})
-                  </span>
-                </label>
+                {customizingItem?.sizeMode !== 'single' ? (
+                  <label className="block text-sm font-bold text-slate-700">
+                    {isMilkshake ? '2. Escolha o sabor do sorvete para bater:' : '3. Escolha seus sabores:'}{' '}
+                    <span className="text-slate-500 font-normal">
+                      ({isMilkshake ? 'Selecione exatamente 1 sabor' : `Selecione até ${maxFlavors}`})
+                    </span>
+                  </label>
+                ) : (
+                  <label className="block text-sm font-bold text-slate-700">
+                    <span className="text-slate-500 font-normal">
+                      (Selecione até {maxFlavors} {maxFlavors === 1 ? 'sabor' : 'sabores'})
+                    </span>
+                  </label>
+                )}
                 <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
                   {selectedFlavors.length}/{maxFlavors}
                 </span>
@@ -589,9 +605,11 @@ export default function CupCustomizer({
 
             {/* 4. Toppings Checklist (Tabs categorized) */}
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
-              </label>
+              {customizingItem?.sizeMode !== 'single' && (
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
+                </label>
+              )}
               
               <div className="space-y-4">
                 {(Object.entries(toppingsByCategory) as [string, ToppingOption[]][]).map(([catName, list]) => {
