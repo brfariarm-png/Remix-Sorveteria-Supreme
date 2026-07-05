@@ -131,6 +131,17 @@ export default function AdminCardapio({
   const [allowedToppings, setAllowedToppings] = useState<string[]>([]);
   const [allowedFlavors, setAllowedFlavors] = useState<string[]>([]);
 
+  // New size-mode states for customizable products
+  const [sizeMode, setSizeMode] = useState<'default' | 'single' | 'custom'>('default');
+  const [singleSizeLabel, setSingleSizeLabel] = useState('Tamanho Único');
+  const [singleSizePrice, setSingleSizePrice] = useState('15.00');
+  const [customSizes, setCustomSizes] = useState<Record<string, { active: boolean; price: number; label: string }>>({
+    '300ml': { active: true, price: 18, label: '300ml' },
+    '400ml': { active: true, price: 21, label: '400ml' },
+    '500ml': { active: true, price: 25, label: '500ml' },
+    '700ml': { active: true, price: 35, label: '700ml' },
+  });
+
   // Status/Messages
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -253,6 +264,15 @@ export default function AdminCardapio({
     setTagsString('Novidade, Customizável');
     setAllowedToppings(TOPPING_OPTIONS.map(t => t.id));
     setAllowedFlavors(FLAVOR_OPTIONS.map(f => f.id));
+    setSizeMode('default');
+    setSingleSizeLabel('Tamanho Único');
+    setSingleSizePrice('15.00');
+    setCustomSizes({
+      '300ml': { active: true, price: Number(storeSettings?.cupPrices?.['300ml'] ?? 18), label: storeSettings?.cupLabels?.['300ml'] ?? '300ml' },
+      '400ml': { active: true, price: Number(storeSettings?.cupPrices?.['400ml'] ?? 21), label: storeSettings?.cupLabels?.['400ml'] ?? '400ml' },
+      '500ml': { active: true, price: Number(storeSettings?.cupPrices?.['500ml'] ?? 25), label: storeSettings?.cupLabels?.['500ml'] ?? '500ml' },
+      '700ml': { active: true, price: Number(storeSettings?.cupPrices?.['700ml'] ?? 35), label: storeSettings?.cupLabels?.['700ml'] ?? '700ml' },
+    });
     setErrorMsg('');
     setSuccessMsg('');
     setIsFormOpen(true);
@@ -270,6 +290,15 @@ export default function AdminCardapio({
     setTagsString(item.tags ? item.tags.join(', ') : '');
     setAllowedToppings(item.allowedToppings && item.allowedToppings.length > 0 ? item.allowedToppings : TOPPING_OPTIONS.map(t => t.id));
     setAllowedFlavors(item.allowedFlavors && item.allowedFlavors.length > 0 ? item.allowedFlavors : FLAVOR_OPTIONS.map(f => f.id));
+    setSizeMode((item as any).sizeMode || 'default');
+    setSingleSizeLabel((item as any).singleSizeLabel || 'Tamanho Único');
+    setSingleSizePrice(String((item as any).singleSizePrice ?? item.price ?? 15.00));
+    setCustomSizes((item as any).customSizes || {
+      '300ml': { active: true, price: Number(storeSettings?.cupPrices?.['300ml'] ?? 18), label: storeSettings?.cupLabels?.['300ml'] ?? '300ml' },
+      '400ml': { active: true, price: Number(storeSettings?.cupPrices?.['400ml'] ?? 21), label: storeSettings?.cupLabels?.['400ml'] ?? '400ml' },
+      '500ml': { active: true, price: Number(storeSettings?.cupPrices?.['500ml'] ?? 25), label: storeSettings?.cupLabels?.['500ml'] ?? '500ml' },
+      '700ml': { active: true, price: Number(storeSettings?.cupPrices?.['700ml'] ?? 35), label: storeSettings?.cupLabels?.['700ml'] ?? '700ml' },
+    });
     setErrorMsg('');
     setSuccessMsg('');
     setIsFormOpen(true);
@@ -295,7 +324,7 @@ export default function AdminCardapio({
 
     const parsedId = editingItem ? editingItem.id : 'item-' + Date.now();
     
-    const payload: Omit<MenuItem, 'id'> & { index?: number } = {
+    const payload: any = {
       name: name.trim(),
       description: description.trim(),
       price: parsedPrice,
@@ -305,7 +334,11 @@ export default function AdminCardapio({
       customizable: isCustomizable,
       allowedToppings: isCustomizable ? allowedToppings : undefined,
       allowedFlavors: isCustomizable ? allowedFlavors : undefined,
-      tags: tags.length > 0 ? tags : undefined
+      tags: tags.length > 0 ? tags : undefined,
+      sizeMode: isCustomizable ? sizeMode : undefined,
+      singleSizeLabel: isCustomizable && sizeMode === 'single' ? singleSizeLabel.trim() : undefined,
+      singleSizePrice: isCustomizable && sizeMode === 'single' ? parseFloat(String(singleSizePrice).replace(',', '.')) : undefined,
+      customSizes: isCustomizable && sizeMode === 'custom' ? customSizes : undefined,
     };
 
     // If a brand new item, we give it a trailing index order
@@ -1826,135 +1859,247 @@ export default function AdminCardapio({
                       </div>
                     </div>
 
-                    {/* Preços dos Tamanhos no Modal */}
-                    <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-3">
+                    {/* Preços e Configurações de Tamanhos no Modal */}
+                    <div className="p-3.5 bg-white border border-slate-200 rounded-2xl space-y-3.5">
                       <div>
                         <h4 className="text-[10px] uppercase font-black tracking-wider text-slate-705 flex items-center gap-1.5">
-                          📐 Preços dos Tamanhos do Copo (Compartilhado)
+                          📐 Configuração de Tamanhos do Copo
                         </h4>
                         <p className="text-[8.5px] text-slate-450 font-normal leading-tight mt-0.5">
-                          Ajuste os valores dos tamanhos deste tipo de item. Todos os produtos customizáveis desta mesma categoria usarão esses mesmos preços:
+                          Escolha se este item segue os tamanhos padrões da categoria, se é um copo de tamanho único ou se tem tamanhos customizados:
                         </p>
                       </div>
 
-                      {category === 'milkshake' ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* Size Mode Selector */}
+                      <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-50 border border-slate-100 rounded-xl">
+                        {(['default', 'single', 'custom'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setSizeMode(mode)}
+                            className={`py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer text-center ${
+                              sizeMode === mode
+                                ? 'bg-white text-rose-500 shadow-xs border border-rose-100/50'
+                                : 'text-slate-450 hover:text-slate-600'
+                            }`}
+                          >
+                            {mode === 'default' ? 'Padrão' : mode === 'single' ? 'Tamanho Único' : 'Personalizado'}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Render based on sizeMode */}
+                      {sizeMode === 'single' ? (
+                        <div className="grid grid-cols-2 gap-3 pt-1">
                           <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">300ml</label>
+                            <label className="block text-[8px] uppercase font-bold text-slate-400">Nome do Tamanho Único</label>
                             <input
-                              type="number"
-                              step="0.01"
-                              value={msPrice300}
-                              onChange={(e) => setMsPrice300(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                              type="text"
+                              value={singleSizeLabel}
+                              onChange={(e) => setSingleSizeLabel(e.target.value)}
+                              className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700"
+                              placeholder="Ex: Copo Único, 500ml"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                            <label className="block text-[8px] uppercase font-bold text-slate-400">Preço (R$)</label>
                             <input
                               type="number"
                               step="0.01"
-                              value={msPrice400}
-                              onChange={(e) => setMsPrice400(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">500ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={msPrice500}
-                              onChange={(e) => setMsPrice500(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">700ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={msPrice700}
-                              onChange={(e) => setMsPrice700(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                              value={singleSizePrice}
+                              onChange={(e) => setSingleSizePrice(e.target.value)}
+                              className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700"
+                              placeholder="18.00"
                             />
                           </div>
                         </div>
-                      ) : (category === 'acai' && name.toLowerCase().includes('brownie')) ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">400ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={brPrice400}
-                              onChange={(e) => setBrPrice400(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">500ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={brPrice500}
-                              onChange={(e) => setBrPrice500(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">700ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={brPrice700}
-                              onChange={(e) => setBrPrice700(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
+                      ) : sizeMode === 'custom' ? (
+                        <div className="space-y-2.5 pt-1">
+                          <p className="text-[8px] text-slate-450 leading-tight">
+                            Ative/desative tamanhos para este copo específico e defina nomes e preços individuais:
+                          </p>
+                          <div className="grid grid-cols-1 gap-2">
+                            {['300ml', '400ml', '500ml', '700ml'].map((sz) => {
+                              const sizeData = customSizes[sz] || { active: true, price: 20, label: sz };
+                              return (
+                                <div key={sz} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={sizeData.active}
+                                      onChange={(e) => {
+                                        setCustomSizes((prev) => ({
+                                          ...prev,
+                                          [sz]: { ...sizeData, active: e.target.checked },
+                                        }));
+                                      }}
+                                      className="w-3.5 h-3.5 text-rose-500 border-slate-300 rounded focus:ring-rose-450"
+                                    />
+                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">{sz}</span>
+                                  </label>
+                                  {sizeData.active && (
+                                    <div className="flex-1 flex gap-2 ml-auto">
+                                      <div className="flex-1">
+                                        <input
+                                          type="text"
+                                          placeholder="Nome exibido"
+                                          value={sizeData.label}
+                                          onChange={(e) => {
+                                            setCustomSizes((prev) => ({
+                                              ...prev,
+                                              [sz]: { ...sizeData, label: e.target.value },
+                                            }));
+                                          }}
+                                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9.5px] font-bold text-slate-700"
+                                        />
+                                      </div>
+                                      <div className="w-24 relative">
+                                        <span className="absolute left-1.5 top-1.5 text-[8px] font-bold text-slate-400">R$</span>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={sizeData.price}
+                                          onChange={(e) => {
+                                            setCustomSizes((prev) => ({
+                                              ...prev,
+                                              [sz]: { ...sizeData, price: parseFloat(e.target.value) || 0 },
+                                            }));
+                                          }}
+                                          className="w-full pl-5 pr-1.5 py-1 bg-white border border-slate-200 rounded-lg text-[9.5px] font-bold text-slate-700"
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">300ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={price300}
-                              onChange={(e) => setPrice300(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">400ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={price400}
-                              onChange={(e) => setPrice400(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">500ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={price500}
-                              onChange={(e) => setPrice500(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[8px] uppercase text-slate-400">700ml</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={price700}
-                              onChange={(e) => setPrice700(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
-                            />
-                          </div>
+                        <div className="space-y-3">
+                          <p className="text-[8.5px] text-slate-450 leading-normal">
+                            Usando as configurações globais de tamanhos e preços para a categoria <span className="font-bold text-rose-500">{(category === 'acai' ? 'Açaí' : category === 'sorvete' ? 'Sorvete' : category === 'milkshake' ? 'Milkshake' : category)}.</span> Todos os copos dessa categoria compartilham esses preços base:
+                          </p>
+                          {category === 'milkshake' ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">300ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={msPrice300}
+                                  onChange={(e) => setMsPrice300(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={msPrice400}
+                                  onChange={(e) => setMsPrice400(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">500ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={msPrice500}
+                                  onChange={(e) => setMsPrice500(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">700ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={msPrice700}
+                                  onChange={(e) => setMsPrice700(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                            </div>
+                          ) : (category === 'acai' && name.toLowerCase().includes('brownie')) ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={brPrice400}
+                                  onChange={(e) => setBrPrice400(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">500ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={brPrice500}
+                                  onChange={(e) => setBrPrice500(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">700ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={brPrice700}
+                                  onChange={(e) => setBrPrice700(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">300ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={price300}
+                                  onChange={(e) => setPrice300(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">400ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={price400}
+                                  onChange={(e) => setPrice400(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">500ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={price500}
+                                  onChange={(e) => setPrice500(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase text-slate-400">700ml</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={price700}
+                                  onChange={(e) => setPrice700(e.target.value)}
+                                  className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -15,6 +15,12 @@ export interface MenuItem {
   customizable?: boolean;
   allowedToppings?: string[];
   allowedFlavors?: string[];
+  
+  // Custom size configuration fields
+  sizeMode?: 'default' | 'single' | 'custom';
+  singleSizeLabel?: string;
+  singleSizePrice?: number;
+  customSizes?: Record<string, { active: boolean; price: number; label: string }>;
 }
 
 export interface ToppingOption {
@@ -34,7 +40,7 @@ export interface FlavorOption {
 }
 
 export interface CustomCupConfig {
-  size: '300ml' | '400ml' | '500ml' | '700ml';
+  size: string;
   base: 'acai' | 'sorvete' | 'casadinho'; // casadinho = açaí + sorvete
   flavors: string[]; // flavor IDs
   toppings: string[]; // topping IDs

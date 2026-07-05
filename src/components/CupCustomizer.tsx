@@ -36,14 +36,59 @@ export default function CupCustomizer({
   const isMilkshake = customizingItem?.category === 'milkshake';
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
 
-  const [size, setSize] = useState<'300ml' | '400ml' | '500ml' | '700ml'>('400ml');
+  const sizeOptions = useMemo(() => {
+    if (customizingItem?.sizeMode === 'single') {
+      return [{ id: 'single', label: customizingItem.singleSizeLabel || 'Tamanho Único' }];
+    }
+    if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+      return Object.entries(customizingItem.customSizes)
+        .filter(([_, data]) => data.active)
+        .map(([id, data]) => ({ id, label: data.label }));
+    }
+    // Default fallback size options
+    if (isLinhaBrownie) {
+      return [
+        { id: '400ml', label: storeSettings?.brownieLabels?.['400ml'] || '400ml' },
+        { id: '500ml', label: storeSettings?.brownieLabels?.['500ml'] || '500ml' },
+        { id: '700ml', label: storeSettings?.brownieLabels?.['700ml'] || '700ml' },
+      ];
+    }
+    if (isMilkshake) {
+      return [
+        { id: '300ml', label: storeSettings?.milkshakeLabels?.['300ml'] || '300ml' },
+        { id: '400ml', label: storeSettings?.milkshakeLabels?.['400ml'] || '400ml' },
+        { id: '500ml', label: storeSettings?.milkshakeLabels?.['500ml'] || '500ml' },
+        { id: '700ml', label: storeSettings?.milkshakeLabels?.['700ml'] || '700ml' },
+      ];
+    }
+    return [
+      { id: '300ml', label: storeSettings?.cupLabels?.['300ml'] || '300ml' },
+      { id: '400ml', label: storeSettings?.cupLabels?.['400ml'] || '400ml' },
+      { id: '500ml', label: storeSettings?.cupLabels?.['500ml'] || '500ml' },
+      { id: '700ml', label: storeSettings?.cupLabels?.['700ml'] || '700ml' },
+    ];
+  }, [customizingItem, isLinhaBrownie, isMilkshake, storeSettings]);
+
+  const [size, setSize] = useState<string>(() => {
+    if (customizingItem?.sizeMode === 'single') {
+      return 'single';
+    }
+    if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+      const activeKeys = Object.keys(customizingItem.customSizes).filter(k => customizingItem.customSizes?.[k]?.active);
+      return activeKeys[0] || '400ml';
+    }
+    return isLinhaBrownie ? '400ml' : '400ml';
+  });
+
   const [base, setBase] = useState<'acai' | 'sorvete' | 'casadinho'>(isMilkshake ? 'sorvete' : 'casadinho');
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>(isMilkshake ? ['baunilha'] : ['acai-puro-organico']);
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [extraBrownieProducts, setExtraBrownieProducts] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
 
-  // Sizing mappings for visual display
+  // Sizing mappings for visual display mapped to closest visual key
+  const visualSize = (size === 'single' || !['300ml', '400ml', '500ml', '700ml'].includes(size)) ? '400ml' : size as '300ml' | '400ml' | '500ml' | '700ml';
+
   const cupWidths = {
     '300ml': '155px',
     '400ml': '170px',
@@ -136,6 +181,12 @@ export default function CupCustomizer({
   }, [isMilkshake, customizingItem, toppingOptions]);
 
   const basePrice = useMemo(() => {
+    if (customizingItem?.sizeMode === 'single') {
+      return customizingItem.singleSizePrice || customizingItem.price || 15;
+    }
+    if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+      return customizingItem.customSizes[size]?.price ?? 15;
+    }
     if (isLinhaBrownie) {
       if (size === '300ml') return Number(storeSettings?.browniePrices?.['300ml'] ?? 16.90);
       if (size === '400ml') return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
@@ -149,8 +200,8 @@ export default function CupCustomizer({
         : size === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
         : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00));
     }
-    return getCustomCupBasePrice(size, storeSettings?.cupPrices);
-  }, [isMilkshake, isLinhaBrownie, size, storeSettings?.cupPrices, storeSettings?.milkshakePrices, storeSettings?.browniePrices]);
+    return getCustomCupBasePrice(visualSize, storeSettings?.cupPrices);
+  }, [customizingItem, isMilkshake, isLinhaBrownie, size, storeSettings?.cupPrices, storeSettings?.milkshakePrices, storeSettings?.browniePrices]);
 
   const toppingsPrice = useMemo(() => {
     return selectedToppings.reduce((total, id) => {
@@ -381,46 +432,43 @@ export default function CupCustomizer({
                 <Ruler className="w-4 h-4 text-rose-500" /> 1. {isLinhaBrownie ? 'Escolha seu Brownie Favorito' : isMilkshake ? 'Escolha o Tamanho do Milkshake' : 'Escolha o Tamanho do Copo'}
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {(isLinhaBrownie
-                  ? (['400ml', '500ml', '700ml'] as const)
-                  : (['300ml', '400ml', '500ml', '700ml'] as const)
-                ).map((sz) => {
-                  const isSelected = size === sz;
+                {sizeOptions.map((opt) => {
+                  const isSelected = size === opt.id;
                   
                   // Dynamically scale icons representing the cup volume
                   const iconSizeClass = 
-                    sz === '300ml' ? 'w-4 h-4 text-rose-450' :
-                    sz === '400ml' ? 'w-[18px] h-[18px] text-rose-500' :
-                    sz === '500ml' ? 'w-5 h-5 text-rose-600 font-bold' :
+                    opt.id === '300ml' ? 'w-4 h-4 text-rose-450' :
+                    opt.id === '400ml' ? 'w-[18px] h-[18px] text-rose-500' :
+                    opt.id === '500ml' ? 'w-5 h-5 text-rose-600 font-bold' :
                     'w-6 h-6 text-purple-650';
 
-                  // Custom labels for Linha Brownie
-                  const label = isLinhaBrownie
-                    ? sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
-                      : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
-                      : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml')
-                    : isMilkshake
-                      ? (storeSettings?.milkshakeLabels?.[sz] || sz)
-                      : (storeSettings?.cupLabels?.[sz] || sz);
+                  const label = opt.label;
 
                   // Custom price logic
-                  const price = Number(isLinhaBrownie
-                    ? sz === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
-                      : sz === '400ml' ? (storeSettings?.browniePrices?.['400ml'] ?? 22.90)
-                      : sz === '500ml' ? (storeSettings?.browniePrices?.['500ml'] ?? 28.90)
-                      : (storeSettings?.browniePrices?.['700ml'] ?? 34.90)
-                    : isMilkshake
-                      ? sz === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
-                        : sz === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
-                        : sz === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
-                        : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00)
-                      : getCustomCupBasePrice(sz, storeSettings?.cupPrices));
+                  let price = 15;
+                  if (customizingItem?.sizeMode === 'single') {
+                    price = customizingItem.singleSizePrice || customizingItem.price || 15;
+                  } else if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+                    price = customizingItem.customSizes[opt.id]?.price ?? 15;
+                  } else if (isLinhaBrownie) {
+                    price = Number(opt.id === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
+                      : opt.id === '400ml' ? (storeSettings?.browniePrices?.['400ml'] ?? 22.90)
+                      : opt.id === '500ml' ? (storeSettings?.browniePrices?.['500ml'] ?? 28.90)
+                      : (storeSettings?.browniePrices?.['700ml'] ?? 34.90));
+                  } else if (isMilkshake) {
+                    price = Number(opt.id === '300ml' ? (storeSettings?.milkshakePrices?.['300ml'] ?? 15.00)
+                      : opt.id === '400ml' ? (storeSettings?.milkshakePrices?.['400ml'] ?? 18.00)
+                      : opt.id === '500ml' ? (storeSettings?.milkshakePrices?.['500ml'] ?? 21.00)
+                      : (storeSettings?.milkshakePrices?.['700ml'] ?? 25.00));
+                  } else {
+                    price = getCustomCupBasePrice(opt.id as any, storeSettings?.cupPrices);
+                  }
 
                   return (
                     <button
-                      key={sz}
+                      key={opt.id}
                       onClick={() => {
-                        setSize(sz);
+                        setSize(opt.id);
                         if (base === 'acai' || base === 'casadinho') {
                           setSelectedFlavors(['acai-puro-organico']);
                         } else {
