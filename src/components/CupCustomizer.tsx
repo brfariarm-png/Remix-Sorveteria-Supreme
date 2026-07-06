@@ -148,7 +148,7 @@ export default function CupCustomizer({
       list = flavorOptions.filter((f) => f.id === 'acai-puro-organico' || f.category === 'sorvete');
     }
 
-    if (customizingItem?.allowedFlavors && customizingItem.allowedFlavors.length > 0) {
+    if (customizingItem?.allowedFlavors !== undefined && customizingItem?.allowedFlavors !== null) {
       list = list.filter((f) => customizingItem.allowedFlavors?.includes(f.id));
     }
     return list;
@@ -165,7 +165,7 @@ export default function CupCustomizer({
     };
 
     let list = toppingOptions;
-    if (customizingItem?.allowedToppings && customizingItem.allowedToppings.length > 0) {
+    if (customizingItem?.allowedToppings !== undefined && customizingItem?.allowedToppings !== null) {
       list = toppingOptions.filter((t) => customizingItem.allowedToppings?.includes(t.id));
     }
 

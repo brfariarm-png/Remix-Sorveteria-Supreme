@@ -381,8 +381,8 @@ export default function AdminCardapio({
     setIsPopular(!!item.popular);
     setIsCustomizable(!!item.customizable);
     setTagsString(item.tags ? item.tags.join(', ') : '');
-    setAllowedToppings(item.allowedToppings && item.allowedToppings.length > 0 ? item.allowedToppings : TOPPING_OPTIONS.map(t => t.id));
-    setAllowedFlavors(item.allowedFlavors && item.allowedFlavors.length > 0 ? item.allowedFlavors : FLAVOR_OPTIONS.map(f => f.id));
+    setAllowedToppings(item.allowedToppings !== undefined && item.allowedToppings !== null ? item.allowedToppings : TOPPING_OPTIONS.map(t => t.id));
+    setAllowedFlavors(item.allowedFlavors !== undefined && item.allowedFlavors !== null ? item.allowedFlavors : FLAVOR_OPTIONS.map(f => f.id));
     setSizeMode((item as any).sizeMode || 'default');
     setSingleSizeLabel((item as any).singleSizeLabel || 'Tamanho Único');
     setSingleSizePrice(String((item as any).singleSizePrice ?? item.price ?? 15.00));
@@ -404,6 +404,13 @@ export default function AdminCardapio({
     const parsedPrice = parseFloat(String(price).replace(',', '.').trim());
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       return setErrorMsg('Por favor, insira um preço válido (use ponto ou vírgula). Para itens customizáveis, você pode colocar 0.');
+    }
+
+    if (isCustomizable && sizeMode === 'single') {
+      const parsedSinglePrice = parseFloat(String(singleSizePrice).replace(',', '.').trim());
+      if (isNaN(parsedSinglePrice) || parsedSinglePrice < 0) {
+        return setErrorMsg('Por favor, insira um preço válido para o Tamanho Único.');
+      }
     }
 
     setLoading(true);

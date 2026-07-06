@@ -919,7 +919,6 @@ export default function AdminPDV({
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
                     {flavorOptions.filter((f) => 
                       !customizingItem?.allowedFlavors || 
-                      customizingItem.allowedFlavors.length === 0 || 
                       customizingItem.allowedFlavors.includes(f.id)
                     ).map((f) => {
                       const isSel = selectedFlavors.includes(f.id);
@@ -959,7 +958,6 @@ export default function AdminPDV({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
                     {toppingOptions.filter((t) => 
                       !customizingItem?.allowedToppings || 
-                      customizingItem.allowedToppings.length === 0 || 
                       customizingItem.allowedToppings.includes(t.id)
                     ).map((t) => {
                       const isSel = selectedToppings.includes(t.id);
