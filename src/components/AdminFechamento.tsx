@@ -19,7 +19,8 @@ import {
   FolderOpen,
   ChevronDown,
   ChevronUp,
-  Archive
+  Archive,
+  Download
 } from 'lucide-react';
 import { collection, addDoc, getDocs, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -53,6 +54,89 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
   const [notes, setNotes] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Export current shift active orders to CSV (Excel compatible)
+  const exportActiveSalesToCSV = () => {
+    try {
+      const headers = ['ID_Pedido', 'Cliente', 'Telefone', 'Tipo_Entrega', 'Forma_Pagamento', 'Taxa_Entrega', 'Desconto', 'Total', 'Data_Hora'];
+      const csvRows = [headers.join(';')];
+
+      shiftOrders.forEach(order => {
+        const row = [
+          order.id.slice(-6).toUpperCase(),
+          `"${order.details.customerName.replace(/"/g, '""')}"`,
+          `"${(order.details.customerPhone || '').replace(/"/g, '""')}"`,
+          order.details.deliveryType === 'delivery' ? 'Entrega' : 'Retirada',
+          order.details.paymentType,
+          ((order.details as any).deliveryFee ?? 0).toFixed(2),
+          ((order.details as any).discount ?? 0).toFixed(2),
+          order.total.toFixed(2),
+          order.timestamp || ''
+        ];
+        csvRows.push(row.join(';'));
+      });
+
+      const csvContent = "\uFEFF" + csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `turno_vendas_ativas_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccessMsg('✅ Relatório de vendas do turno baixado com sucesso!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg('Erro ao exportar vendas: ' + err.message);
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+  };
+
+  // Export historical shift closeouts to CSV
+  const exportPastCloseoutsToCSV = () => {
+    try {
+      if (pastCloseouts.length === 0) {
+        setErrorMsg('Nenhum fechamento registrado para exportar.');
+        setTimeout(() => setErrorMsg(''), 3000);
+        return;
+      }
+      const headers = ['ID_Fechamento', 'Data_Fechamento', 'Responsavel', 'Quantidade_Pedidos', 'Total_Vendas', 'Vendas_Pix', 'Vendas_Cartao', 'Vendas_Dinheiro', 'Observacoes'];
+      const csvRows = [headers.join(';')];
+
+      pastCloseouts.forEach(item => {
+        const row = [
+          item.id.slice(-8).toUpperCase(),
+          new Date(item.closedAt).toLocaleString('pt-BR'),
+          `"${item.closedBy.replace(/"/g, '""')}"`,
+          item.ordersCount,
+          item.totalSales.toFixed(2),
+          item.pixSales.toFixed(2),
+          item.cardSales.toFixed(2),
+          item.cashSales.toFixed(2),
+          `"${(item.notes || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(';'));
+      });
+
+      const csvContent = "\uFEFF" + csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `historico_fechamentos_caixa_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccessMsg('✅ Histórico de fechamentos de caixa baixado!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg('Erro ao exportar fechamentos: ' + err.message);
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+  };
 
   // 1. Filter current active shift orders: completed and NOT archived
   // (We assume completed orders without archived property or archived !== true are available for current stats)
@@ -375,6 +459,23 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
             </div>
           </div>
 
+          {/* Export Active Sales */}
+          {shiftOrders.length > 0 && (
+            <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-3 text-left">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">💾 Salvar Relatório no Computador</span>
+                <span className="text-[10.5px] text-slate-500 font-semibold block leading-tight">Gere uma planilha Excel/CSV com os {shiftOrders.length} pedidos deste turno.</span>
+              </div>
+              <button
+                type="button"
+                onClick={exportActiveSalesToCSV}
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" /> Exportar Turno
+              </button>
+            </div>
+          )}
+
           {/* Closeout action form */}
           <div className="border-t border-slate-100 pt-5 space-y-4">
             <div className="space-y-1.5 text-left">
@@ -453,12 +554,24 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
 
         {/* Right Column: Past Shift Closeouts Log */}
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-6 flex flex-col">
-          <div>
-            <h3 className="font-extrabold text-base text-slate-800 uppercase tracking-wider font-sans flex items-center gap-2">
-              <Inbox className="w-5 h-5 text-violet-600" />
-              Histórico de Fechamentos
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Turnos fechados e salvos com segurança no banco de dados.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-800 uppercase tracking-wider font-sans flex items-center gap-2">
+                <Inbox className="w-5 h-5 text-violet-600" />
+                Histórico de Fechamentos
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Turnos fechados e salvos com segurança no banco de dados.</p>
+            </div>
+            {pastCloseouts.length > 0 && (
+              <button
+                type="button"
+                onClick={exportPastCloseoutsToCSV}
+                className="self-start sm:self-auto px-3.5 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
+                title="Exportar todo o histórico de fechamentos para Excel/CSV"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" /> Exportar Tudo
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto max-h-[460px] space-y-4 pr-1">

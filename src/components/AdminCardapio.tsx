@@ -18,7 +18,8 @@ import {
   X,
   PlusCircle,
   FolderOpen,
-  Upload
+  Upload,
+  Download
 } from 'lucide-react';
 import { collection, addDoc, setDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -113,6 +114,44 @@ export default function AdminCardapio({
   }, [storeSettings?.cupPrices, storeSettings?.cupLabels, storeSettings?.milkshakePrices, storeSettings?.milkshakeLabels, storeSettings?.browniePrices, storeSettings?.brownieLabels]);
 
   const [search, setSearch] = useState('');
+
+  const exportProductsToCSV = () => {
+    try {
+      const headers = ['ID_Produto', 'Nome', 'Descricao', 'Preco', 'Categoria', 'Popular', 'Customizavel', 'Modo_Tamanho', 'Preco_Tamanho_Unico'];
+      const csvRows = [headers.join(';')];
+
+      menuItems.forEach(item => {
+        const row = [
+          item.id,
+          `"${item.name.replace(/"/g, '""')}"`,
+          `"${(item.description || '').replace(/"/g, '""')}"`,
+          item.price.toFixed(2),
+          item.category,
+          item.popular ? 'Sim' : 'Nao',
+          item.customizable ? 'Sim' : 'Nao',
+          item.sizeMode || 'multi',
+          (item.singleSizePrice ?? 0).toFixed(2)
+        ];
+        csvRows.push(row.join(';'));
+      });
+
+      const csvContent = "\uFEFF" + csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `produtos_cardapio_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccessMsg('✅ Catálogo de produtos exportado para o computador!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg('Erro ao exportar cardápio: ' + err.message);
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+  };
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
   // Modal / Form state
@@ -1525,15 +1564,26 @@ export default function AdminCardapio({
           {/* Grid Filter Tools & Search */}
           <div className="flex flex-col md:flex-row gap-3">
             {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Pesquisar produto no cardápio..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-rose-400 rounded-xl text-xs font-bold text-slate-705 placeholder-slate-400 focus:outline-hidden transition-colors"
-              />
+            <div className="relative flex-1 flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar produto no cardápio..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-rose-400 rounded-xl text-xs font-bold text-slate-705 placeholder-slate-400 focus:outline-hidden transition-colors"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={exportProductsToCSV}
+                title="Exportar Cardápio (Excel/CSV)"
+                className="px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 font-bold text-xs cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                <Download className="w-4 h-4 text-slate-500" />
+                <span className="hidden sm:inline text-[9.5px] font-black uppercase tracking-wider">Exportar</span>
+              </button>
             </div>
 
             {/* Categories Bar */}
