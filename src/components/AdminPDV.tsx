@@ -56,6 +56,22 @@ export default function AdminPDV({
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [itemSpecificNotes, setItemSpecificNotes] = useState('');
 
+  // PDV Customizer current selected price
+  const pdvCustomizerPrice = useMemo(() => {
+    if (!customizingItem) return 0;
+    let basePrice = 15;
+    if (customizingItem.sizeMode === 'single') {
+      basePrice = customizingItem.singleSizePrice || customizingItem.price || 15;
+    } else {
+      basePrice = getCustomCupBasePrice(customSize, storeSettings?.cupPrices);
+    }
+    const toppingsCost = selectedToppings.reduce((acc, tid) => {
+      const top = toppingOptions.find((t) => t.id === tid);
+      return acc + (top?.price || 0);
+    }, 0);
+    return basePrice + toppingsCost;
+  }, [customizingItem, customSize, selectedToppings, storeSettings?.cupPrices, toppingOptions]);
+
   // Custom Quick / Manual item insertion (for custom items sold over counter)
   const [isQuickItemOpen, setIsQuickItemOpen] = useState(false);
   const [quickItemName, setQuickItemName] = useState('');
@@ -152,21 +168,7 @@ export default function AdminPDV({
   const handleConfirmCustomCup = () => {
     if (!customizingItem) return;
 
-    // Base price based on size or single price
-    let basePrice = 15;
-    if (customizingItem.sizeMode === 'single') {
-      basePrice = customizingItem.singleSizePrice || customizingItem.price || 15;
-    } else {
-      basePrice = getCustomCupBasePrice(customSize, storeSettings?.cupPrices);
-    }
-    
-    // Add additional toppings cost
-    const toppingsCost = selectedToppings.reduce((acc, tid) => {
-      const top = TOPPING_OPTIONS.find((t) => t.id === tid);
-      return acc + (top?.price || 0);
-    }, 0);
-
-    const calculatedPrice = basePrice + toppingsCost;
+    const calculatedPrice = pdvCustomizerPrice;
 
     const customizationObj: CustomCupConfig = {
       size: customizingItem.sizeMode === 'single' ? '300ml' : customSize,
@@ -174,6 +176,28 @@ export default function AdminPDV({
       flavors: selectedFlavors,
       toppings: selectedToppings
     };
+
+    const flavorsStr = selectedFlavors
+      .map((fId) => flavorOptions.find((f) => f.id === fId)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    const toppingsStr = selectedToppings
+      .map((tId) => toppingOptions.find((t) => t.id === tId)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    let finalDesc = customizingItem.description || '';
+    if (customizingItem.sizeMode === 'single') {
+      if (flavorsStr && selectedFlavors.length > 0) {
+        finalDesc += ` (Sabores: ${flavorsStr})`;
+      }
+      if (toppingsStr && selectedToppings.length > 0) {
+        finalDesc += ` (Adicionais: ${toppingsStr})`;
+      }
+    } else {
+      finalDesc += ` Sabores: ${flavorsStr || 'Nenhum'}. Adicionais: ${toppingsStr || 'Nenhum'}.`;
+    }
 
     setPdvCart((prev) => [
       ...prev,
@@ -184,6 +208,7 @@ export default function AdminPDV({
           name: customizingItem.sizeMode === 'single'
             ? customizingItem.name
             : `${customizingItem.name} (${customSize})`,
+          description: finalDesc,
           price: calculatedPrice
         },
         quantity: 1,
@@ -860,79 +885,96 @@ export default function AdminPDV({
               )}
 
               {/* Flavors Select */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">3. Escolha os Sabores de Sorvete (Opcional)</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {flavorOptions.filter((f) => 
-                    !customizingItem?.allowedFlavors || 
-                    customizingItem.allowedFlavors.length === 0 || 
-                    customizingItem.allowedFlavors.includes(f.id)
-                  ).map((f) => {
-                    const isSel = selectedFlavors.includes(f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => {
-                          if (isSel) {
-                            setSelectedFlavors(selectedFlavors.filter(x => x !== f.id));
-                          } else {
-                            setSelectedFlavors([...selectedFlavors, f.id]);
-                          }
-                        }}
-                        className={`p-2 rounded-xl border text-[10.5px] font-bold text-left transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isSel 
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200' 
-                            : 'border-slate-200 bg-white text-slate-705 hover:bg-slate-55'
-                        }`}
-                      >
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: f.color }} />
-                        <span className="truncate">{f.name}</span>
-                      </button>
-                    );
-                  })}
+              {customizingItem.sizeMode !== 'single' && (
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">3. Escolha os Sabores de Sorvete (Opcional)</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
+                    {flavorOptions.filter((f) => 
+                      !customizingItem?.allowedFlavors || 
+                      customizingItem.allowedFlavors.length === 0 || 
+                      customizingItem.allowedFlavors.includes(f.id)
+                    ).map((f) => {
+                      const isSel = selectedFlavors.includes(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            if (isSel) {
+                              setSelectedFlavors(selectedFlavors.filter(x => x !== f.id));
+                            } else {
+                              setSelectedFlavors([...selectedFlavors, f.id]);
+                            }
+                          }}
+                          className={`p-2 rounded-xl border text-[10.5px] font-bold text-left transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isSel 
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200' 
+                              : 'border-slate-200 bg-white text-slate-705 hover:bg-slate-55'
+                          }`}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: f.color }} />
+                          <span className="truncate">{f.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Toppings Select */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <span>4. Adicionais & Coberturas</span>
-                  <span className="text-[9.5px] text-zinc-500 bg-zinc-200 px-1.5 py-0.5 rounded font-bold">Cobrança Automática</span>
+              {customizingItem.sizeMode !== 'single' && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    <span>4. Adicionais & Coberturas</span>
+                    <span className="text-[9.5px] text-zinc-500 bg-zinc-200 px-1.5 py-0.5 rounded font-bold">Cobrança Automática</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
+                    {toppingOptions.filter((t) => 
+                      !customizingItem?.allowedToppings || 
+                      customizingItem.allowedToppings.length === 0 || 
+                      customizingItem.allowedToppings.includes(t.id)
+                    ).map((t) => {
+                      const isSel = selectedToppings.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            if (isSel) {
+                              setSelectedToppings(selectedToppings.filter(x => x !== t.id));
+                            } else {
+                              setSelectedToppings([...selectedToppings, t.id]);
+                            }
+                          }}
+                          className={`p-2 px-3 rounded-xl border text-[10.5px] text-left transition-all cursor-pointer flex items-center justify-between ${
+                            isSel 
+                              ? 'border-rose-500 bg-rose-50 text-rose-900 font-extrabold ring-1 ring-rose-200' 
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-55'
+                          }`}
+                        >
+                          <span className="truncate">{t.name}</span>
+                          <span className="font-mono text-[9px] bg-slate-100 px-1.5 py-0.5 rounded-sm text-slate-550 font-black">
+                            {t.price === 0 ? 'Cortesia' : `+ R$ ${t.price.toFixed(2)}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {toppingOptions.filter((t) => 
-                    !customizingItem?.allowedToppings || 
-                    customizingItem.allowedToppings.length === 0 || 
-                    customizingItem.allowedToppings.includes(t.id)
-                  ).map((t) => {
-                    const isSel = selectedToppings.includes(t.id);
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          if (isSel) {
-                            setSelectedToppings(selectedToppings.filter(x => x !== t.id));
-                          } else {
-                            setSelectedToppings([...selectedToppings, t.id]);
-                          }
-                        }}
-                        className={`p-2 px-3 rounded-xl border text-[10.5px] text-left transition-all cursor-pointer flex items-center justify-between ${
-                          isSel 
-                            ? 'border-rose-500 bg-rose-50 text-rose-900 font-extrabold ring-1 ring-rose-200' 
-                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-55'
-                        }`}
-                      >
-                        <span className="truncate">{t.name}</span>
-                        <span className="font-mono text-[9px] bg-slate-100 px-1.5 py-0.5 rounded-sm text-slate-550 font-black">
-                          {t.price === 0 ? 'Cortesia' : `+ R$ ${t.price.toFixed(2)}`}
-                        </span>
-                      </button>
-                    );
-                  })}
+              )}
+
+              {customizingItem.sizeMode === 'single' && (
+                <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3 flex gap-2 text-amber-950 font-bold">
+                  <span className="text-base flex-shrink-0">✨</span>
+                  <div>
+                    <h4 className="font-extrabold text-[10px] uppercase tracking-wide">Tamanho Único (Sem Sabores/Toppings)</h4>
+                    <p className="text-[10px] leading-relaxed mt-0.5 opacity-90 font-medium">
+                      Este item é tamanho único e seus componentes já vêm descritos de fábrica.
+                      Use o campo de observações abaixo para adicionar observações ou retirar ingredientes!
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Item Specific Notes & Fast tags */}
               <div className="space-y-2">
@@ -977,7 +1019,7 @@ export default function AdminPDV({
                 onClick={handleConfirmCustomCup}
                 className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center text-xs shadow-md shadow-rose-250/20"
               >
-                Adicionar Cup • R$ {(getCustomCupBasePrice(customSize, storeSettings?.cupPrices) + selectedToppings.reduce((acc, tid) => acc + (toppingOptions.find(t=>t.id === tid)?.price || 0), 0)).toFixed(2)}
+                Adicionar ao Pedido • R$ {pdvCustomizerPrice.toFixed(2)}
               </button>
             </div>
 

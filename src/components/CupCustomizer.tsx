@@ -281,20 +281,35 @@ export default function CupCustomizer({
       : '';
 
     // Generate a dummy item representing this custom cup
+    const flavorsStr = finalFlavors
+      .map((fId) => flavorOptions.find((f) => f.id === fId)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    const toppingsStr = selectedToppings
+      .map((tId) => toppingOptions.find((t) => t.id === tId)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    let finalDesc = descriptionBase;
+    if (customizingItem?.sizeMode === 'single') {
+      if (flavorsStr && selectedFlavors.length > 0) {
+        finalDesc += ` (Sabores: ${flavorsStr})`;
+      }
+      if (toppingsStr && selectedToppings.length > 0) {
+        finalDesc += ` (Adicionais: ${toppingsStr})`;
+      }
+    } else {
+      finalDesc += ` Sabores/Sorvetes: ${flavorsStr || 'Nenhum'}. Adicionais: ${toppingsStr || 'Nenhum'}.`;
+    }
+    if (extraProductsString) {
+      finalDesc += ` Outros: ${extraProductsString}.`;
+    }
+
     const representationItem: MenuItem = {
       id: customizingItem ? `${customizingItem.id}-custom-${Date.now()}` : `custom-cup-${Date.now()}`,
       name: finalName,
-      description: `${descriptionBase} Sabores/Sorvetes: ${
-        finalFlavors
-          .map((fId) => flavorOptions.find((f) => f.id === fId)?.name)
-          .filter(Boolean)
-          .join(', ') || 'Nenhum'
-      }. Adicionais: ${
-        selectedToppings
-          .map((tId) => toppingOptions.find((t) => t.id === tId)?.name)
-          .filter(Boolean)
-          .join(', ') || 'Nenhum'
-      }.${extraProductsString ? ` Outros: ${extraProductsString}.` : ''}`,
+      description: finalDesc,
       price: totalPrice,
       category: isMilkshake ? 'milkshake' : base === 'acai' ? 'acai' : 'sorvete',
       image: customizingItem?.image || '/assets/images/supreme_acai_cup_1781179584520.jpg',
@@ -548,115 +563,127 @@ export default function CupCustomizer({
             )}
 
             {/* 3. Flavors / Polpas Selection */}
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                {customizingItem?.sizeMode !== 'single' ? (
-                  <>
-                    <label className="block text-sm font-bold text-slate-700">
-                      {isMilkshake ? '2. Escolha o sabor do sorvete para bater:' : '3. Escolha seus sabores:'}{' '}
-                      <span className="text-slate-500 font-normal">
-                        ({isMilkshake ? 'Selecione exatamente 1 sabor' : `Selecione até ${maxFlavors}`})
-                      </span>
-                    </label>
-                    <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
-                      {selectedFlavors.length}/{maxFlavors}
+            {customizingItem?.sizeMode !== 'single' && (
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-bold text-slate-700">
+                    {isMilkshake ? '2. Escolha o sabor do sorvete para bater:' : '3. Escolha seus sabores:'}{' '}
+                    <span className="text-slate-500 font-normal">
+                      ({isMilkshake ? 'Selecione exatamente 1 sabor' : `Selecione até ${maxFlavors}`})
                     </span>
-                  </>
-                ) : null}
-              </div>
-              <p className="text-xs text-slate-400 mb-2"></p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[140px] overflow-y-auto pr-1">
-                {availableFlavors.map((flv) => {
-                  const isSelected = selectedFlavors.includes(flv.id);
-                  const isMaxReached = selectedFlavors.length >= maxFlavors;
-                  const isFixed = flv.id === 'acai-puro-organico' && (base === 'acai' || base === 'casadinho');
-                  return (
-                    <button
-                      key={flv.id}
-                      disabled={(!isSelected && isMaxReached) || isFixed}
-                      onClick={() => handleFlavorToggle(flv.id)}
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all relative ${
-                        isSelected
-                          ? 'border-rose-500 bg-rose-50/40 text-rose-900 font-medium'
-                          : 'border-slate-100 hover:border-slate-200 text-slate-700'
-                      } ${!isSelected && isMaxReached && !isFixed ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${
-                        isFixed ? 'bg-purple-50/40 border-purple-300 text-purple-950 cursor-default' : ''
-                      }`}
-                    >
-                      <div 
-                        className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
-                        style={{ background: flv.color }}
-                      />
-                      <span className="text-xs truncate font-semibold">
-                        {flv.name}
-                        {isFixed && (
-                          <span className="block text-[9px] text-purple-600 font-black tracking-normal leading-none mt-0.5">
-                            (Sabor Fixo)
-                          </span>
+                  </label>
+                  <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
+                    {selectedFlavors.length}/{maxFlavors}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mb-2"></p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                  {availableFlavors.map((flv) => {
+                    const isSelected = selectedFlavors.includes(flv.id);
+                    const isMaxReached = selectedFlavors.length >= maxFlavors;
+                    const isFixed = flv.id === 'acai-puro-organico' && (base === 'acai' || base === 'casadinho');
+                    return (
+                      <button
+                        key={flv.id}
+                        disabled={(!isSelected && isMaxReached) || isFixed}
+                        onClick={() => handleFlavorToggle(flv.id)}
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all relative ${
+                          isSelected
+                            ? 'border-rose-500 bg-rose-50/40 text-rose-900 font-medium'
+                            : 'border-slate-100 hover:border-slate-200 text-slate-700'
+                        } ${!isSelected && isMaxReached && !isFixed ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${
+                          isFixed ? 'bg-purple-50/40 border-purple-300 text-purple-950 cursor-default' : ''
+                        }`}
+                      >
+                        <div 
+                          className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
+                          style={{ background: flv.color }}
+                        />
+                        <span className="text-xs truncate font-semibold">
+                          {flv.name}
+                          {isFixed && (
+                            <span className="block text-[9px] text-purple-600 font-black tracking-normal leading-none mt-0.5">
+                              (Sabor Fixo)
+                            </span>
+                          )}
+                        </span>
+                        {isSelected && (
+                          <div className={`absolute top-1 right-1 text-white rounded-full p-0.5 ${isFixed ? 'bg-purple-600' : 'bg-rose-500'}`}>
+                            <Check className="w-2.5 h-2.5" />
+                          </div>
                         )}
-                      </span>
-                      {isSelected && (
-                        <div className={`absolute top-1 right-1 text-white rounded-full p-0.5 ${isFixed ? 'bg-purple-600' : 'bg-rose-500'}`}>
-                          <Check className="w-2.5 h-2.5" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 4. Toppings Checklist (Tabs categorized) */}
-            <div>
-              {customizingItem?.sizeMode !== 'single' && (
+            {customizingItem?.sizeMode !== 'single' && (
+              <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
                 </label>
-              )}
-              
-              <div className="space-y-4">
-                {(Object.entries(toppingsByCategory) as [string, ToppingOption[]][]).map(([catName, list]) => {
-                  if (list.length === 0) return null;
-                  const catLabel = 
-                    catName === 'cortesia' ? 'Cortesia Inclusa (Grátis!)' :
-                    catName === 'creme' ? 'Cremes & Trufas' :
-                    catName === 'fruta' ? 'Frutas Frescas' :
-                    catName === 'crocante' ? 'Crocantes & Chocolates' : 'Caldas & Coberturas';
+                
+                <div className="space-y-4">
+                  {(Object.entries(toppingsByCategory) as [string, ToppingOption[]][]).map(([catName, list]) => {
+                    if (list.length === 0) return null;
+                    const catLabel = 
+                      catName === 'cortesia' ? 'Cortesia Inclusa (Grátis!)' :
+                      catName === 'creme' ? 'Cremes & Trufas' :
+                      catName === 'fruta' ? 'Frutas Frescas' :
+                      catName === 'crocante' ? 'Crocantes & Chocolates' : 'Caldas & Coberturas';
 
-                  return (
-                    <div key={catName} className="space-y-1.5">
-                      <h5 className={`text-xs font-bold uppercase tracking-wider ${catName === 'cortesia' ? 'text-emerald-600' : 'text-slate-400'}`}>{catLabel}</h5>
-                      <div className="grid grid-cols-2 gap-2">
-                        {list.map((topping) => {
-                          const isSelected = selectedToppings.includes(topping.id);
-                          return (
-                            <button
-                              key={topping.id}
-                              onClick={() => handleToppingToggle(topping.id)}
-                              className={`flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
-                                isSelected
-                                  ? topping.price === 0
-                                    ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 font-bold'
-                                    : 'border-amber-500 bg-amber-50/50 text-amber-900 font-bold'
-                                  : 'border-slate-100 hover:border-slate-200 text-slate-600'
-                              }`}
-                            >
-                              <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                                <span className={`w-2 h-2 rounded-full ${isSelected ? topping.price === 0 ? 'bg-emerald-500' : 'bg-amber-500' : 'bg-slate-200'}`} />
-                                <span className="text-xs truncate">{topping.name}</span>
-                              </div>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0 ${topping.price === 0 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-neutral-100 text-neutral-600'}`}>
-                                {topping.price === 0 ? 'GRÁTIS' : `+ R$ ${topping.price.toFixed(2)}`}
-                              </span>
-                            </button>
-                          );
-                        })}
+                    return (
+                      <div key={catName} className="space-y-1.5">
+                        <h5 className={`text-xs font-bold uppercase tracking-wider ${catName === 'cortesia' ? 'text-emerald-600' : 'text-slate-400'}`}>{catLabel}</h5>
+                        <div className="grid grid-cols-2 gap-2">
+                          {list.map((topping) => {
+                            const isSelected = selectedToppings.includes(topping.id);
+                            return (
+                              <button
+                                key={topping.id}
+                                onClick={() => handleToppingToggle(topping.id)}
+                                className={`flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
+                                  isSelected
+                                    ? topping.price === 0
+                                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 font-bold'
+                                      : 'border-amber-500 bg-amber-50/50 text-amber-900 font-bold'
+                                    : 'border-slate-100 hover:border-slate-200 text-slate-600'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                                  <span className={`w-2 h-2 rounded-full ${isSelected ? topping.price === 0 ? 'bg-emerald-500' : 'bg-amber-500' : 'bg-slate-200'}`} />
+                                  <span className="text-xs truncate">{topping.name}</span>
+                                </div>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0 ${topping.price === 0 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-neutral-100 text-neutral-600'}`}>
+                                  {topping.price === 0 ? 'GRÁTIS' : `+ R$ ${topping.price.toFixed(2)}`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {customizingItem?.sizeMode === 'single' && (
+              <div className="bg-amber-50/60 border border-amber-200/50 rounded-2xl p-4 flex gap-3 text-amber-900">
+                <span className="text-xl">✨</span>
+                <div>
+                  <h4 className="font-extrabold text-xs uppercase tracking-wide">Produto Tamanho Único & Completo</h4>
+                  <p className="text-[11px] font-medium leading-relaxed mt-0.5 opacity-90">
+                    Este produto já é preparado de forma especial com todos os ingredientes descritos! 
+                    Não é necessário selecionar sabores ou adicionais separados. Se quiser solicitar alguma 
+                    modificação, remover algum ingrediente ou fazer observações, use o campo de texto abaixo.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Extra Brownie Products (Only if isLinhaBrownie) */}
             {isLinhaBrownie && (
@@ -757,15 +784,15 @@ export default function CupCustomizer({
             </button>
             <button
               onClick={handleAddCupToCart}
-              disabled={base !== 'acai' && selectedFlavors.length === 0}
+              disabled={customizingItem?.sizeMode !== 'single' && base !== 'acai' && selectedFlavors.length === 0}
               className={`flex-2 py-3 px-6 rounded-2xl font-bold shadow-md transition-all flex items-center justify-center gap-2 text-sm text-white ${
-                base === 'acai' || selectedFlavors.length > 0
-                  ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-100'
+                customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0
+                  ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-100 cursor-pointer'
                   : 'bg-neutral-300 cursor-not-allowed shadow-none'
               }`}
             >
               <ShoppingBag className="w-4 h-4" />
-              {base === 'acai' || selectedFlavors.length > 0 ? 'Adicionar ao Carrinho' : 'Selecione ao menos 1 Sabor'}
+              {customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0 ? 'Adicionar ao Carrinho' : 'Selecione ao menos 1 Sabor'}
             </button>
           </div>
         </div>
