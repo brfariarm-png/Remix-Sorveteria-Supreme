@@ -136,6 +136,9 @@ export default function AdminPDV({
 
   // Add standard product directly to PDV cart
   const handleAddDirect = (item: MenuItem) => {
+    const finalPrice = item.sizeMode === 'single' ? (item.singleSizePrice ?? item.price) : item.price;
+    const finalItem = { ...item, price: finalPrice };
+
     setPdvCart((prev) => {
       const existing = prev.find((x) => x.menuItem.id === item.id && !x.isCustomCup);
       if (existing) {
@@ -147,7 +150,7 @@ export default function AdminPDV({
         ...prev,
         {
           id: `pdv-item-${Date.now()}-${item.id}`,
-          menuItem: item,
+          menuItem: finalItem,
           quantity: 1,
         }
       ];
@@ -504,7 +507,7 @@ export default function AdminPDV({
                       </div>
 
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                        {p.customizable ? (
+                        {p.customizable && p.sizeMode !== 'single' ? (
                           <button
                             onClick={() => handleStartCustomizing(p)}
                             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
@@ -512,12 +515,23 @@ export default function AdminPDV({
                             <span>⚙️ Customizar Taça</span>
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleAddDirect(p)}
-                            className="w-full bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-100"
-                          >
-                            <span>➕ Vender Direto</span>
-                          </button>
+                          <div className="w-full flex gap-1">
+                            <button
+                              onClick={() => handleAddDirect(p)}
+                              className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-100"
+                            >
+                              <span>➕ Adicionar Direto</span>
+                            </button>
+                            {p.customizable && (
+                              <button
+                                onClick={() => handleStartCustomizing(p)}
+                                title="Observações ou customizações rápidas"
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 px-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                              >
+                                <span>⚙️</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

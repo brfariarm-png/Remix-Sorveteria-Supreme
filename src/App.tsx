@@ -567,10 +567,11 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // 2c. Seed default menu items if db is empty (for any authenticated preview/owner session)
+  // 2c. Seed default menu items, toppings, and flavors if db is empty, and sync any changes from code to Firestore
   useEffect(() => {
-    const seedMenuIfEmpty = async () => {
+    const seedAndSyncDatabase = async () => {
       try {
+        // 1. Menu Items Seeding/Syncing
         const snap = await getDocs(collection(db, 'menu_items'));
         if (snap.empty) {
           console.log('Database menu_items is empty. Seeding default items...');
@@ -586,13 +587,91 @@ export default function App() {
               popular: !!item.popular,
               customizable: !!item.customizable,
               tags: item.tags || null,
-              index: idx
+              index: idx,
+              sizeMode: (item as any).sizeMode || null,
+              singleSizeLabel: (item as any).singleSizeLabel || null,
+              singleSizePrice: (item as any).singleSizePrice || null,
+              customSizes: (item as any).customSizes || null,
+              allowedToppings: (item as any).allowedToppings || null,
+              allowedFlavors: (item as any).allowedFlavors || null,
             });
           });
           await batch.commit();
           console.log('Cohesive seeding of dynamic menu items completed!');
+        } else {
+          // Sync any updates from local MENU_ITEMS in src/data.ts to Firestore if they differ
+          const firestoreItems: Record<string, MenuItem> = {};
+          snap.forEach((docSnap) => {
+            firestoreItems[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as MenuItem;
+          });
+
+          const batch = writeBatch(db);
+          let hasUpdates = false;
+
+          MENU_ITEMS.forEach((localItem) => {
+            const remoteItem = firestoreItems[localItem.id];
+            if (!remoteItem) {
+              // Add missing item from code
+              const itemRef = doc(db, 'menu_items', localItem.id);
+              batch.set(itemRef, {
+                name: localItem.name,
+                description: localItem.description,
+                price: localItem.price,
+                category: localItem.category,
+                image: localItem.image,
+                popular: !!localItem.popular,
+                customizable: !!localItem.customizable,
+                tags: localItem.tags || null,
+                index: (localItem as any).index ?? 999,
+                sizeMode: (localItem as any).sizeMode || null,
+                singleSizeLabel: (localItem as any).singleSizeLabel || null,
+                singleSizePrice: (localItem as any).singleSizePrice || null,
+                customSizes: (localItem as any).customSizes || null,
+                allowedToppings: (localItem as any).allowedToppings || null,
+                allowedFlavors: (localItem as any).allowedFlavors || null,
+              });
+              hasUpdates = true;
+            } else {
+              // Check if important properties differ (name, price, customizable, sizeMode, etc.)
+              const nameDiff = localItem.name !== remoteItem.name;
+              const priceDiff = localItem.price !== remoteItem.price;
+              const descDiff = localItem.description !== remoteItem.description;
+              const customDiff = localItem.customizable !== remoteItem.customizable;
+              const catDiff = localItem.category !== remoteItem.category;
+              const imgDiff = localItem.image !== remoteItem.image;
+              const sizeModeDiff = (localItem as any).sizeMode !== (remoteItem as any).sizeMode;
+              const singleLabelDiff = (localItem as any).singleSizeLabel !== (remoteItem as any).singleSizeLabel;
+              const singlePriceDiff = (localItem as any).singleSizePrice !== (remoteItem as any).singleSizePrice;
+
+              if (nameDiff || priceDiff || descDiff || customDiff || catDiff || imgDiff || sizeModeDiff || singleLabelDiff || singlePriceDiff) {
+                const itemRef = doc(db, 'menu_items', localItem.id);
+                batch.update(itemRef, {
+                  name: localItem.name,
+                  price: localItem.price,
+                  description: localItem.description,
+                  category: localItem.category,
+                  image: localItem.image,
+                  customizable: !!localItem.customizable,
+                  sizeMode: (localItem as any).sizeMode || null,
+                  singleSizeLabel: (localItem as any).singleSizeLabel || null,
+                  singleSizePrice: (localItem as any).singleSizePrice || null,
+                  customSizes: (localItem as any).customSizes || null,
+                  allowedToppings: (localItem as any).allowedToppings || null,
+                  allowedFlavors: (localItem as any).allowedFlavors || null,
+                });
+                hasUpdates = true;
+              }
+            }
+          });
+
+          if (hasUpdates) {
+            console.log('Syncing code updates to Firestore menu_items...');
+            await batch.commit();
+            console.log('Code updates successfully synced to Firestore!');
+          }
         }
 
+        // 2. Flavors Seeding
         const fSnap = await getDocs(collection(db, 'flavor_options'));
         if (fSnap.empty) {
           console.log('Database flavor_options is empty. Seeding defaults...');
@@ -611,6 +690,7 @@ export default function App() {
           await batch.commit();
         }
 
+        // 3. Toppings Seeding
         const tSnap = await getDocs(collection(db, 'topping_options'));
         if (tSnap.empty) {
           console.log('Database topping_options is empty. Seeding defaults...');
@@ -627,11 +707,12 @@ export default function App() {
           await batch.commit();
         }
       } catch (e) {
-        console.error("Error seeding default items/options:", e);
+        console.error("Error seeding or syncing database:", e);
       }
     };
+
     if (isAdmin) {
-      seedMenuIfEmpty();
+      seedAndSyncDatabase();
     }
   }, [isAdmin]);
 
