@@ -615,7 +615,8 @@ export default function App() {
           await batch.commit();
           console.log('Cohesive seeding of dynamic menu items completed!');
         } else {
-          // Sync any updates from local MENU_ITEMS in src/data.ts to Firestore if they differ
+          // Do NOT overwrite existing remote items so that administrator edits (like changing photos or prices) remain perfectly saved.
+          // Only add local MENU_ITEMS that are completely missing from the Firestore database.
           const firestoreItems: Record<string, MenuItem> = {};
           snap.forEach((docSnap) => {
             firestoreItems[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as MenuItem;
@@ -624,45 +625,35 @@ export default function App() {
           const batch = writeBatch(db);
           let hasUpdates = false;
 
-          MENU_ITEMS.forEach((localItem) => {
+          MENU_ITEMS.forEach((localItem, idx) => {
             const remoteItem = firestoreItems[localItem.id];
-            if (remoteItem) {
-              // Check if important properties differ (name, price, customizable, sizeMode, etc.)
-              const nameDiff = localItem.name !== remoteItem.name;
-              const priceDiff = localItem.price !== remoteItem.price;
-              const descDiff = localItem.description !== remoteItem.description;
-              const customDiff = localItem.customizable !== remoteItem.customizable;
-              const catDiff = localItem.category !== remoteItem.category;
-              const imgDiff = localItem.image !== remoteItem.image;
-              const sizeModeDiff = (localItem as any).sizeMode !== (remoteItem as any).sizeMode;
-              const singleLabelDiff = (localItem as any).singleSizeLabel !== (remoteItem as any).singleSizeLabel;
-              const singlePriceDiff = (localItem as any).singleSizePrice !== (remoteItem as any).singleSizePrice;
-
-              if (nameDiff || priceDiff || descDiff || customDiff || catDiff || imgDiff || sizeModeDiff || singleLabelDiff || singlePriceDiff) {
-                const itemRef = doc(db, 'menu_items', localItem.id);
-                batch.update(itemRef, {
-                  name: localItem.name,
-                  price: localItem.price,
-                  description: localItem.description,
-                  category: localItem.category,
-                  image: localItem.image,
-                  customizable: !!localItem.customizable,
-                  sizeMode: (localItem as any).sizeMode || null,
-                  singleSizeLabel: (localItem as any).singleSizeLabel || null,
-                  singleSizePrice: (localItem as any).singleSizePrice || null,
-                  customSizes: (localItem as any).customSizes || null,
-                  allowedToppings: (localItem as any).allowedToppings || null,
-                  allowedFlavors: (localItem as any).allowedFlavors || null,
-                });
-                hasUpdates = true;
-              }
+            if (!remoteItem) {
+              const itemRef = doc(db, 'menu_items', localItem.id);
+              batch.set(itemRef, {
+                name: localItem.name,
+                description: localItem.description,
+                price: localItem.price,
+                category: localItem.category,
+                image: localItem.image,
+                popular: !!localItem.popular,
+                customizable: !!localItem.customizable,
+                tags: localItem.tags || null,
+                index: idx,
+                sizeMode: (localItem as any).sizeMode || null,
+                singleSizeLabel: (localItem as any).singleSizeLabel || null,
+                singleSizePrice: (localItem as any).singleSizePrice || null,
+                customSizes: (localItem as any).customSizes || null,
+                allowedToppings: (localItem as any).allowedToppings || null,
+                allowedFlavors: (localItem as any).allowedFlavors || null,
+              });
+              hasUpdates = true;
             }
           });
 
           if (hasUpdates) {
-            console.log('Syncing code updates to Firestore menu_items...');
+            console.log('Adding missing default menu items to Firestore...');
             await batch.commit();
-            console.log('Code updates successfully synced to Firestore!');
+            console.log('Missing items successfully synced to Firestore!');
           }
         }
 
