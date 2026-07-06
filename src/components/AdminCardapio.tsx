@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -123,7 +123,8 @@ export default function AdminCardapio({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState<string>('0.00');
-  const [category, setCategory] = useState<MenuItem['category']>('acai');
+  const [category, setCategory] = useState<string>('acai');
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isPopular, setIsPopular] = useState(false);
   const [isCustomizable, setIsCustomizable] = useState(false);
@@ -158,6 +159,35 @@ export default function AdminCardapio({
   const [toppingCategory, setToppingCategory] = useState<'calda' | 'fruta' | 'crocante' | 'creme'>('creme');
 
   const [savingFlvTop, setSavingFlvTop] = useState(false);
+
+  // Compute unique non-standard categories in database
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set(menuItems.map(item => item.category));
+    const standardValues = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo', 'custom'];
+    return Array.from(cats).filter(c => c && !standardValues.includes(c));
+  }, [menuItems]);
+
+  const adminFilterCategories = useMemo(() => {
+    const cats = new Set(menuItems.map(item => item.category));
+    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo'];
+    const list = [
+      { value: 'all', label: 'Todos' },
+      { value: 'acai', label: 'Açaí' },
+      { value: 'sorvete', label: 'Sorvete' },
+      { value: 'milkshake', label: 'Milkshake' },
+      { value: 'sundae', label: 'Sundae' },
+      { value: 'combo', label: 'Combos' }
+    ];
+    Array.from(cats).forEach(cat => {
+      if (cat && !standards.includes(cat)) {
+        list.push({
+          value: cat,
+          label: cat.charAt(0).toUpperCase() + cat.slice(1)
+        });
+      }
+    });
+    return list;
+  }, [menuItems]);
 
   const handleAddFlavor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,6 +288,7 @@ export default function AdminCardapio({
     setDescription('');
     setPrice('15.00');
     setCategory('acai');
+    setCustomCategoryInput('');
     setImageUrl(PRESET_IMAGES[0].url);
     setIsPopular(false);
     setIsCustomizable(true);
@@ -284,6 +315,7 @@ export default function AdminCardapio({
     setDescription(item.description);
     setPrice(String(item.price));
     setCategory(item.category);
+    setCustomCategoryInput('');
     setImageUrl(item.image);
     setIsPopular(!!item.popular);
     setIsCustomizable(!!item.customizable);
@@ -324,11 +356,17 @@ export default function AdminCardapio({
 
     const parsedId = editingItem ? editingItem.id : 'item-' + Date.now();
     
+    const finalCategory = category === 'custom' ? customCategoryInput.trim().toLowerCase() : category;
+    if (!finalCategory) {
+      setLoading(false);
+      return setErrorMsg('Por favor, escolha ou escreva uma categoria para o produto.');
+    }
+
     const payload: any = {
       name: name.trim(),
       description: description.trim(),
       price: parsedPrice,
-      category,
+      category: finalCategory,
       image: imageUrl.trim() || PRESET_IMAGES[0].url,
       popular: isPopular,
       customizable: isCustomizable,
@@ -1469,14 +1507,7 @@ export default function AdminCardapio({
 
             {/* Categories Bar */}
             <div className="flex bg-slate-200/50 p-1 rounded-xl overflow-x-auto gap-0.5 max-w-full">
-              {[
-                { value: 'all', label: 'Todos' },
-                { value: 'acai', label: 'Açaí' },
-                { value: 'sorvete', label: 'Sorvete' },
-                { value: 'milkshake', label: 'Milkshake' },
-                { value: 'sundae', label: 'Sundae' },
-                { value: 'combo', label: 'Combos' }
-              ].map((cat) => (
+              {adminFilterCategories.map((cat) => (
                 <button
                   key={cat.value}
                   onClick={() => setSelectedCategory(cat.value)}
@@ -1523,7 +1554,9 @@ export default function AdminCardapio({
                         {item.category === 'acai' ? '💜 Açaí' : 
                          item.category === 'sorvete' ? '🍧 Sorvete' :
                          item.category === 'milkshake' ? '🥤 Shake' : 
-                         item.category === 'sundae' ? '🍒 Sundae' : '📦 Combo'}
+                         item.category === 'sundae' ? '🍒 Sundae' : 
+                         item.category === 'combo' ? '📦 Combo' : 
+                         `📦 ${item.category.charAt(0).toUpperCase() + item.category.slice(1)}`}
                       </span>
                       {item.popular && (
                         <span className="bg-amber-500 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md flex items-center gap-0.5">
@@ -1645,7 +1678,12 @@ export default function AdminCardapio({
                   <label className="block text-[10px] font-black uppercase text-slate-450 tracking-wide">Categoria</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as MenuItem['category'])}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      if (e.target.value !== 'custom') {
+                        setCustomCategoryInput('');
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors cursor-pointer"
                   >
                     <option value="acai">💜 Açaí</option>
@@ -1653,8 +1691,31 @@ export default function AdminCardapio({
                     <option value="milkshake">🥤 Milkshake</option>
                     <option value="sundae">🍒 Sundae</option>
                     <option value="combo">📦 Combo / Especial</option>
+                    
+                    {/* Render any custom categories present in the database */}
+                    {uniqueCategories.map(cat => (
+                      <option key={cat} value={cat}>
+                        📦 {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
+                    
+                    <option value="custom">✨ Outra Categoria (Criar Nova)...</option>
                   </select>
                 </div>
+
+                {category === 'custom' && (
+                  <div className="space-y-1 mt-2">
+                    <label className="block text-[10px] font-black uppercase text-rose-500 tracking-wide">Escreva o Nome da Nova Categoria</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Bebidas, Sobremesas, Adicionais"
+                      value={customCategoryInput}
+                      onChange={(e) => setCustomCategoryInput(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-rose-200 rounded-xl font-bold text-slate-705 placeholder-slate-400 focus:outline-hidden focus:border-rose-450 transition-colors"
+                    />
+                  </div>
+                )}
 
                 {/* Description */}
                 <div className="space-y-1">

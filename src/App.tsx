@@ -773,7 +773,7 @@ export default function App() {
     return TOPPING_OPTIONS;
   });
 
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'acai' | 'sorvete' | 'milkshake' | 'sundae'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Cart state
@@ -1598,6 +1598,31 @@ export default function App() {
     });
   }, [menuItems, selectedCategory, searchQuery]);
 
+  // Dynamically compute the client's navigation category pills
+  const clientFilterCategories = useMemo(() => {
+    const cats = new Set(menuItems.map(item => item.category));
+    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo'];
+    const list = [
+      { id: 'all', label: 'Tudo', desc: 'Os mais queridos' },
+      { id: 'acai', label: 'Açaís', desc: 'Combinações divinas' },
+      { id: 'sorvete', label: 'Sorvetes', desc: 'Massa artesanal fina' },
+      { id: 'milkshake', label: 'Milkshakes', desc: 'Batidos e cremosos' },
+      { id: 'sundae', label: 'Taças & Sundaes', desc: 'Sobremesas de colher' },
+      { id: 'combo', label: 'Combos & Promos', desc: 'Melhores combinados' }
+    ];
+    // Add any non-standard ones that aren't already included
+    Array.from(cats).forEach(cat => {
+      if (cat && !standards.includes(cat)) {
+        list.push({
+          id: cat,
+          label: cat.charAt(0).toUpperCase() + cat.slice(1),
+          desc: 'Preparados especiais da casa'
+        });
+      }
+    });
+    return list;
+  }, [menuItems]);
+
   // Handle Checkout finish & saving order
   const handlePlaceOrder = async (details: CheckoutDetails) => {
     const orderId = `ord-${Date.now()}`;
@@ -2135,16 +2160,10 @@ export default function App() {
                   </div>
                   
                   <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
-                    {[
-                      { id: 'all', label: 'Tudo', desc: 'Os mais queridos' },
-                      { id: 'acai', label: 'Açaís', desc: 'Combinações divinas' },
-                      { id: 'sorvete', label: 'Sorvetes', desc: 'Massa artesanal fina' },
-                      { id: 'milkshake', label: 'Milkshakes', desc: 'Batidos e cremosos' },
-                      { id: 'sundae', label: 'Taças & Sundaes', desc: 'Sobremesas de colher' },
-                    ].map((cat) => (
+                    {clientFilterCategories.map((cat) => (
                       <button
                         key={cat.id}
-                        onClick={() => setSelectedCategory(cat.id as any)}
+                        onClick={() => setSelectedCategory(cat.id)}
                         className={`text-left p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex-shrink-0 lg:flex-shrink w-auto ${
                           selectedCategory === cat.id
                             ? 'bg-rose-50 border-rose-200 text-rose-700 font-extrabold shadow-xs'

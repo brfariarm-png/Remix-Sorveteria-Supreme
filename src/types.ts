@@ -8,7 +8,7 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
-  category: 'acai' | 'sorvete' | 'milkshake' | 'sundae' | 'combo';
+  category: string;
   image: string;
   tags?: string[];
   popular?: boolean;

@@ -38,7 +38,7 @@ export default function AdminPDV({
   // POS Cart State
   const [pdvCart, setPdvCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'acai' | 'sorvete' | 'milkshake' | 'sundae'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Customer Details for Checkout
   const [customerName, setCustomerName] = useState('Cliente Balcão');
@@ -304,13 +304,29 @@ export default function AdminPDV({
   };
 
   // POS layout components
-  const categoryTabs = [
-    { id: 'all', label: 'Todos 🌟' },
-    { id: 'acai', label: 'Açaí 🍇' },
-    { id: 'sorvete', label: 'Sorvete 🍦' },
-    { id: 'milkshake', label: 'Batidos 🥤' },
-    { id: 'sundae', label: 'Taças 🍧' }
-  ] as const;
+  const categoryTabs = useMemo(() => {
+    const list = menuItems && menuItems.length > 0 ? menuItems : MENU_ITEMS;
+    const cats = new Set(list.map(item => item.category));
+    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo'];
+    const tabs = [
+      { id: 'all', label: 'Todos 🌟' },
+      { id: 'acai', label: 'Açaí 🍇' },
+      { id: 'sorvete', label: 'Sorvete 🍦' },
+      { id: 'milkshake', label: 'Batidos 🥤' },
+      { id: 'sundae', label: 'Taças 🍧' },
+      { id: 'combo', label: 'Combos 📦' }
+    ];
+    // Add any non-standard ones that aren't already included
+    Array.from(cats).forEach(cat => {
+      if (cat && !standards.includes(cat)) {
+        tabs.push({
+          id: cat,
+          label: `${cat.charAt(0).toUpperCase() + cat.slice(1)} 📦`
+        });
+      }
+    });
+    return tabs;
+  }, [menuItems]);
 
   // The Immersive Core structure
   const mainLayout = (
