@@ -610,28 +610,7 @@ export default function App() {
 
           MENU_ITEMS.forEach((localItem) => {
             const remoteItem = firestoreItems[localItem.id];
-            if (!remoteItem) {
-              // Add missing item from code
-              const itemRef = doc(db, 'menu_items', localItem.id);
-              batch.set(itemRef, {
-                name: localItem.name,
-                description: localItem.description,
-                price: localItem.price,
-                category: localItem.category,
-                image: localItem.image,
-                popular: !!localItem.popular,
-                customizable: !!localItem.customizable,
-                tags: localItem.tags || null,
-                index: (localItem as any).index ?? 999,
-                sizeMode: (localItem as any).sizeMode || null,
-                singleSizeLabel: (localItem as any).singleSizeLabel || null,
-                singleSizePrice: (localItem as any).singleSizePrice || null,
-                customSizes: (localItem as any).customSizes || null,
-                allowedToppings: (localItem as any).allowedToppings || null,
-                allowedFlavors: (localItem as any).allowedFlavors || null,
-              });
-              hasUpdates = true;
-            } else {
+            if (remoteItem) {
               // Check if important properties differ (name, price, customizable, sizeMode, etc.)
               const nameDiff = localItem.name !== remoteItem.name;
               const priceDiff = localItem.price !== remoteItem.price;
