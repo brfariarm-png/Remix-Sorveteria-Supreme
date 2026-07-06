@@ -273,6 +273,14 @@ export default function App() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'share' | 'general' | 'payments' | 'timing' | 'delivery' | 'printer' | 'advanced'>('share');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [showAdminSection, setShowAdminSection] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthModalOpen) {
+      setShowAdminSection(false);
+    }
+  }, [isAuthModalOpen]);
+
   const [authError, setAuthError] = useState<string | null>(null);
   const [showShareQrModal, setShowShareQrModal] = useState(false);
   const [isCustomInstallModalOpen, setIsCustomInstallModalOpen] = useState(false);
@@ -3794,7 +3802,11 @@ E-mail: ${storeSettings.email}`;
               {/* Header */}
               <div className="p-5 border-b border-rose-50 flex justify-between items-center bg-rose-50/20">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-rose-550/10 flex items-center justify-center text-rose-500">
+                  <div 
+                    onClick={() => setShowAdminSection(prev => !prev)}
+                    className="w-8 h-8 rounded-full bg-rose-550/10 flex items-center justify-center text-rose-500 cursor-pointer select-none"
+                    title="Acesso Administrador"
+                  >
                     🍧
                   </div>
                   <div>
@@ -3832,38 +3844,40 @@ E-mail: ${storeSettings.email}`;
                   </button>
                 </div>
 
-                {/* Administrative Passcode bypass */}
-                <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-[10.5px] font-black text-amber-600 uppercase tracking-widest text-left flex items-center gap-1">
-                    👑 Acesso do Administrador
-                  </h4>
-                  <div className="space-y-1.5">
-                    <input
-                      type="password"
-                      placeholder="Digite a senha de administrador"
-                      value={adminPasscode}
-                      onChange={(e) => {
-                        setAdminPasscode(e.target.value);
-                        setAdminPasscodeError('');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleAdminPasscodeLogin();
-                        }
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-rose-300 focus:outline-none text-xs text-slate-800"
-                    />
-                    {adminPasscodeError && (
-                      <p className="text-[10px] text-rose-500 font-bold text-left">{adminPasscodeError}</p>
-                    )}
-                    <button
-                      onClick={handleAdminPasscodeLogin}
-                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition-all cursor-pointer shadow-sm"
-                    >
-                      Acessar Painel Master
-                    </button>
+                {/* Administrative Passcode bypass (hidden unless toggled via header icon) */}
+                {showAdminSection && (
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <h4 className="text-[10.5px] font-black text-amber-600 uppercase tracking-widest text-left flex items-center gap-1">
+                      👑 Acesso do Administrador
+                    </h4>
+                    <div className="space-y-1.5">
+                      <input
+                        type="password"
+                        placeholder="Digite a senha de administrador"
+                        value={adminPasscode}
+                        onChange={(e) => {
+                          setAdminPasscode(e.target.value);
+                          setAdminPasscodeError('');
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAdminPasscodeLogin();
+                          }
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-rose-300 focus:outline-none text-xs text-slate-800"
+                      />
+                      {adminPasscodeError && (
+                        <p className="text-[10px] text-rose-500 font-bold text-left">{adminPasscodeError}</p>
+                      )}
+                      <button
+                        onClick={handleAdminPasscodeLogin}
+                        className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition-all cursor-pointer shadow-sm"
+                      >
+                        Acessar Painel Master
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Guest Account option */}
                 <div className="pt-2 border-t border-slate-100 space-y-2">
@@ -3884,28 +3898,30 @@ E-mail: ${storeSettings.email}`;
                   </p>
                 </div>
 
-                {/* Administrator / Owner troubleshooting instructions info */}
-                <div className="pt-3.5 border-t border-slate-100 space-y-2">
-                  <h4 className="text-[11px] font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5 text-left">
-                    <ShieldAlert className="w-3.5 h-3.5" /> Se os logins falharem:
-                  </h4>
-                  <div className="bg-amber-50/50 border border-amber-200/40 p-3.5 rounded-2xl space-y-2 text-[10px] text-slate-500 leading-normal font-normal text-left">
-                    <p>
-                      Se você é o proprietário do app e o login falhar, certifique-se de realizar estas configurações no seu Firebase Console:
-                    </p>
-                    <ol className="list-decimal pl-4 space-y-1">
-                      <li>
-                        <strong>Ativar Provedores:</strong> Em <em>Authentication</em> &gt; <em>Sign-in method</em>, ative o login do <strong>Google</strong> e o login <strong>Anônimo</strong>.
-                      </li>
-                      <li>
-                        <strong>Autorizar Domínios de Teste:</strong> Na seção de domínios autorizados, adicione o endereço de teste atual:
-                        <div className="mt-1 font-mono font-bold text-slate-800 bg-white p-1.5 rounded-lg border border-amber-200 select-all text-[9.5px]">
-                          {window.location.hostname}
-                        </div>
-                      </li>
-                    </ol>
+                {/* Administrator / Owner troubleshooting instructions info (hidden unless toggled via header icon) */}
+                {showAdminSection && (
+                  <div className="pt-3.5 border-t border-slate-100 space-y-2">
+                    <h4 className="text-[11px] font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5 text-left">
+                      <ShieldAlert className="w-3.5 h-3.5" /> Se os logins falharem:
+                    </h4>
+                    <div className="bg-amber-50/50 border border-amber-200/40 p-3.5 rounded-2xl space-y-2 text-[10px] text-slate-500 leading-normal font-normal text-left">
+                      <p>
+                        Se você é o proprietário do app e o login falhar, certifique-se de realizar estas configurações no seu Firebase Console:
+                      </p>
+                      <ol className="list-decimal pl-4 space-y-1">
+                        <li>
+                          <strong>Ativar Provedores:</strong> Em <em>Authentication</em> &gt; <em>Sign-in method</em>, ative o login do <strong>Google</strong> e o login <strong>Anônimo</strong>.
+                        </li>
+                        <li>
+                          <strong>Autorizar Domínios de Teste:</strong> Na seção de domínios autorizados, adicione o endereço de teste atual:
+                          <div className="mt-1 font-mono font-bold text-slate-800 bg-white p-1.5 rounded-lg border border-amber-200 select-all text-[9.5px]">
+                            {window.location.hostname}
+                          </div>
+                        </li>
+                      </ol>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Footer */}
