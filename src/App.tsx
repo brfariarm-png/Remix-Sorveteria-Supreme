@@ -277,6 +277,14 @@ export default function App() {
   const [showShareQrModal, setShowShareQrModal] = useState(false);
   const [isCustomInstallModalOpen, setIsCustomInstallModalOpen] = useState(false);
 
+  // Custom confirm state to avoid blocked window.confirm inside iframe
+  const [appConfirmModal, setAppConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
+
   const isDevUrl = useMemo(() => {
     return window.location.hostname.includes('ais-dev-') || 
            window.location.hostname.includes('ais-pre-') || 
@@ -4791,29 +4799,35 @@ E-mail: ${storeSettings.email}`;
                         </p>
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (confirm("Deseja realmente limpar todos os dados em cache e recarregar o aplicativo? Isso recarregará o carrinho de compras atual.")) {
-                              try {
-                                if ('serviceWorker' in navigator) {
-                                  const registrations = await navigator.serviceWorker.getRegistrations();
-                                  for (const registration of registrations) {
-                                    await registration.unregister();
+                          onClick={() => {
+                            setAppConfirmModal({
+                              show: true,
+                              title: 'Limpar Cache',
+                              message: 'Deseja realmente limpar todos os dados em cache e recarregar o aplicativo? Isso recarregará o carrinho de compras atual.',
+                              onConfirm: async () => {
+                                setAppConfirmModal(null);
+                                try {
+                                  if ('serviceWorker' in navigator) {
+                                    const registrations = await navigator.serviceWorker.getRegistrations();
+                                    for (const registration of registrations) {
+                                      await registration.unregister();
+                                    }
                                   }
-                                }
-                                if ('caches' in window) {
-                                  const keys = await caches.keys();
-                                  for (const key of keys) {
-                                    await caches.delete(key);
+                                  if ('caches' in window) {
+                                    const keys = await caches.keys();
+                                    for (const key of keys) {
+                                      await caches.delete(key);
+                                    }
                                   }
+                                  localStorage.removeItem('supreme_store_settings');
+                                  localStorage.removeItem('supreme_cart');
+                                  localStorage.removeItem('supreme_orders');
+                                  window.location.href = window.location.origin + '?nocache=' + Date.now();
+                                } catch (e) {
+                                  window.location.reload();
                                 }
-                                localStorage.removeItem('supreme_store_settings');
-                                localStorage.removeItem('supreme_cart');
-                                localStorage.removeItem('supreme_orders');
-                                window.location.href = window.location.origin + '?nocache=' + Date.now();
-                              } catch (e) {
-                                window.location.reload();
                               }
-                            }
+                            });
                           }}
                           className="w-full py-2.5 bg-amber-550 hover:bg-amber-600 text-slate-950 font-black uppercase text-[9px] tracking-widest rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer mt-1"
                         >
@@ -4829,41 +4843,47 @@ E-mail: ${storeSettings.email}`;
                         </p>
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (window.confirm("Deseja redefinir as configurações para os dados originais?")) {
-                              const defaults = {
-                                ...STORE_CONFIG,
-                                openTime: "11:00",
-                                closeTime: "23:00",
-                                statusOverride: "auto" as "auto" | "open" | "closed",
-                                printerPaperWidth: "80mm" as "58mm" | "80mm",
-                                printerNumCopies: 1,
-                                printerFontSize: 12,
-                                printerFontType: "monospace" as "monospace" | "sans-serif" | "serif",
-                                printerShowAddress: true,
-                                printerHeaderMessage: "Comprovante de Pedido",
-                                printerFooterMessage: "Muito obrigado pela preferência!",
-                                pixKey: 'contato@sorveteriasupreme.com.br',
-                                pixReceiverName: 'Sorveteria Gourmet Supreme',
-                                pixReceiverCity: 'Monte Mor',
-                                pixKeyType: 'email',
-                                paymentPixEnabled: true,
-                                paymentCardEnabled: true,
-                                paymentCashDeliveryEnabled: true,
-                                paymentCardDeliveryEnabled: true,
-                                deliveryFees: [
-                                  { neighborhood: 'Centro', fee: 5.00 },
-                                  { neighborhood: 'Jardim Alvorada', fee: 6.00 },
-                                  { neighborhood: 'Jardim Paulista', fee: 7.00 },
-                                  { neighborhood: 'Parque Indaiá', fee: 8.00 },
-                                  { neighborhood: 'Jardim São Clemente', fee: 7.00 },
-                                  { neighborhood: 'Jardim Moreira', fee: 6.50 },
-                                  { neighborhood: 'Jardim Colina', fee: 6.00 }
-                                ]
-                              };
-                              setStoreSettings(defaults);
-                              await handleSaveStoreSettingsToFirestore(defaults);
-                            }
+                          onClick={() => {
+                            setAppConfirmModal({
+                              show: true,
+                              title: 'Redefinição de Fábrica',
+                              message: 'Deseja redefinir as configurações para os dados originais?',
+                              onConfirm: async () => {
+                                setAppConfirmModal(null);
+                                const defaults = {
+                                  ...STORE_CONFIG,
+                                  openTime: "11:00",
+                                  closeTime: "23:00",
+                                  statusOverride: "auto" as "auto" | "open" | "closed",
+                                  printerPaperWidth: "80mm" as "58mm" | "80mm",
+                                  printerNumCopies: 1,
+                                  printerFontSize: 12,
+                                  printerFontType: "monospace" as "monospace" | "sans-serif" | "serif",
+                                  printerShowAddress: true,
+                                  printerHeaderMessage: "Comprovante de Pedido",
+                                  printerFooterMessage: "Muito obrigado pela preferência!",
+                                  pixKey: 'contato@sorveteriasupreme.com.br',
+                                  pixReceiverName: 'Sorveteria Gourmet Supreme',
+                                  pixReceiverCity: 'Monte Mor',
+                                  pixKeyType: 'email',
+                                  paymentPixEnabled: true,
+                                  paymentCardEnabled: true,
+                                  paymentCashDeliveryEnabled: true,
+                                  paymentCardDeliveryEnabled: true,
+                                  deliveryFees: [
+                                    { neighborhood: 'Centro', fee: 5.00 },
+                                    { neighborhood: 'Jardim Alvorada', fee: 6.00 },
+                                    { neighborhood: 'Jardim Paulista', fee: 7.00 },
+                                    { neighborhood: 'Parque Indaiá', fee: 8.00 },
+                                    { neighborhood: 'Jardim São Clemente', fee: 7.00 },
+                                    { neighborhood: 'Jardim Moreira', fee: 6.50 },
+                                    { neighborhood: 'Jardim Colina', fee: 6.00 }
+                                  ]
+                                };
+                                setStoreSettings(defaults);
+                                await handleSaveStoreSettingsToFirestore(defaults);
+                              }
+                            });
                           }}
                           className="w-full py-2.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 font-extrabold uppercase text-[9px] tracking-widest rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
@@ -5197,6 +5217,49 @@ E-mail: ${storeSettings.email}`;
                   className="flex-1 py-3 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 active:scale-95 transition-all text-white text-[11px] font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-rose-100 text-center cursor-pointer flex items-center justify-center gap-1"
                 >
                   ✨ Adicionar Agora
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirm Modal */}
+      <AnimatePresence>
+        {appConfirmModal?.show && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 flex flex-col items-center text-center space-y-4"
+            >
+              <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-xl">
+                ⚠️
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                  {appConfirmModal.title}
+                </h3>
+                <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed">
+                  {appConfirmModal.message}
+                </p>
+              </div>
+              <div className="flex gap-2 w-full pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAppConfirmModal(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[10px] uppercase rounded-xl transition-colors cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => appConfirmModal.onConfirm()}
+                  className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md shadow-rose-100 transition-all cursor-pointer text-center"
+                >
+                  Confirmar
                 </button>
               </div>
             </motion.div>

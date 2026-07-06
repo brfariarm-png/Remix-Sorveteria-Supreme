@@ -56,6 +56,14 @@ export default function AdminPDV({
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [itemSpecificNotes, setItemSpecificNotes] = useState('');
 
+  // Custom confirm state to avoid blocked window.confirm inside iframe
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
   // PDV Customizer current selected price
   const pdvCustomizerPrice = useMemo(() => {
     if (!customizingItem) return 0;
@@ -561,10 +569,16 @@ export default function AdminPDV({
                 {pdvCart.length > 0 && (
                   <button
                     onClick={() => {
-                      if (confirm("Quer realmente resetar a venda ativa no caixa?")) {
-                        setPdvCart([]);
-                        setCashReceived('');
-                      }
+                      setConfirmModal({
+                        show: true,
+                        title: 'Resetar Venda',
+                        message: 'Quer realmente resetar a venda ativa no caixa?',
+                        onConfirm: () => {
+                          setPdvCart([]);
+                          setCashReceived('');
+                          setConfirmModal(null);
+                        }
+                      });
                     }}
                     className="p-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black rounded-lg text-[9px] uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
                   >
@@ -1106,8 +1120,43 @@ export default function AdminPDV({
         </div>
       )}
 
-    </div>
-  );
+        {/* Custom Confirm Modal */}
+        {confirmModal?.show && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-xl">
+                ⚠️
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                  {confirmModal.title}
+                </h3>
+                <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed">
+                  {confirmModal.message}
+                </p>
+              </div>
+              <div className="flex gap-2 w-full pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[10px] uppercase rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmModal.onConfirm()}
+                  className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md shadow-rose-100 transition-all cursor-pointer"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
 
   // If Fullscreen is true, we render a fixed overlay that completely covers the screen.
   // This provides immediate visual full screen, preventing leakage of admin sidebar or headers.

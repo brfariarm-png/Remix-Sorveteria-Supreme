@@ -148,6 +148,14 @@ export default function AdminCardapio({
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // State for Custom Confirmation Modal (to bypass blocked window.confirm in iframe)
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
+
   // States for Flavors and Toppings tab management
   const [flavorName, setFlavorName] = useState('');
   const [flavorColor, setFlavorColor] = useState('#e11d48'); // rose-600
@@ -217,19 +225,26 @@ export default function AdminCardapio({
   };
 
   const handleDeleteFlavor = async (id: string, nameFlv: string) => {
-    if (!window.confirm(`Tem certeza que deseja remover o sabor "${nameFlv}"?`)) return;
-    setSavingFlvTop(true);
-    try {
-      await deleteDoc(doc(db, 'flavor_options', id));
-      setSuccessMsg(`🗑️ Sabor "${nameFlv}" removido com sucesso!`);
-      setTimeout(() => setSuccessMsg(''), 2000);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg('Erro ao remover sabor');
-      setTimeout(() => setErrorMsg(''), 2500);
-    } finally {
-      setSavingFlvTop(false);
-    }
+    setConfirmModal({
+      show: true,
+      title: 'Excluir Sabor',
+      message: `Tem certeza que deseja remover o sabor "${nameFlv}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setSavingFlvTop(true);
+        try {
+          await deleteDoc(doc(db, 'flavor_options', id));
+          setSuccessMsg(`🗑️ Sabor "${nameFlv}" removido com sucesso!`);
+          setTimeout(() => setSuccessMsg(''), 2000);
+        } catch (err) {
+          console.error(err);
+          setErrorMsg('Erro ao remover sabor');
+          setTimeout(() => setErrorMsg(''), 2500);
+        } finally {
+          setSavingFlvTop(false);
+        }
+      }
+    });
   };
 
   const handleAddTopping = async (e: React.FormEvent) => {
@@ -259,19 +274,26 @@ export default function AdminCardapio({
   };
 
   const handleDeleteTopping = async (id: string, nameTop: string) => {
-    if (!window.confirm(`Tem certeza que deseja remover o adicional "${nameTop}"?`)) return;
-    setSavingFlvTop(true);
-    try {
-      await deleteDoc(doc(db, 'topping_options', id));
-      setSuccessMsg(`🗑️ Adicional "${nameTop}" removido com sucesso!`);
-      setTimeout(() => setSuccessMsg(''), 2000);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg('Erro ao remover adicional');
-      setTimeout(() => setErrorMsg(''), 2500);
-    } finally {
-      setSavingFlvTop(false);
-    }
+    setConfirmModal({
+      show: true,
+      title: 'Excluir Adicional',
+      message: `Tem certeza que deseja remover o adicional "${nameTop}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setSavingFlvTop(true);
+        try {
+          await deleteDoc(doc(db, 'topping_options', id));
+          setSuccessMsg(`🗑️ Adicional "${nameTop}" removido com sucesso!`);
+          setTimeout(() => setSuccessMsg(''), 2000);
+        } catch (err) {
+          console.error(err);
+          setErrorMsg('Erro ao remover adicional');
+          setTimeout(() => setErrorMsg(''), 2500);
+        } finally {
+          setSavingFlvTop(false);
+        }
+      }
+    });
   };
 
   // Preset images for convenience
@@ -462,27 +484,31 @@ export default function AdminCardapio({
   };
 
   const handleDelete = async (itemId: string, itemName: string) => {
-    if (!window.confirm(`Tem certeza absoluta de que deseja excluir o produto "${itemName}"? Esta operação é irreversível.`)) {
-      return;
-    }
+    setConfirmModal({
+      show: true,
+      title: 'Excluir Produto',
+      message: `Tem certeza absoluta de que deseja excluir o produto "${itemName}"? Esta operação é irreversível.`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setLoading(true);
+        setErrorMsg('');
+        setSuccessMsg('');
 
-    setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    try {
-      await deleteDoc(doc(db, 'menu_items', itemId));
-      setSuccessMsg('🗑️ Produto removido com sucesso!');
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg('Não foi possível remover o item.');
-      try {
-        handleFirestoreError(err, OperationType.DELETE, `menu_items/${itemId}`);
-      } catch (innerErr) {}
-    } finally {
-      setLoading(false);
-    }
+        try {
+          await deleteDoc(doc(db, 'menu_items', itemId));
+          setSuccessMsg('🗑️ Produto removido com sucesso!');
+          setTimeout(() => setSuccessMsg(''), 3000);
+        } catch (err) {
+          console.error(err);
+          setErrorMsg('Não foi possível remover o item.');
+          try {
+            handleFirestoreError(err, OperationType.DELETE, `menu_items/${itemId}`);
+          } catch (innerErr) {}
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -597,47 +623,52 @@ export default function AdminCardapio({
 
   // Re-order and save all items prioritised index in Firebase
   const handleResetToDefault = async () => {
-    if (!window.confirm('Deseja reinicializar o cardápio inteiro para os valores padrão originais? Quaisquer novos itens adicionados serão sobrescritas.')) {
-      return;
-    }
-    setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
+    setConfirmModal({
+      show: true,
+      title: 'Reinicializar Cardápio',
+      message: 'Deseja reinicializar o cardápio inteiro para os valores padrão originais? Quaisquer novos itens adicionados serão sobrescritas.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setLoading(true);
+        setErrorMsg('');
+        setSuccessMsg('');
 
-    try {
-      const batch = writeBatch(db);
-      
-      // 1. Delete all currently displayed items first
-      menuItems.forEach((item) => {
-        const docRef = doc(db, 'menu_items', item.id);
-        batch.delete(docRef);
-      });
+        try {
+          const batch = writeBatch(db);
+          
+          // 1. Delete all currently displayed items first
+          menuItems.forEach((item) => {
+            const docRef = doc(db, 'menu_items', item.id);
+            batch.delete(docRef);
+          });
 
-      // 2. Re-insert default items
-      MENU_ITEMS.forEach((item, idx) => {
-        const docRef = doc(db, 'menu_items', item.id);
-        batch.set(docRef, {
-          name: item.name,
-          description: item.description,
-          price: item.price,
-          category: item.category,
-          image: item.image,
-          popular: !!item.popular,
-          customizable: !!item.customizable,
-          tags: item.tags || [],
-          index: idx
-        });
-      });
+          // 2. Re-insert default items
+          MENU_ITEMS.forEach((item, idx) => {
+            const docRef = doc(db, 'menu_items', item.id);
+            batch.set(docRef, {
+              name: item.name,
+              description: item.description,
+              price: item.price,
+              category: item.category,
+              image: item.image,
+              popular: !!item.popular,
+              customizable: !!item.customizable,
+              tags: item.tags || [],
+              index: idx
+            });
+          });
 
-      await batch.commit();
-      setSuccessMsg('✅ Cardápio redefinido com sucesso para os dados padrão!');
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err: any) {
-      console.error('Failed to reset menu:', err);
-      setErrorMsg(`Falha ao restaurar dados padrões: ${err?.message || err}`);
-    } finally {
-      setLoading(false);
-    }
+          await batch.commit();
+          setSuccessMsg('✅ Cardápio redefinido com sucesso para os dados padrão!');
+          setTimeout(() => setSuccessMsg(''), 3000);
+        } catch (err: any) {
+          console.error('Failed to reset menu:', err);
+          setErrorMsg(`Falha ao restaurar dados padrões: ${err?.message || err}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const handleSaveCupPrices = async (e: React.FormEvent) => {
@@ -2209,6 +2240,49 @@ export default function AdminCardapio({
                 </button>
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirm Modal */}
+      <AnimatePresence>
+        {confirmModal?.show && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 flex flex-col items-center text-center space-y-4"
+            >
+              <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-xl">
+                ⚠️
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                  {confirmModal.title}
+                </h3>
+                <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed">
+                  {confirmModal.message}
+                </p>
+              </div>
+              <div className="flex gap-2 w-full pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[10px] uppercase rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmModal.onConfirm()}
+                  className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md shadow-rose-100 transition-all cursor-pointer"
+                >
+                  Confirmar
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
