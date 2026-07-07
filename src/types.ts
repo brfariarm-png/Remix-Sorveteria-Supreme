@@ -44,6 +44,7 @@ export interface CustomCupConfig {
   base: 'acai' | 'sorvete' | 'casadinho'; // casadinho = açaí + sorvete
   flavors: string[]; // flavor IDs
   toppings: string[]; // topping IDs
+  needSpoon?: boolean;
 }
 export const CUP_PRICES = {
   '300ml': 18,
@@ -60,6 +61,7 @@ export interface CartItem {
   customCupConfig?: CustomCupConfig;
   customCupPrice?: number;
   notes?: string;
+  needSpoon?: boolean;
 }
 
 export type OrderStatus = 'waiting' | 'preparing' | 'delivering' | 'completed';

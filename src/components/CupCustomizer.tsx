@@ -104,6 +104,7 @@ export default function CupCustomizer({
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [extraBrownieProducts, setExtraBrownieProducts] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
+  const [needSpoon, setNeedSpoon] = useState<boolean | null>(null);
 
   // Sizing mappings for visual display mapped to closest visual key
   const visualSize = (size === 'single' || !['300ml', '400ml', '500ml', '700ml'].includes(size)) ? '400ml' : size as '300ml' | '400ml' | '500ml' | '700ml';
@@ -330,6 +331,9 @@ export default function CupCustomizer({
       finalDesc += ` Outros: ${extraProductsString}.`;
     }
 
+    const spoonText = needSpoon ? 'Enviar Colher 🥄' : 'Sem Colher (Eco-friendly 🍃)';
+    finalDesc += ` Colher: ${spoonText}.`;
+
     const representationItem: MenuItem = {
       id: customizingItem ? `${customizingItem.id}-custom-${Date.now()}` : `custom-cup-${Date.now()}`,
       name: finalName,
@@ -345,6 +349,7 @@ export default function CupCustomizer({
       base,
       flavors: finalFlavors,
       toppings: selectedToppings,
+      needSpoon: needSpoon ?? false,
     };
 
     const cartItem: CartItem = {
@@ -355,6 +360,7 @@ export default function CupCustomizer({
       customCupConfig: config,
       customCupPrice: totalPrice,
       notes: notes.trim() || undefined,
+      needSpoon: needSpoon ?? false,
     };
 
     onAddToCart(cartItem);
@@ -781,6 +787,49 @@ export default function CupCustomizer({
               </div>
             )}
 
+            {/* Spoon Choice - Eco-friendly Mandate */}
+            <div className="bg-emerald-50/40 border border-emerald-200/50 rounded-2xl p-4 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <span className="text-xl">🍃</span>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-800">Opção Ecológica (Obrigatório)</h4>
+                  <p className="text-[10px] text-emerald-700/90 font-medium leading-relaxed">
+                    Pensando na preservação da natureza, ajudamos a reduzir o lixo plástico. Por favor, confirme se você precisa de colher descartável para este copo.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setNeedSpoon(true)}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer ${
+                    needSpoon === true
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold ring-2 ring-emerald-500/20'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-350 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-base">🥄</span>
+                  <span className="text-xs font-bold">Sim, preciso de colher</span>
+                  <span className="text-[9px] text-slate-500 font-medium">Enviar colher plástica</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNeedSpoon(false)}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer ${
+                    needSpoon === false
+                      ? 'border-emerald-600 bg-emerald-650 text-white font-bold ring-2 ring-emerald-600/20'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-350 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-base">🌳</span>
+                  <span className="text-xs font-bold">Não preciso de colher</span>
+                  <span className="text-[9px] opacity-90 font-medium">Ajudar o meio ambiente 🍃</span>
+                </button>
+              </div>
+            </div>
+
             {/* Notes Input */}
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Observações do Pedido</label>
@@ -803,15 +852,20 @@ export default function CupCustomizer({
             </button>
             <button
               onClick={handleAddCupToCart}
-              disabled={customizingItem?.sizeMode !== 'single' && base !== 'acai' && selectedFlavors.length === 0}
+              disabled={((customizingItem?.sizeMode !== 'single' && base !== 'acai' && selectedFlavors.length === 0) || needSpoon === null)}
               className={`flex-2 py-3 px-6 rounded-2xl font-bold shadow-md transition-all flex items-center justify-center gap-2 text-sm text-white ${
-                customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0
+                (customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0) && needSpoon !== null
                   ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-100 cursor-pointer'
                   : 'bg-neutral-300 cursor-not-allowed shadow-none'
               }`}
             >
               <ShoppingBag className="w-4 h-4" />
-              {customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0 ? 'Adicionar ao Carrinho' : 'Selecione ao menos 1 Sabor'}
+              {needSpoon === null 
+                ? 'Escolha se precisa de colher 🥄'
+                : (customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0 
+                  ? 'Adicionar ao Carrinho' 
+                  : 'Selecione ao menos 1 Sabor')
+              }
             </button>
           </div>
         </div>
