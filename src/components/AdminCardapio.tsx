@@ -1704,21 +1704,21 @@ export default function AdminCardapio({
                 
                 <div className="relative group overflow-hidden rounded-xl border border-slate-100">
                   <img
-                    src="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                    src="/assets/images/digital_menu_banner_1783440971538.jpg"
                     alt="Cardápio Digital Supremo"
                     className="w-full object-cover aspect-[16/9] hover:scale-102 transition-transform duration-300"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <a
-                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
                       download="cardapio_supreme_16x9.jpg"
                       className="bg-white hover:bg-rose-50 text-rose-600 p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
                     >
                       <Download className="w-4 h-4" /> Baixar
                     </a>
                     <a
-                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
@@ -1731,14 +1731,14 @@ export default function AdminCardapio({
                 <div className="flex flex-col gap-2">
                   <div className="flex gap-2">
                     <a
-                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
                       download="cardapio_supreme_16x9.jpg"
                       className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" /> Baixar Imagem
                     </a>
                     <a
-                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 cursor-pointer"
