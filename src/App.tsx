@@ -540,21 +540,19 @@ export default function App() {
   // 2b. Load dynamic menu from Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'menu_items'), (snapshot) => {
-      if (!snapshot.empty) {
-        const itemsList: MenuItem[] = [];
-        snapshot.forEach((docSnap) => {
-          itemsList.push({ id: docSnap.id, ...docSnap.data() } as MenuItem);
-        });
-        // Sort by index, then alphabetically
-        itemsList.sort((a, b) => {
-          const idxA = (a as any).index ?? 999;
-          const idxB = (b as any).index ?? 999;
-          if (idxA !== idxB) return idxA - idxB;
-          return a.name.localeCompare(b.name);
-        });
-        setMenuItems(itemsList);
-        localStorage.setItem('supreme_menu_items', JSON.stringify(itemsList));
-      }
+      const itemsList: MenuItem[] = [];
+      snapshot.forEach((docSnap) => {
+        itemsList.push({ id: docSnap.id, ...docSnap.data() } as MenuItem);
+      });
+      // Sort by index, then alphabetically
+      itemsList.sort((a, b) => {
+        const idxA = (a as any).index ?? 999;
+        const idxB = (b as any).index ?? 999;
+        if (idxA !== idxB) return idxA - idxB;
+        return a.name.localeCompare(b.name);
+      });
+      setMenuItems(itemsList);
+      localStorage.setItem('supreme_menu_items', JSON.stringify(itemsList));
     }, (error) => {
       console.error('Failed to listen to menu_items from Firestore:', error);
       handleFirestoreError(error, OperationType.LIST, 'menu_items');
@@ -565,14 +563,12 @@ export default function App() {
   // 2b2. Load dynamic flavors from Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'flavor_options'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: FlavorOption[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...docSnap.data() } as FlavorOption);
-        });
-        setFlavorOptions(list);
-        localStorage.setItem('supreme_flavor_options', JSON.stringify(list));
-      }
+      const list: FlavorOption[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as FlavorOption);
+      });
+      setFlavorOptions(list);
+      localStorage.setItem('supreme_flavor_options', JSON.stringify(list));
     }, (error) => {
       console.error('Failed to listen to flavor_options:', error);
     });
@@ -582,14 +578,12 @@ export default function App() {
   // 2b3. Load dynamic toppings from Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'topping_options'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: ToppingOption[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...docSnap.data() } as ToppingOption);
-        });
-        setToppingOptions(list);
-        localStorage.setItem('supreme_topping_options', JSON.stringify(list));
-      }
+      const list: ToppingOption[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as ToppingOption);
+      });
+      setToppingOptions(list);
+      localStorage.setItem('supreme_topping_options', JSON.stringify(list));
     }, (error) => {
       console.error('Failed to listen to topping_options:', error);
     });
@@ -627,47 +621,6 @@ export default function App() {
           });
           await batch.commit();
           console.log('Cohesive seeding of dynamic menu items completed!');
-        } else {
-          // Do NOT overwrite existing remote items so that administrator edits (like changing photos or prices) remain perfectly saved.
-          // Only add local MENU_ITEMS that are completely missing from the Firestore database.
-          const firestoreItems: Record<string, MenuItem> = {};
-          snap.forEach((docSnap) => {
-            firestoreItems[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as MenuItem;
-          });
-
-          const batch = writeBatch(db);
-          let hasUpdates = false;
-
-          MENU_ITEMS.forEach((localItem, idx) => {
-            const remoteItem = firestoreItems[localItem.id];
-            if (!remoteItem) {
-              const itemRef = doc(db, 'menu_items', localItem.id);
-              batch.set(itemRef, {
-                name: localItem.name,
-                description: localItem.description,
-                price: localItem.price,
-                category: localItem.category,
-                image: localItem.image,
-                popular: !!localItem.popular,
-                customizable: !!localItem.customizable,
-                tags: localItem.tags || null,
-                index: idx,
-                sizeMode: (localItem as any).sizeMode || null,
-                singleSizeLabel: (localItem as any).singleSizeLabel || null,
-                singleSizePrice: (localItem as any).singleSizePrice || null,
-                customSizes: (localItem as any).customSizes || null,
-                allowedToppings: (localItem as any).allowedToppings || null,
-                allowedFlavors: (localItem as any).allowedFlavors || null,
-              });
-              hasUpdates = true;
-            }
-          });
-
-          if (hasUpdates) {
-            console.log('Adding missing default menu items to Firestore...');
-            await batch.commit();
-            console.log('Missing items successfully synced to Firestore!');
-          }
         }
 
         // 2. Flavors Seeding

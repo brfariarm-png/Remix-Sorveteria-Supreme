@@ -354,8 +354,8 @@ export default function AdminCardapio({
     setIsPopular(false);
     setIsCustomizable(true);
     setTagsString('Novidade, Customizável');
-    setAllowedToppings(TOPPING_OPTIONS.map(t => t.id));
-    setAllowedFlavors(FLAVOR_OPTIONS.map(f => f.id));
+    setAllowedToppings(toppingOptions.map(t => t.id));
+    setAllowedFlavors(flavorOptions.map(f => f.id));
     setSizeMode('default');
     setSingleSizeLabel('Tamanho Único');
     setSingleSizePrice('15.00');
@@ -381,8 +381,8 @@ export default function AdminCardapio({
     setIsPopular(!!item.popular);
     setIsCustomizable(!!item.customizable);
     setTagsString(item.tags ? item.tags.join(', ') : '');
-    setAllowedToppings(item.allowedToppings !== undefined && item.allowedToppings !== null ? item.allowedToppings : TOPPING_OPTIONS.map(t => t.id));
-    setAllowedFlavors(item.allowedFlavors !== undefined && item.allowedFlavors !== null ? item.allowedFlavors : FLAVOR_OPTIONS.map(f => f.id));
+    setAllowedToppings(item.allowedToppings !== undefined && item.allowedToppings !== null ? item.allowedToppings : toppingOptions.map(t => t.id));
+    setAllowedFlavors(item.allowedFlavors !== undefined && item.allowedFlavors !== null ? item.allowedFlavors : flavorOptions.map(f => f.id));
     setSizeMode((item as any).sizeMode || 'default');
     setSingleSizeLabel((item as any).singleSizeLabel || 'Tamanho Único');
     setSingleSizePrice(String((item as any).singleSizePrice ?? item.price ?? 15.00));
