@@ -7,6 +7,9 @@ const ASSETS_TO_CACHE = [
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
+  '/assets/icon-192.png',
+  '/assets/icon-512.png',
+  '/assets/apple-touch-icon.png',
   '/logo.svg'
 ];
 
