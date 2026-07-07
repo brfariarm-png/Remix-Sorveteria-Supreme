@@ -178,8 +178,20 @@ export interface StoreSettings {
   };
   brownieLabels?: {
     '400ml': string;
+    '505ml'?: string; // Let's keep it safe
     '500ml': string;
     '700ml': string;
   };
+
+  // 16:9 Digital Menu Board Editable Properties
+  boardTitle?: string;
+  boardSubtitle?: string;
+  boardSlogan?: string;
+  boardPhone?: string;
+  boardInstagram?: string;
+  boardCustomNote?: string;
+  boardMsFlavorList?: string;
+  boardCortesiasList?: string;
+  boardAdicionaisList?: string;
 }
 

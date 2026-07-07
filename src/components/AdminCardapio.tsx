@@ -43,7 +43,7 @@ export default function AdminCardapio({
   flavorOptions = FLAVOR_OPTIONS,
   toppingOptions = TOPPING_OPTIONS
 }: AdminCardapioProps) {
-  const [activeTab, setActiveTab] = useState<'products' | 'sizes_prices' | 'flavors_toppings'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'sizes_prices' | 'flavors_toppings' | 'digital_board'>('products');
 
   // States for cup sizes base prices editing
   const [price300, setPrice300] = useState<string>(() => String(storeSettings?.cupPrices?.['300ml'] ?? 18));
@@ -73,6 +73,17 @@ export default function AdminCardapio({
   const [brLabel400, setBrLabel400] = useState<string>(() => storeSettings?.brownieLabels?.['400ml'] ?? 'Copo Brownie 400ml');
   const [brLabel500, setBrLabel500] = useState<string>(() => storeSettings?.brownieLabels?.['500ml'] ?? 'Caixinha Brownie 500ml');
   const [brLabel700, setBrLabel700] = useState<string>(() => storeSettings?.brownieLabels?.['700ml'] ?? 'Balde Brownie 700ml');
+
+  // Digital Board editable settings states
+  const [boardTitle, setBoardTitle] = useState<string>(() => storeSettings?.boardTitle ?? 'Supreme');
+  const [boardSubtitle, setBoardSubtitle] = useState<string>(() => storeSettings?.boardSubtitle ?? 'SORVETERIA');
+  const [boardSlogan, setBoardSlogan] = useState<string>(() => storeSettings?.boardSlogan ?? 'NÃO É SÓ SORVETE, É EXPERIÊNCIA.');
+  const [boardPhone, setBoardPhone] = useState<string>(() => storeSettings?.boardPhone ?? storeSettings?.phone ?? '(19) 97411-8672');
+  const [boardInstagram, setBoardInstagram] = useState<string>(() => storeSettings?.boardInstagram ?? storeSettings?.instagram ?? '@sorveteria.supreme');
+  const [boardCustomNote, setBoardCustomNote] = useState<string>(() => storeSettings?.boardCustomNote ?? 'PEÇA PELO WHATSAPP!');
+  const [boardMsFlavorList, setBoardMsFlavorList] = useState<string>(() => storeSettings?.boardMsFlavorList ?? 'Chocolate, Baunilha, Ninho Trufado, Morango, Morango com Nutella, Banana com Nutella, Iogurte com Frutas Vermelhas');
+  const [boardCortesiasList, setBoardCortesiasList] = useState<string>(() => storeSettings?.boardCortesiasList ?? 'Leite condensado, leite em pó, banana, morango e granola');
+  const [boardAdicionaisList, setBoardAdicionaisList] = useState<string>(() => storeSettings?.boardAdicionaisList ?? 'Morango R$ 4, Banana R$ 2, Ovomaltine R$ 2, Paçoca R$ 2, Amendoim R$ 2, Nutella R$ 5, Copo trufado Nutella R$ 6, Cereja R$ 5');
 
   const [savingPrices, setSavingPrices] = useState(false);
 
@@ -111,7 +122,34 @@ export default function AdminCardapio({
       setBrLabel500(storeSettings.brownieLabels['500ml'] || 'Caixinha Brownie 500ml');
       setBrLabel700(storeSettings.brownieLabels['700ml'] || 'Balde Brownie 700ml');
     }
-  }, [storeSettings?.cupPrices, storeSettings?.cupLabels, storeSettings?.milkshakePrices, storeSettings?.milkshakeLabels, storeSettings?.browniePrices, storeSettings?.brownieLabels]);
+    if (storeSettings) {
+      setBoardTitle(storeSettings.boardTitle ?? 'Supreme');
+      setBoardSubtitle(storeSettings.boardSubtitle ?? 'SORVETERIA');
+      setBoardSlogan(storeSettings.boardSlogan ?? 'NÃO É SÓ SORVETE, É EXPERIÊNCIA.');
+      setBoardPhone(storeSettings.boardPhone ?? storeSettings.phone ?? '(19) 97411-8672');
+      setBoardInstagram(storeSettings.boardInstagram ?? storeSettings.instagram ?? '@sorveteria.supreme');
+      setBoardCustomNote(storeSettings.boardCustomNote ?? 'PEÇA PELO WHATSAPP!');
+      setBoardMsFlavorList(storeSettings.boardMsFlavorList ?? 'Chocolate, Baunilha, Ninho Trufado, Morango, Morango com Nutella, Banana com Nutella, Iogurte com Frutas Vermelhas');
+      setBoardCortesiasList(storeSettings.boardCortesiasList ?? 'Leite condensado, leite em pó, banana, morango e granola');
+      setBoardAdicionaisList(storeSettings.boardAdicionaisList ?? 'Morango R$ 4, Banana R$ 2, Ovomaltine R$ 2, Paçoca R$ 2, Amendoim R$ 2, Nutella R$ 5, Copo trufado Nutella R$ 6, Cereja R$ 5');
+    }
+  }, [
+    storeSettings?.cupPrices, 
+    storeSettings?.cupLabels, 
+    storeSettings?.milkshakePrices, 
+    storeSettings?.milkshakeLabels, 
+    storeSettings?.browniePrices, 
+    storeSettings?.brownieLabels,
+    storeSettings?.boardTitle,
+    storeSettings?.boardSubtitle,
+    storeSettings?.boardSlogan,
+    storeSettings?.boardPhone,
+    storeSettings?.boardInstagram,
+    storeSettings?.boardCustomNote,
+    storeSettings?.boardMsFlavorList,
+    storeSettings?.boardCortesiasList,
+    storeSettings?.boardAdicionaisList
+  ]);
 
   const [search, setSearch] = useState('');
 
@@ -800,6 +838,40 @@ export default function AdminCardapio({
     }
   };
 
+  const handleSaveDigitalBoard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onUpdateSettings || !storeSettings) {
+      setErrorMsg('Configurações indisponíveis ou não inicializadas.');
+      return;
+    }
+    setSavingPrices(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const updatedSettings: StoreSettings = {
+        ...storeSettings,
+        boardTitle,
+        boardSubtitle,
+        boardSlogan,
+        boardPhone,
+        boardInstagram,
+        boardCustomNote,
+        boardMsFlavorList,
+        boardCortesiasList,
+        boardAdicionaisList
+      };
+      await onUpdateSettings(updatedSettings);
+      setSuccessMsg('✨ Painel Digital atualizado com sucesso no banco de dados!');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(`Erro ao salvar painel digital: ${err?.message || err}`);
+    } finally {
+      setSavingPrices(false);
+    }
+  };
+
   const handleResetCupPricesToDefault = () => {
     setPrice300('18');
     setPrice400('21');
@@ -904,10 +976,10 @@ export default function AdminCardapio({
       )}
 
       {/* Segmented Tab Switcher inside Cardapio */}
-      <div className="flex bg-slate-200/50 p-1 rounded-2xl gap-1 max-w-xl">
+      <div className="flex flex-wrap bg-slate-200/50 p-1 rounded-2xl gap-1 max-w-2xl">
         <button
           onClick={() => setActiveTab('products')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+          className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
             activeTab === 'products'
               ? 'bg-white text-rose-600 shadow-xs'
               : 'text-slate-500 hover:text-slate-805'
@@ -917,7 +989,7 @@ export default function AdminCardapio({
         </button>
         <button
           onClick={() => setActiveTab('flavors_toppings')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+          className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
             activeTab === 'flavors_toppings'
               ? 'bg-white text-rose-600 shadow-xs'
               : 'text-slate-500 hover:text-slate-805'
@@ -927,13 +999,23 @@ export default function AdminCardapio({
         </button>
         <button
           onClick={() => setActiveTab('sizes_prices')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+          className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
             activeTab === 'sizes_prices'
               ? 'bg-white text-rose-600 shadow-xs'
               : 'text-slate-500 hover:text-slate-805'
           }`}
         >
           📏 Tamanhos & Valores
+        </button>
+        <button
+          onClick={() => setActiveTab('digital_board')}
+          className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === 'digital_board'
+              ? 'bg-white text-rose-600 shadow-xs'
+              : 'text-slate-500 hover:text-slate-805'
+          }`}
+        >
+          📺 Painel Digital 16:9
         </button>
       </div>
 
@@ -1544,6 +1626,390 @@ export default function AdminCardapio({
             </button>
           </div>
         </form>
+      ) : activeTab === 'digital_board' ? (
+        <div className="space-y-6">
+          <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl text-left">
+            <h3 className="text-sm font-black text-rose-800 uppercase tracking-wide flex items-center gap-1.5">
+              📺 Painel de Cardápio Digital 16:9 Editável
+            </h3>
+            <p className="text-[11px] text-slate-550 leading-relaxed mt-1">
+              Gerencie a exibição do seu <strong>Painel Digital de TV</strong> ou <strong>Banners de Promoção (16:9)</strong>.
+              Você pode alterar todos os textos, slogan, redes de contato e ver as alterações atualizadas em tempo real no simulador interativo. Os preços do painel são integrados diretamente com os preços dos copos configurados na aba "Tamanhos & Valores".
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            
+            {/* Left Column: Form & High-Res Poster Download (5 Columns) */}
+            <div className="xl:col-span-5 space-y-6 text-left">
+              
+              {/* High-Res AI Generated Banner Card */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-4">
+                <div className="border-b border-slate-50 pb-2 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                      🖼️ Arte do Cardápio Gerada por IA
+                    </h4>
+                    <p className="text-[10px] text-slate-400">Resolução Ultra-HD 16:9</p>
+                  </div>
+                  <span className="bg-rose-100 text-rose-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
+                    Alta Resolução
+                  </span>
+                </div>
+                
+                <div className="relative group overflow-hidden rounded-xl border border-slate-100">
+                  <img
+                    src="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                    alt="Cardápio Digital Supremo"
+                    className="w-full object-cover aspect-[16/9] hover:scale-102 transition-transform duration-300"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <a
+                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      download="cardapio_supreme_16x9.jpg"
+                      className="bg-white hover:bg-rose-50 text-rose-600 p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
+                    >
+                      <Download className="w-4 h-4" /> Baixar
+                    </a>
+                    <a
+                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
+                    >
+                      🔍 Ampliar
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <a
+                    href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                    download="cardapio_supreme_16x9.jpg"
+                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Baixar Imagem
+                  </a>
+                  <a
+                    href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 shadow-xs"
+                  >
+                    📺 Exibir na TV
+                  </a>
+                </div>
+              </div>
+
+              {/* Form Configurator */}
+              <form onSubmit={handleSaveDigitalBoard} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-5">
+                <div className="border-b border-slate-50 pb-2">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                    ⚙️ Configurações do Menu Board
+                  </h4>
+                  <p className="text-[10px] text-slate-400">Edite os textos do seu painel digital</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Nome Principal</label>
+                    <input
+                      type="text"
+                      value={boardTitle}
+                      onChange={(e) => setBoardTitle(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Subtítulo</label>
+                    <input
+                      type="text"
+                      value={boardSubtitle}
+                      onChange={(e) => setBoardSubtitle(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Slogan da Marca</label>
+                  <input
+                    type="text"
+                    value={boardSlogan}
+                    onChange={(e) => setBoardSlogan(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">WhatsApp de Atendimento</label>
+                    <input
+                      type="text"
+                      value={boardPhone}
+                      onChange={(e) => setBoardPhone(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Instagram</label>
+                    <input
+                      type="text"
+                      value={boardInstagram}
+                      onChange={(e) => setBoardInstagram(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Chamada Rodapé</label>
+                  <input
+                    type="text"
+                    value={boardCustomNote}
+                    onChange={(e) => setBoardCustomNote(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Sabores de Milkshake (Separados por vírgula)</label>
+                  <textarea
+                    rows={2}
+                    value={boardMsFlavorList}
+                    onChange={(e) => setBoardMsFlavorList(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700 text-xs leading-normal focus:outline-hidden focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Itens Cortesia Açaí (Separados por vírgula)</label>
+                  <textarea
+                    rows={2}
+                    value={boardCortesiasList}
+                    onChange={(e) => setBoardCortesiasList(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700 text-xs leading-normal focus:outline-hidden focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Itens Adicionais Açaí (Separados por vírgula)</label>
+                  <textarea
+                    rows={3}
+                    value={boardAdicionaisList}
+                    onChange={(e) => setBoardAdicionaisList(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700 text-xs leading-normal focus:outline-hidden focus:border-rose-400"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingPrices}
+                  className="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-extrabold text-[10px] uppercase tracking-wide transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" /> Salvar Alterações do Painel
+                </button>
+              </form>
+            </div>
+
+            {/* Right Column: Live Interactive 16:9 Widescreen Simulator (7 Columns) */}
+            <div className="xl:col-span-7 space-y-3">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[10px] font-black text-slate-450 uppercase tracking-widest">
+                  📺 Simulador em Tempo Real (Widescreen 16:9)
+                </span>
+                <span className="text-[9px] font-bold text-rose-500 flex items-center gap-1 animate-pulse">
+                  ● Atualizando Live
+                </span>
+              </div>
+
+              {/* 16:9 Aspect Ratio Box */}
+              <div className="w-full aspect-[16/9] bg-[#FAF8F5] border border-slate-200/70 rounded-2xl shadow-lg relative p-4 sm:p-5 flex flex-col justify-between overflow-hidden select-none text-slate-800 text-[10px] sm:text-xs">
+                {/* Decorative golden curves on borders */}
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-amber-350/40 rounded-tl-xl pointer-events-none" />
+                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-amber-300/40 rounded-tr-xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-amber-300/40 rounded-bl-xl pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-amber-300/40 rounded-br-xl pointer-events-none" />
+
+                {/* Top Section: Header & Slogan */}
+                <div className="flex justify-between items-center border-b border-amber-200/40 pb-2">
+                  <div className="flex items-center gap-2">
+                    {/* Tiny representation of crown and logo */}
+                    <span className="text-rose-500 text-lg">👑</span>
+                    <div className="text-left leading-none">
+                      <span className="font-sans font-black text-slate-900 tracking-wider text-sm sm:text-base uppercase">
+                        {boardTitle}
+                      </span>
+                      <span className="block text-[8px] sm:text-[9px] text-rose-500 font-extrabold tracking-widest leading-none">
+                        — {boardSubtitle} —
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-[7px] sm:text-[8px] font-bold text-slate-400">NÃO É SÓ SORVETE,</p>
+                    <p className="text-[9px] sm:text-[10px] font-black text-rose-500 uppercase tracking-wide leading-none">
+                      {boardSlogan}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Main Menu Grid Rows */}
+                <div className="grid grid-cols-12 gap-3 my-2 flex-1 items-stretch overflow-hidden">
+                  
+                  {/* Left Column (Açaí & Sabores) (5/12 Columns) */}
+                  <div className="col-span-5 flex flex-col justify-between border-r border-slate-100 pr-3 text-left">
+                    {/* Açaí Section */}
+                    <div>
+                      <h5 className="font-black text-rose-600 uppercase text-[9px] tracking-wider mb-1.5 flex items-center gap-1">
+                        💜 Copos de Açaí & Sorvete
+                      </h5>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        <div className="flex justify-between items-center border-b border-dashed border-slate-200/50 pb-0.5">
+                          <span className="font-extrabold text-slate-700 text-[9px]">{label300}</span>
+                          <span className="font-black text-rose-500 text-[10px]">R$ {price300}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-dashed border-slate-200/50 pb-0.5">
+                          <span className="font-extrabold text-slate-700 text-[9px]">{label400}</span>
+                          <span className="font-black text-rose-500 text-[10px]">R$ {price400}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-dashed border-slate-200/50 pb-0.5">
+                          <span className="font-extrabold text-slate-700 text-[9px]">{label500}</span>
+                          <span className="font-black text-rose-500 text-[10px]">R$ {price500}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-dashed border-slate-200/50 pb-0.5">
+                          <span className="font-extrabold text-slate-700 text-[9px]">{label700}</span>
+                          <span className="font-black text-rose-500 text-[10px]">R$ {price700}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cortesias Section */}
+                    <div className="mt-2 bg-rose-50/40 p-1.5 rounded-lg border border-rose-100/30 text-left">
+                      <h6 className="font-black text-rose-800 uppercase text-[7px] tracking-widest leading-none mb-1">
+                        ✨ CORTESIAS INCLUSAS:
+                      </h6>
+                      <p className="text-[8px] font-medium leading-relaxed text-slate-600">
+                        {boardCortesiasList}
+                      </p>
+                    </div>
+
+                    {/* Copos Especiais Section */}
+                    <div className="mt-2 text-left">
+                      <h5 className="font-black text-slate-800 uppercase text-[8px] tracking-wider mb-1 flex items-center gap-1">
+                        🍓 Copos Especiais
+                      </h5>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[8px]">
+                          <span className="font-bold text-slate-600">Copo Trufado Nutella/Amendoim</span>
+                          <span className="font-black text-slate-800">R$ 20</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[8px]">
+                          <span className="font-bold text-slate-600">Copo da Felicidade Supremo</span>
+                          <span className="font-black text-slate-800">R$ 30</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle Column (Milk Shakes) (4/12 Columns) */}
+                  <div className="col-span-4 flex flex-col justify-between border-r border-slate-100 pr-3 text-left">
+                    <div>
+                      <div className="bg-rose-500 text-white text-center py-0.5 px-2 rounded-md font-black uppercase text-[8px] tracking-wider mb-1.5">
+                        🥤 MILK SHAKES
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-left">
+                        <div className="flex justify-between items-center pb-0.5">
+                          <span className="font-bold text-slate-600 text-[8px]">{msLabel300}</span>
+                          <span className="font-black text-rose-500 text-[9px]">R$ {msPrice300}</span>
+                        </div>
+                        <div className="flex justify-between items-center pb-0.5">
+                          <span className="font-bold text-slate-600 text-[8px]">{msLabel400}</span>
+                          <span className="font-black text-rose-500 text-[9px]">R$ {msPrice400}</span>
+                        </div>
+                        <div className="flex justify-between items-center pb-0.5">
+                          <span className="font-bold text-slate-600 text-[8px]">{msLabel500}</span>
+                          <span className="font-black text-rose-500 text-[9px]">R$ {msPrice500}</span>
+                        </div>
+                        <div className="flex justify-between items-center pb-0.5">
+                          <span className="font-bold text-slate-600 text-[8px]">{msLabel700}</span>
+                          <span className="font-black text-rose-500 text-[9px]">R$ {msPrice700}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Flavors Grid List */}
+                    <div className="mt-2 bg-slate-100/50 p-1.5 rounded-lg text-left">
+                      <span className="text-[7px] font-black text-slate-450 uppercase block mb-1">
+                        SABORES DE SORVETE:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {boardMsFlavorList.split(',').slice(0, 6).map((flav, idx) => (
+                          <span key={idx} className="bg-white px-1.5 py-0.5 rounded text-[7px] font-bold text-slate-700 border border-slate-100 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
+                            {flav.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column (Buckets, Coffee & Toppings) (3/12 Columns) */}
+                  <div className="col-span-3 flex flex-col justify-between text-left">
+                    <div>
+                      <h5 className="font-black text-amber-600 uppercase text-[8px] tracking-wider mb-1 flex items-center gap-1">
+                        🍨 Baldes & Cafés
+                      </h5>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[8px]">
+                          <span className="font-bold text-slate-600">Balde Brownie 700ml</span>
+                          <span className="font-black text-amber-600">R$ {brPrice700}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[8px]">
+                          <span className="font-bold text-slate-600">Doce de Leite 700ml</span>
+                          <span className="font-black text-amber-600">R$ 25</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[8px]">
+                          <span className="font-bold text-slate-600">Frappuccino 500ml</span>
+                          <span className="font-black text-amber-600">R$ 25</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Custom Adicionais lists */}
+                    <div className="mt-2 text-left leading-tight">
+                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                        ➕ ADICIONAIS EXTRA:
+                      </span>
+                      <p className="text-[7px] text-slate-500 font-semibold leading-normal">
+                        {boardAdicionaisList.split(',').slice(0, 5).map(item => item.trim()).join(' • ')}...
+                      </p>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Bottom Section: Contacts & Socials */}
+                <div className="flex justify-between items-center border-t border-amber-200/40 pt-2 text-[8px] sm:text-[9px] font-black text-slate-750">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-emerald-500 text-white p-0.5 rounded-full text-[9px] w-4.5 h-4.5 flex items-center justify-center">📞</span>
+                    <span className="font-mono text-slate-800">{boardCustomNote} — {boardPhone}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="bg-rose-500 text-white p-0.5 rounded-full text-[9px] w-4.5 h-4.5 flex items-center justify-center">📷</span>
+                    <span className="text-rose-600">{boardInstagram}</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/20 text-[10px] text-amber-800 leading-normal font-medium text-left">
+                <strong>💡 Dica do Visualizador:</strong> Este simulador renderiza fielmente em proporção widescreen 16:9. Você pode deixá-lo aberto em um tablet ou projetá-lo na Smart TV do seu estabelecimento comercial via navegador para funcionar como menu interativo!
+              </div>
+            </div>
+
+          </div>
+        </div>
       ) : (
         <>
           {/* Dynamic recovery banner for users who might have lost default items when writing a custom item */}
