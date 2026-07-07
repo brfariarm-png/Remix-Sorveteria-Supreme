@@ -52,7 +52,7 @@ export default function AdminImpressora({
   };
 
   const currentPaperWidth = storeSettings.printerPaperWidth || '80mm';
-  const currentFontSize = storeSettings.printerFontSize || 12;
+  const currentFontSize = storeSettings.printerFontSize || 16;
   const currentFontType = storeSettings.printerFontType || 'monospace';
   const currentNumCopies = storeSettings.printerNumCopies || 1;
   const currentShowAddress = storeSettings.printerShowAddress !== false;
@@ -282,7 +282,7 @@ export default function AdminImpressora({
                   <input
                     type="range"
                     min={10}
-                    max={16}
+                    max={24}
                     step={1}
                     value={currentFontSize}
                     onChange={(e) => handleUpdatePrinterSetting('printerFontSize', Number(e.target.value))}

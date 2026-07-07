@@ -39,7 +39,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
   // Extract printer configuration from store settings or use defaults
   const paperWidth = storeSettings?.printerPaperWidth || '80mm';
   const numCopies = Number(storeSettings?.printerNumCopies || 1);
-  const fontSize = Number(storeSettings?.printerFontSize || 12);
+  const fontSize = Number(storeSettings?.printerFontSize || 16);
   const fontType = storeSettings?.printerFontType || 'monospace';
   const showAddress = storeSettings?.printerShowAddress !== false;
   const headerMessage = storeSettings?.printerHeaderMessage || 'COMPROVANTE IMPRESSO';
@@ -294,7 +294,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
 
 export const printCloseoutReceipt = (data: any, storeSettings: any) => {
   const paperWidth = storeSettings?.printerPaperWidth || '80mm';
-  const fontSize = Number(storeSettings?.printerFontSize || 12);
+  const fontSize = Number(storeSettings?.printerFontSize || 16);
   const fontType = storeSettings?.printerFontType || 'monospace';
 
   // Determine font family

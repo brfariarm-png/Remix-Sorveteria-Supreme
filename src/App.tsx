@@ -129,7 +129,7 @@ export default function App() {
           statusOverride: parsed.statusOverride ?? "auto",
           printerPaperWidth: parsed.printerPaperWidth ?? "80mm",
           printerNumCopies: parsed.printerNumCopies ?? 1,
-          printerFontSize: parsed.printerFontSize ?? 12,
+          printerFontSize: parsed.printerFontSize ?? 16,
           printerFontType: parsed.printerFontType ?? "monospace",
           printerShowAddress: parsed.printerShowAddress ?? true,
           printerHeaderMessage: parsed.printerHeaderMessage ?? "Comprovante de Pedido",
@@ -203,7 +203,7 @@ export default function App() {
       statusOverride: "auto" as "auto" | "open" | "closed",
       printerPaperWidth: "80mm" as "58mm" | "80mm",
       printerNumCopies: 1,
-      printerFontSize: 12,
+      printerFontSize: 16,
       printerFontType: "monospace" as "monospace" | "sans-serif" | "serif",
       printerShowAddress: true,
       printerHeaderMessage: "Comprovante de Pedido",
@@ -1303,7 +1303,7 @@ export default function App() {
     if (autoSendWhatsAppStatus) {
       try {
         const url = getWhatsAppStatusUrl(activeTrackingOrder, nextStatus);
-        window.open(url, '_blank');
+        window.open(url, 'supreme_whatsapp');
       } catch (e) {
         console.error("Failed to auto open WhatsApp status on simulator click:", e);
       }
@@ -1350,7 +1350,7 @@ export default function App() {
     if (targetOrder && autoSendWhatsAppStatus) {
       try {
         const url = getWhatsAppStatusUrl(targetOrder, newStatus);
-        window.open(url, '_blank');
+        window.open(url, 'supreme_whatsapp');
       } catch (e) {
         console.error("Failed to auto open WhatsApp status:", e);
       }
@@ -1465,7 +1465,7 @@ export default function App() {
           statusOverride: settings.statusOverride || "auto",
           printerPaperWidth: settings.printerPaperWidth || "80mm",
           printerNumCopies: settings.printerNumCopies || 1,
-          printerFontSize: settings.printerFontSize || 12,
+          printerFontSize: settings.printerFontSize || 16,
           printerFontType: settings.printerFontType || "monospace",
           printerShowAddress: settings.printerShowAddress !== false,
           printerHeaderMessage: settings.printerHeaderMessage || "Comprovante de Pedido",
@@ -2787,8 +2787,8 @@ export default function App() {
                               <input
                                 type="number"
                                 min={10}
-                                max={14}
-                                value={storeSettings.printerFontSize || 12}
+                                max={28}
+                                value={storeSettings.printerFontSize || 16}
                                 onChange={(e) => handleUpdatePrinterSetting('printerFontSize', Number(e.target.value))}
                                 className="w-full p-2.5 rounded-xl border border-slate-200 outline-none bg-slate-50 text-slate-700 font-bold"
                               />
@@ -4779,14 +4779,18 @@ E-mail: ${storeSettings.email}`;
                         <div className="space-y-1">
                           <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Tamanho da Fonte</label>
                           <select
-                            value={storeSettings.printerFontSize || 12}
+                            value={storeSettings.printerFontSize || 16}
                             onChange={(e) => setStoreSettings({ ...storeSettings, printerFontSize: Number(e.target.value) })}
                             className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white font-medium text-slate-800"
                           >
                             <option value={10}>10px (Compacto)</option>
-                            <option value={11}>11px (Pequeno)</option>
-                            <option value={12}>12px (Médio / Ideal)</option>
-                            <option value={14}>14px (Grande / Legível)</option>
+                            <option value={12}>12px (Pequeno)</option>
+                            <option value={14}>14px (Médio)</option>
+                            <option value={16}>16px (Grande / Ideal)</option>
+                            <option value={18}>18px (Muito Grande)</option>
+                            <option value={20}>20px (Gigante)</option>
+                            <option value={22}>22px (Extra Gigante)</option>
+                            <option value={24}>24px (Super Max)</option>
                           </select>
                         </div>
 
@@ -4914,7 +4918,7 @@ E-mail: ${storeSettings.email}`;
                                   statusOverride: "auto" as "auto" | "open" | "closed",
                                   printerPaperWidth: "80mm" as "58mm" | "80mm",
                                   printerNumCopies: 1,
-                                  printerFontSize: 12,
+                                  printerFontSize: 16,
                                   printerFontType: "monospace" as "monospace" | "sans-serif" | "serif",
                                   printerShowAddress: true,
                                   printerHeaderMessage: "Comprovante de Pedido",

@@ -514,7 +514,7 @@ export default function Checkout({
         const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
         const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`;
         
-        window.open(waUrl, '_blank');
+        window.open(waUrl, 'supreme_whatsapp');
       }
 
       setIsSubmitting(false);

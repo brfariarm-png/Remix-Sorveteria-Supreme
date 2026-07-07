@@ -208,18 +208,18 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
               className="bg-rose-50/40 border border-rose-100/40 p-4 rounded-2xl flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-rose-500 overflow-hidden flex items-center justify-center text-white text-lg font-bold">
-                  C
+                <div className="w-10 h-10 rounded-full bg-rose-500 overflow-hidden flex items-center justify-center text-white text-lg">
+                  🛵
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-800">Carlos Eduardo (Cadu)</p>
-                  <p className="text-[10px] text-rose-600 font-extrabold">Entregador Exclusivo Supreme</p>
-                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Moto: CG Titan 160 Vermelha (Placa: SCB-3000)</p>
+                  <p className="text-xs font-bold text-slate-800">Pedido em Rota de Entrega</p>
+                  <p className="text-[10px] text-rose-600 font-extrabold">Entrega Expressa Supreme</p>
+                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Nossa equipe de entregas já está a caminho do seu endereço!</p>
                 </div>
               </div>
               <div className="text-right">
                 <span className="text-[9px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider block mb-1">
-                  Capacete Selado
+                  Bag Selada
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">Temp. Bag: <span className="text-rose-600">-12°C</span></span>
               </div>
@@ -329,7 +329,7 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                 className="bg-white p-4.5 rounded-xl shadow-lg relative overflow-hidden flex flex-col text-left font-mono"
                 style={{
                   fontFamily: storeSettings?.printerFontType === 'sans-serif' ? 'Inter, sans-serif' : storeSettings?.printerFontType === 'serif' ? 'Georgia, serif' : 'monospace',
-                  fontSize: `${Number(storeSettings?.printerFontSize || 12) - 2}px`,
+                  fontSize: `${Number(storeSettings?.printerFontSize || 16) - 2}px`,
                   lineHeight: '1.4',
                   maxWidth: storeSettings?.printerPaperWidth === '58mm' ? '210px' : '260px',
                   margin: '0 auto'
