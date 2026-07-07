@@ -244,6 +244,7 @@ export default function AdminImpressora({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
                 {[
                   { id: 'ifood', name: '🔔 iFood Clássico', desc: 'O clássico dongo duplo' },
+                  { id: 'vintage_call', name: '☎️ Telefone Vintage', desc: 'Chamada retrô clássica Ring-Ring' },
                   { id: 'tritone', name: '💬 WhatsApp Tri-tone', desc: 'Três notas clássicas de envio' },
                   { id: 'whatsapp', name: '📱 Assobio WhatsApp', desc: 'O famoso assobio rápido' },
                   { id: 'mario', name: '🪙 Moeda do Mario', desc: 'Som clássico de moedinha retrô' },

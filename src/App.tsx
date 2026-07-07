@@ -774,6 +774,67 @@ export default function App() {
         gain2.connect(ctx.destination);
         osc2.start(now + 0.15);
         osc2.stop(now + 0.85);
+      } else if (activeRing === 'vintage_call') {
+        // Classic mechanical bell "Ring-Ring"
+        // Two rings, each consisting of rapid hammer strikes
+        const strikeDur = 0.04; // strike duration (very short)
+        const strikeInterval = 0.055; // 55ms between strikes
+        const strikeCount = 8;
+        
+        // Ring 1 (starting at now)
+        for (let i = 0; i < strikeCount; i++) {
+          const strikeTime = now + i * strikeInterval;
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(850, strikeTime); // Principal tone
+          
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(1075, strikeTime); // Harmonics / Dual bell
+          
+          gainNode.gain.setValueAtTime(0, strikeTime);
+          gainNode.gain.linearRampToValueAtTime(0.25, strikeTime + 0.005);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, strikeTime + strikeDur);
+          
+          osc1.connect(gainNode);
+          osc2.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          osc1.start(strikeTime);
+          osc1.stop(strikeTime + strikeDur + 0.02);
+          osc2.start(strikeTime);
+          osc2.stop(strikeTime + strikeDur + 0.02);
+        }
+
+        // Ring 2 (starting at now + 0.5s)
+        const ring2Delay = 0.55;
+        for (let i = 0; i < strikeCount; i++) {
+          const strikeTime = now + ring2Delay + i * strikeInterval;
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(850, strikeTime);
+          
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(1075, strikeTime);
+          
+          gainNode.gain.setValueAtTime(0, strikeTime);
+          gainNode.gain.linearRampToValueAtTime(0.25, strikeTime + 0.005);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, strikeTime + strikeDur);
+          
+          osc1.connect(gainNode);
+          osc2.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          osc1.start(strikeTime);
+          osc1.stop(strikeTime + strikeDur + 0.02);
+          osc2.start(strikeTime);
+          osc2.stop(strikeTime + strikeDur + 0.02);
+        }
       } else if (activeRing === 'tritone') {
         // Classic Tri-tone (Apple / WhatsApp notification)
         const notes = [830.61, 1108.73, 1479.98]; // G#5, C#6, F#6
@@ -2953,6 +3014,7 @@ export default function App() {
                                 className="text-[11px] p-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-rose-500 font-bold text-slate-800 cursor-pointer"
                               >
                                 <option value="ifood">🔔 iFood Clássico (Ding-Dong)</option>
+                                <option value="vintage_call">☎️ Telefone Vintage (Ring-Ring)</option>
                                 <option value="tritone">💬 WhatsApp Tri-tone (Sino)</option>
                                 <option value="whatsapp">📱 Assobio WhatsApp (Whistle)</option>
                                 <option value="mario">🪙 Moeda do Mario (Arcade)</option>
