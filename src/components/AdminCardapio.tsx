@@ -151,6 +151,51 @@ export default function AdminCardapio({
     storeSettings?.boardAdicionaisList
   ]);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullscreenBoardOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const [isFullscreenBoardOpen, setIsFullscreenBoardOpen] = useState(false);
+
+  // Dynamic products filtering for the Digital Board (so it stays 100% synced with Menu edits)
+  const specialCups = useMemo(() => {
+    return menuItems.filter(item => 
+      item.id !== 'acai-supreme' && (
+        item.category === 'acai' || 
+        item.category === 'sundae' || 
+        item.category === 'sorvete' ||
+        item.name.toLowerCase().includes('copo') ||
+        item.name.toLowerCase().includes('trufado') ||
+        item.name.toLowerCase().includes('felicidade')
+      )
+    ).slice(0, 3);
+  }, [menuItems]);
+
+  const premiumShakes = useMemo(() => {
+    return menuItems.filter(item => 
+      item.category === 'milkshake' && 
+      item.id !== 'milkshake-gourmet-supreme'
+    ).slice(0, 3);
+  }, [menuItems]);
+
+  const baldesAndCafes = useMemo(() => {
+    return menuItems.filter(item => 
+      item.name.toLowerCase().includes('balde') || 
+      item.name.toLowerCase().includes('café') || 
+      item.name.toLowerCase().includes('coffee') || 
+      item.name.toLowerCase().includes('frappuccino') ||
+      item.name.toLowerCase().includes('affogato') ||
+      item.category === 'bebidas' ||
+      item.category === 'combos'
+    ).slice(0, 3);
+  }, [menuItems]);
+
   const [search, setSearch] = useState('');
 
   const exportProductsToCSV = () => {
@@ -1683,22 +1728,31 @@ export default function AdminCardapio({
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <a
-                    href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
-                    download="cardapio_supreme_16x9.jpg"
-                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1"
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <a
+                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      download="cardapio_supreme_16x9.jpg"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Baixar Imagem
+                    </a>
+                    <a
+                      href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      🖼️ Poster Estático
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreenBoardOpen(true)}
+                    className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-rose-100 hover:shadow-lg cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5" /> Baixar Imagem
-                  </a>
-                  <a
-                    href="/src/assets/images/digital_menu_banner_1783440971538.jpg"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 shadow-xs"
-                  >
-                    📺 Exibir na TV
-                  </a>
+                    📺 Exibir Painel de TV Interativo (Auto-Atualizável)
+                  </button>
                 </div>
               </div>
 
@@ -1901,14 +1955,35 @@ export default function AdminCardapio({
                         🍓 Copos Especiais
                       </h5>
                       <div className="space-y-1">
-                        <div className="flex justify-between items-center text-[8px]">
-                          <span className="font-bold text-slate-600">Copo Trufado Nutella/Amendoim</span>
-                          <span className="font-black text-slate-800">R$ 20</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[8px]">
-                          <span className="font-bold text-slate-600">Copo da Felicidade Supremo</span>
-                          <span className="font-black text-slate-800">R$ 30</span>
-                        </div>
+                        {specialCups.length > 0 ? (
+                          specialCups.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-[7px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
+                              <div className="flex items-center gap-1 min-w-0">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-3.5 h-3.5 object-cover rounded-md flex-shrink-0"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
+                                <span className="font-bold text-slate-700 truncate">{item.name}</span>
+                              </div>
+                              <span className="font-black text-rose-500 flex-shrink-0">R$ {item.price.toFixed(0)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center text-[8px]">
+                              <span className="font-bold text-slate-600">Copo Trufado Nutella/Amendoim</span>
+                              <span className="font-black text-slate-800">R$ 20</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px]">
+                              <span className="font-bold text-slate-600">Copo da Felicidade Supremo</span>
+                              <span className="font-black text-slate-800">R$ 30</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1940,18 +2015,45 @@ export default function AdminCardapio({
                     </div>
 
                     {/* Flavors Grid List */}
-                    <div className="mt-2 bg-slate-100/50 p-1.5 rounded-lg text-left">
-                      <span className="text-[7px] font-black text-slate-450 uppercase block mb-1">
+                    <div className="mt-1.5 bg-slate-100/50 p-1 rounded-lg text-left">
+                      <span className="text-[6.5px] font-black text-slate-450 uppercase block mb-0.5">
                         SABORES DE SORVETE:
                       </span>
-                      <div className="flex flex-wrap gap-1">
-                        {boardMsFlavorList.split(',').slice(0, 6).map((flav, idx) => (
-                          <span key={idx} className="bg-white px-1.5 py-0.5 rounded text-[7px] font-bold text-slate-700 border border-slate-100 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
+                      <div className="flex flex-wrap gap-0.5">
+                        {boardMsFlavorList.split(',').slice(0, 5).map((flav, idx) => (
+                          <span key={idx} className="bg-white px-1 py-0.5 rounded text-[6px] font-bold text-slate-700 border border-slate-100">
                             {flav.trim()}
                           </span>
                         ))}
                       </div>
                     </div>
+
+                    {/* Premium Shakes Dynamic Section */}
+                    {premiumShakes.length > 0 && (
+                      <div className="mt-1.5 text-left">
+                        <span className="text-[6.5px] font-black text-rose-500 uppercase tracking-wider block mb-0.5">
+                          ✨ SHAKES ESPECIAIS:
+                        </span>
+                        <div className="space-y-0.5">
+                          {premiumShakes.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-[6.5px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
+                              <div className="flex items-center gap-1 min-w-0">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-3 h-3 object-cover rounded-md flex-shrink-0"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
+                                <span className="font-bold text-slate-700 truncate">{item.name}</span>
+                              </div>
+                              <span className="font-black text-rose-500 flex-shrink-0">R$ {item.price.toFixed(0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column (Buckets, Coffee & Toppings) (3/12 Columns) */}
@@ -1961,18 +2063,39 @@ export default function AdminCardapio({
                         🍨 Baldes & Cafés
                       </h5>
                       <div className="space-y-1">
-                        <div className="flex justify-between items-center text-[8px]">
-                          <span className="font-bold text-slate-600">Balde Brownie 700ml</span>
-                          <span className="font-black text-amber-600">R$ {brPrice700}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[8px]">
-                          <span className="font-bold text-slate-600">Doce de Leite 700ml</span>
-                          <span className="font-black text-amber-600">R$ 25</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[8px]">
-                          <span className="font-bold text-slate-600">Frappuccino 500ml</span>
-                          <span className="font-black text-amber-600">R$ 25</span>
-                        </div>
+                        {baldesAndCafes.length > 0 ? (
+                          baldesAndCafes.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-[7px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
+                              <div className="flex items-center gap-1 min-w-0">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-3.5 h-3.5 object-cover rounded-md flex-shrink-0"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
+                                <span className="font-bold text-slate-700 truncate">{item.name}</span>
+                              </div>
+                              <span className="font-black text-amber-600 flex-shrink-0">R$ {item.price.toFixed(0)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center text-[8px]">
+                              <span className="font-bold text-slate-600">Balde Brownie 700ml</span>
+                              <span className="font-black text-amber-600">R$ {brPrice700}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px]">
+                              <span className="font-bold text-slate-600">Doce de Leite 700ml</span>
+                              <span className="font-black text-amber-600">R$ 25</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px]">
+                              <span className="font-bold text-slate-600">Frappuccino 500ml</span>
+                              <span className="font-black text-amber-600">R$ 25</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -1981,8 +2104,8 @@ export default function AdminCardapio({
                       <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
                         ➕ ADICIONAIS EXTRA:
                       </span>
-                      <p className="text-[7px] text-slate-500 font-semibold leading-normal">
-                        {boardAdicionaisList.split(',').slice(0, 5).map(item => item.trim()).join(' • ')}...
+                      <p className="text-[6.5px] text-slate-500 font-semibold leading-normal">
+                        {boardAdicionaisList.split(',').slice(0, 4).map(item => item.trim()).join(' • ')}...
                       </p>
                     </div>
                   </div>
@@ -2808,6 +2931,300 @@ export default function AdminCardapio({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Widescreen Interactive TV Menu Board Overlay */}
+      <AnimatePresence>
+        {isFullscreenBoardOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="fixed inset-0 z-[10000] bg-[#FAF8F5] p-8 sm:p-12 flex flex-col justify-between overflow-hidden font-sans select-none text-slate-800"
+          >
+            {/* Golden curves in corners */}
+            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-300/30 rounded-tl-3xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-300/30 rounded-tr-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-300/30 rounded-bl-3xl pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-300/30 rounded-br-3xl pointer-events-none" />
+
+            {/* Close Button */}
+            <button
+              onClick={() => setIsFullscreenBoardOpen(false)}
+              className="absolute top-6 right-6 p-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-full shadow-lg transition-all cursor-pointer z-[10010] group"
+              title="Pressione ESC para Sair"
+            >
+              <X className="w-6 h-6 stroke-[2.5]" />
+            </button>
+
+            {/* Top Bar: Title & Brand slogan */}
+            <div className="flex justify-between items-center border-b-2 border-amber-200/50 pb-4">
+              <div className="flex items-center gap-4 text-left">
+                <span className="text-rose-500 text-4xl sm:text-5xl animate-bounce">👑</span>
+                <div className="leading-none">
+                  <h1 className="font-sans font-black text-slate-900 tracking-wider text-3xl sm:text-4xl lg:text-5xl uppercase">
+                    {boardTitle}
+                  </h1>
+                  <span className="block text-xs sm:text-sm lg:text-base text-rose-500 font-black tracking-widest uppercase mt-1">
+                    — {boardSubtitle} —
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <p className="text-[10px] sm:text-xs font-bold text-slate-400 tracking-widest uppercase">NÃO É SÓ SORVETE, É UMA</p>
+                <p className="text-base sm:text-lg lg:text-2xl font-black text-rose-600 uppercase tracking-widest leading-none mt-1">
+                  {boardSlogan}
+                </p>
+              </div>
+            </div>
+
+            {/* Main Menu Widescreen Columns Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 my-6 flex-1 items-stretch overflow-hidden">
+              
+              {/* Left Column (Açaí & Copos Especiais) */}
+              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs">
+                {/* Açaí Section */}
+                <div>
+                  <h3 className="font-black text-rose-600 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-3 flex items-center gap-1.5 border-b border-rose-100 pb-1.5">
+                    💜 Copos de Açaí & Sorvete
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
+                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label300}</span>
+                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price300}</span>
+                    </div>
+                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
+                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label400}</span>
+                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price400}</span>
+                    </div>
+                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
+                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label500}</span>
+                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price500}</span>
+                    </div>
+                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
+                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label700}</span>
+                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price700}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cortesias Section */}
+                <div className="my-4 bg-rose-50/50 p-3 rounded-xl border border-rose-100/30 text-left">
+                  <h4 className="font-black text-rose-800 uppercase text-[9px] sm:text-[10px] tracking-widest mb-1">
+                    ✨ CORTESIAS INCLUSAS EM TODOS OS COPOS:
+                  </h4>
+                  <p className="text-[11px] sm:text-xs font-semibold leading-relaxed text-slate-600">
+                    {boardCortesiasList}
+                  </p>
+                </div>
+
+                {/* Copos Especiais Section */}
+                <div>
+                  <h3 className="font-black text-slate-800 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-150 pb-1.5">
+                    🍓 Copos Especiais & Taças
+                  </h3>
+                  <div className="space-y-2">
+                    {specialCups.length > 0 ? (
+                      specialCups.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {item.image && (
+                              <img 
+                                src={item.image} 
+                                alt={item.name} 
+                                className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
+                                referrerPolicy="no-referrer"
+                              />
+                            )}
+                            <div className="min-w-0 text-left">
+                              <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
+                              {item.description && (
+                                <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-black text-slate-900 text-xs sm:text-sm flex-shrink-0">R$ {item.price.toFixed(2)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center text-xs p-1">
+                          <span className="font-bold text-slate-600">Copo Trufado Nutella/Amendoim</span>
+                          <span className="font-black text-slate-800">R$ 20,00</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs p-1">
+                          <span className="font-bold text-slate-600">Copo da Felicidade Supremo</span>
+                          <span className="font-black text-slate-800">R$ 30,00</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Center Column (Milk Shakes) */}
+              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs">
+                <div>
+                  <div className="bg-rose-500 text-white text-center py-1 px-3 rounded-xl font-black uppercase text-xs sm:text-sm tracking-wider mb-3">
+                    🥤 MILK SHAKES GOURMET
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
+                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel300}</span>
+                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice300}</span>
+                    </div>
+                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
+                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel400}</span>
+                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice400}</span>
+                    </div>
+                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
+                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel500}</span>
+                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice500}</span>
+                    </div>
+                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
+                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel700}</span>
+                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice700}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sabores de Sorvete */}
+                <div className="my-4 bg-slate-100/60 p-3.5 rounded-xl border border-slate-150 text-left">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    🍨 SABORES DE SORVETE DISPONÍVEIS:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {boardMsFlavorList.split(',').map((flav, idx) => (
+                      <span key={idx} className="bg-white px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-black text-slate-700 border border-slate-200/50 shadow-xs">
+                        {flav.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Premium Shakes */}
+                <div>
+                  {premiumShakes.length > 0 && (
+                    <>
+                      <h3 className="font-black text-rose-600 uppercase text-xs sm:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-100 pb-1.5">
+                        ✨ Shakes Especiais & Premium
+                      </h3>
+                      <div className="space-y-2">
+                        {premiumShakes.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {item.image && (
+                                <img 
+                                  src={item.image} 
+                                  alt={item.name} 
+                                  className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
+                                  referrerPolicy="no-referrer"
+                                />
+                              )}
+                              <div className="min-w-0 text-left">
+                                <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
+                                {item.description && (
+                                  <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0">R$ {item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column (Buckets, Coffee & Toppings) */}
+              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs">
+                <div>
+                  <h3 className="font-black text-amber-600 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-amber-200/50 pb-1.5">
+                    🍨 Baldes & Cafés Premium
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    {baldesAndCafes.length > 0 ? (
+                      baldesAndCafes.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {item.image && (
+                              <img 
+                                src={item.image} 
+                                alt={item.name} 
+                                className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
+                                referrerPolicy="no-referrer"
+                              />
+                            )}
+                            <div className="min-w-0 text-left">
+                              <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
+                              {item.description && (
+                                <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-black text-amber-600 text-xs sm:text-sm flex-shrink-0">R$ {item.price.toFixed(2)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center text-xs p-1">
+                          <span className="font-bold text-slate-600">Balde Brownie 700ml</span>
+                          <span className="font-black text-amber-600">R$ {brPrice700}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs p-1">
+                          <span className="font-bold text-slate-600">Doce de Leite 700ml</span>
+                          <span className="font-black text-amber-600">R$ 25,00</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs p-1">
+                          <span className="font-bold text-slate-600">Frappuccino 500ml</span>
+                          <span className="font-black text-amber-600">R$ 25,00</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional Extras */}
+                <div className="mt-4 text-left flex-1 flex flex-col justify-end">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 border-t border-slate-150 pt-3">
+                    ➕ COMPLEMENTOS & ADICIONAIS EXTRA:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {boardAdicionaisList.split(',').map((item, idx) => (
+                      <span key={idx} className="bg-slate-100 px-2.5 py-1 rounded-xl text-[10px] font-bold text-slate-600 border border-slate-200/35">
+                        {item.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Bottom Section: Socials & Contact */}
+            <div className="flex justify-between items-center border-t-2 border-amber-200/50 pt-4 text-xs sm:text-sm lg:text-base font-black text-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="bg-emerald-500 text-white p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center animate-pulse">📞</span>
+                <span className="font-mono text-slate-800">{boardCustomNote} — {boardPhone}</span>
+              </div>
+              
+              <div className="text-[10px] sm:text-xs font-black text-slate-350 tracking-widest uppercase">
+                📺 MODO TV ATIVO • PRESSIONE ESC PARA SAIR
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="bg-rose-500 text-white p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center">📷</span>
+                <span className="text-rose-600">{boardInstagram}</span>
+              </div>
+            </div>
+
+          </motion.div>
         )}
       </AnimatePresence>
 
