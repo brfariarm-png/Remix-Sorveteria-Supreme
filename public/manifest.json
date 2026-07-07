@@ -18,9 +18,54 @@
   ],
   "orientation": "portrait",
   "prefer_related_applications": false,
-  "related_applications": [],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.supreme.app",
+      "id": "com.supreme.app"
+    }
+  ],
   "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
-  "scope_extensions": [],
+  "scope_extensions": [
+    {
+      "origin": "*.run.app"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
+  "file_handlers": [
+    {
+      "action": "/?file",
+      "accept": {
+        "image/*": [".png", ".jpg", ".jpeg"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+supreme",
+      "url": "/?protocol=%s"
+    }
+  ],
+  "widgets": [
+    {
+      "name": "Sorveteria Supreme",
+      "description": "Veja o status do seu pedido na Sorveteria Supreme",
+      "tag": "order-status",
+      "ms_ac_template": "widgets/status.json",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
