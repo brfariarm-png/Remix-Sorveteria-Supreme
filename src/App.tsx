@@ -1551,7 +1551,7 @@ export default function App() {
 
   // Add standard product to cart
   const handleAddProductToCart = (item: MenuItem) => {
-    if (item.customizable) {
+    if (item.customizable || item.category === 'sorvete') {
       setCustomizingItem(item);
       setIsCustomizerOpen(true);
       return;
@@ -2316,10 +2316,13 @@ export default function App() {
 
                         {/* Interactive price and checkout trigger */}
                         <div className="flex justify-between items-center mt-5 pt-3 border-t border-rose-50/50">
-                          {item.customizable ? (
-                            <span className="text-xs font-black text-rose-500 bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100 uppercase tracking-wider">
-                              Monte o seu!
-                            </span>
+                          {item.customizable || item.category === 'sorvete' ? (
+                            <div className="flex flex-col">
+                              <span className="text-sm font-black text-slate-900">R$ {item.price.toFixed(2)}</span>
+                              <span className="text-[10px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 uppercase tracking-wider mt-0.5 self-start">
+                                Monte o seu!
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-lg font-black text-slate-900">R$ {item.price.toFixed(2)}</span>
                           )}

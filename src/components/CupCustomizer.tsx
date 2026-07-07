@@ -37,11 +37,21 @@ export default function CupCustomizer({
   const isMilkshake = customizingItem?.category === 'milkshake';
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
 
-  const sizeOptions = useMemo(() => {
-    if (customizingItem?.sizeMode === 'single') {
-      return [{ id: 'single', label: customizingItem.singleSizeLabel || 'Tamanho Único' }];
+  const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
+    if (customizingItem?.sizeMode) {
+      return customizingItem.sizeMode;
     }
-    if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+    if (customizingItem?.category === 'sorvete') {
+      return 'single';
+    }
+    return 'default';
+  }, [customizingItem]);
+
+  const sizeOptions = useMemo(() => {
+    if (resolvedSizeMode === 'single') {
+      return [{ id: 'single', label: customizingItem?.singleSizeLabel || 'Tamanho Único' }];
+    }
+    if (resolvedSizeMode === 'custom' && customizingItem?.customSizes) {
       return Object.entries(customizingItem.customSizes)
         .filter(([_, data]) => data.active)
         .map(([id, data]) => ({ id, label: data.label }));
@@ -68,21 +78,29 @@ export default function CupCustomizer({
       { id: '500ml', label: storeSettings?.cupLabels?.['500ml'] || '500ml' },
       { id: '700ml', label: storeSettings?.cupLabels?.['700ml'] || '700ml' },
     ];
-  }, [customizingItem, isLinhaBrownie, isMilkshake, storeSettings]);
+  }, [customizingItem, resolvedSizeMode, isLinhaBrownie, isMilkshake, storeSettings]);
 
   const [size, setSize] = useState<string>(() => {
-    if (customizingItem?.sizeMode === 'single') {
+    if (resolvedSizeMode === 'single') {
       return 'single';
     }
-    if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
-      const activeKeys = Object.keys(customizingItem.customSizes).filter(k => customizingItem.customSizes?.[k]?.active);
+    if (resolvedSizeMode === 'custom' && customizingItem?.customSizes) {
+      const activeKeys = Object.keys(customizingItem.customSizes).filter(k => customizingItem?.customSizes?.[k]?.active);
       return activeKeys[0] || '400ml';
     }
-    return isLinhaBrownie ? '400ml' : '400ml';
+    return '400ml';
   });
 
-  const [base, setBase] = useState<'acai' | 'sorvete' | 'casadinho'>(isMilkshake ? 'sorvete' : 'casadinho');
-  const [selectedFlavors, setSelectedFlavors] = useState<string[]>(isMilkshake ? ['baunilha'] : ['acai-puro-organico']);
+  const [base, setBase] = useState<'acai' | 'sorvete' | 'casadinho'>(() => {
+    if (isMilkshake) return 'sorvete';
+    if (customizingItem?.category === 'sorvete') return 'sorvete';
+    return 'casadinho';
+  });
+  const [selectedFlavors, setSelectedFlavors] = useState<string[]>(() => {
+    if (isMilkshake) return ['baunilha'];
+    if (customizingItem?.category === 'sorvete') return [];
+    return ['acai-puro-organico'];
+  });
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [extraBrownieProducts, setExtraBrownieProducts] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
@@ -134,7 +152,13 @@ export default function CupCustomizer({
   };
 
   // Max flavors allowed
-  const maxFlavors = isMilkshake ? 1 : 2;
+  const maxFlavors = useMemo(() => {
+    if (isMilkshake) return 1;
+    if (customizingItem?.id === 'gelato-supreme' || customizingItem?.name?.toLowerCase()?.includes('triplo') || customizingItem?.name?.toLowerCase()?.includes('premium')) {
+      return 3;
+    }
+    return 2;
+  }, [isMilkshake, customizingItem]);
 
   // Filter flavors based on base type chosen
   const availableFlavors = useMemo(() => {
@@ -182,10 +206,10 @@ export default function CupCustomizer({
   }, [isMilkshake, customizingItem, toppingOptions]);
 
   const basePrice = useMemo(() => {
-    if (customizingItem?.sizeMode === 'single') {
-      return customizingItem.singleSizePrice || customizingItem.price || 15;
+    if (resolvedSizeMode === 'single') {
+      return customizingItem?.singleSizePrice || customizingItem?.price || 15;
     }
-    if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+    if (resolvedSizeMode === 'custom' && customizingItem?.customSizes) {
       return customizingItem.customSizes[size]?.price ?? 15;
     }
     if (isLinhaBrownie) {
@@ -254,19 +278,19 @@ export default function CupCustomizer({
         : 'Balde 700ml'
       : size;
 
-    const finalName = customizingItem
-      ? customizingItem.sizeMode === 'single'
+     const finalName = customizingItem
+      ? resolvedSizeMode === 'single'
         ? `${customizingItem.name} Customizado`
         : `${customizingItem.name} Customizado (${sizeName})`
       : `Açaí Gourmet Supreme Personalizado (${sizeName})`;
-
-    const rawDescription = customizingItem
-      ? customizingItem.description
-      : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola.';
-
-    const descriptionBase = customizingItem?.sizeMode === 'single'
-      ? cleanDescriptionForSingleSize(rawDescription)
-      : rawDescription;
+ 
+     const rawDescription = customizingItem
+       ? customizingItem.description
+       : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola.';
+ 
+     const descriptionBase = resolvedSizeMode === 'single'
+       ? cleanDescriptionForSingleSize(rawDescription)
+       : rawDescription;
 
     // Get extra brownie products string
     const extraProductsString = isLinhaBrownie
@@ -292,7 +316,7 @@ export default function CupCustomizer({
       .join(', ');
 
     let finalDesc = descriptionBase;
-    if (customizingItem?.sizeMode === 'single') {
+    if (resolvedSizeMode === 'single') {
       if (flavorsStr && selectedFlavors.length > 0) {
         finalDesc += ` (Sabores: ${flavorsStr})`;
       }
@@ -389,11 +413,11 @@ export default function CupCustomizer({
               </button>
             </div>
             <h3 className="text-xl font-bold text-slate-800 leading-tight">
-              {customizingItem?.sizeMode === 'single' ? 'Adicionais e Observações' : isLinhaBrownie ? 'Escolha Seu Brownie Favorito e Adicionais' : isMilkshake ? 'Escolha o Sabor e Adicionais' : 'Escolha Seu Tamanho e Adicionais'}
+              {resolvedSizeMode === 'single' ? 'Adicionais e Observações' : isLinhaBrownie ? 'Escolha Seu Brownie Favorito e Adicionais' : isMilkshake ? 'Escolha o Sabor e Adicionais' : 'Escolha Seu Tamanho e Adicionais'}
             </h3>
             <p className="text-[11px] text-slate-650 leading-normal bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/20">
               {customizingItem 
-                ? (customizingItem.sizeMode === 'single' ? cleanDescriptionForSingleSize(customizingItem.description) : customizingItem.description)
+                ? (resolvedSizeMode === 'single' ? cleanDescriptionForSingleSize(customizingItem.description) : customizingItem.description)
                 : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola. O melhor acai preparado com ingredientes selecionados e de boa qualidade.'}
             </p>
           </div>
@@ -437,9 +461,8 @@ export default function CupCustomizer({
         {/* Right pane: Customizer options checklist (7 columns) */}
         <div className="lg:col-span-7 bg-white p-5 sm:p-6 flex flex-col justify-between lg:overflow-y-auto lg:max-h-[90vh]">
           <div className="space-y-6">
-            {/* Header control buttons */}
             <div className="flex justify-between items-center pb-2 border-b border-neutral-100">
-              {customizingItem?.sizeMode !== 'single' ? (
+              {resolvedSizeMode !== 'single' ? (
                 <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                   <Layers className="w-5 h-5 text-rose-500" /> Escolha Seus Ingredientes
                 </h4>
@@ -455,7 +478,7 @@ export default function CupCustomizer({
             </div>
 
             {/* 1. Cup Size Selection */}
-            {customizingItem?.sizeMode !== 'single' && (
+            {resolvedSizeMode !== 'single' && (
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
                   <Ruler className="w-4 h-4 text-rose-500" /> 1. {isLinhaBrownie ? 'Escolha seu Brownie Favorito' : isMilkshake ? 'Escolha o Tamanho do Milkshake' : 'Escolha o Tamanho do Copo'}
@@ -475,9 +498,7 @@ export default function CupCustomizer({
 
                     // Custom price logic
                     let price = 15;
-                    if (customizingItem?.sizeMode === 'single') {
-                      price = customizingItem.singleSizePrice || customizingItem.price || 15;
-                    } else if (customizingItem?.sizeMode === 'custom' && customizingItem.customSizes) {
+                    if (resolvedSizeMode === 'custom' && customizingItem?.customSizes) {
                       price = customizingItem.customSizes[opt.id]?.price ?? 15;
                     } else if (isLinhaBrownie) {
                       price = Number(opt.id === '300ml' ? (storeSettings?.browniePrices?.['300ml'] ?? 16.90)
@@ -563,7 +584,7 @@ export default function CupCustomizer({
             )}
 
             {/* 3. Flavors / Polpas Selection */}
-            {customizingItem?.sizeMode !== 'single' && (
+            {true && (
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-sm font-bold text-slate-700">
@@ -620,7 +641,7 @@ export default function CupCustomizer({
             )}
 
             {/* 4. Toppings Checklist (Tabs categorized) */}
-            {customizingItem?.sizeMode !== 'single' && (
+            {true && (
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
@@ -671,15 +692,13 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {customizingItem?.sizeMode === 'single' && (
-              <div className="bg-amber-50/60 border border-amber-200/50 rounded-2xl p-4 flex gap-3 text-amber-900">
+            {resolvedSizeMode === 'single' && (
+              <div className="bg-rose-50/60 border border-rose-200/50 rounded-2xl p-4 flex gap-3 text-rose-900">
                 <span className="text-xl">✨</span>
                 <div>
-                  <h4 className="font-extrabold text-xs uppercase tracking-wide">Produto Tamanho Único & Completo</h4>
+                  <h4 className="font-extrabold text-xs uppercase tracking-wide">Produto com Tamanho Único</h4>
                   <p className="text-[11px] font-medium leading-relaxed mt-0.5 opacity-90">
-                    Este produto já é preparado de forma especial com todos os ingredientes descritos! 
-                    Não é necessário selecionar sabores ou adicionais separados. Se quiser solicitar alguma 
-                    modificação, remover algum ingrediente ou fazer observações, use o campo de texto abaixo.
+                    Este produto possui tamanho único, mas você pode selecionar seus sabores de sorvete e adicionais preferidos abaixo para personalizá-lo!
                   </p>
                 </div>
               </div>
