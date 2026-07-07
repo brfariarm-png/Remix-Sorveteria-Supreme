@@ -697,7 +697,12 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'menu' | 'tracker'>('menu');
   const [isPrinterConfigOpen, setIsPrinterConfigOpen] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
+    return localStorage.getItem('is_sound_enabled') !== 'false'; // Defaults to true
+  });
+  const [selectedRing, setSelectedRing] = useState(() => {
+    return localStorage.getItem('selected_ring') || 'ifood';
+  });
   const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp'>('orders');
   const [isRingingLoop, setIsRingingLoop] = useState(false);
   const [visualNotifications, setVisualNotifications] = useState<VisualNotification[]>([]);
@@ -712,6 +717,14 @@ export default function App() {
   });
 
   useEffect(() => {
+    localStorage.setItem('is_sound_enabled', String(isSoundEnabled));
+  }, [isSoundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('selected_ring', selectedRing);
+  }, [selectedRing]);
+
+  useEffect(() => {
     localStorage.setItem('auto_print_on_new', String(autoPrintOnNew));
   }, [autoPrintOnNew]);
 
@@ -723,7 +736,7 @@ export default function App() {
     localStorage.setItem('auto_send_whatsapp_status', String(autoSendWhatsAppStatus));
   }, [autoSendWhatsAppStatus]);
 
-  const playNotificationSound = () => {
+  const playNotificationSound = (overrideRing?: string) => {
     if (!isSoundEnabled) return;
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -733,31 +746,133 @@ export default function App() {
         ctx.resume();
       }
       const now = ctx.currentTime;
-      // Ding (Note 1)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(880, now); // A5
-      gain1.gain.setValueAtTime(0, now);
-      gain1.gain.linearRampToValueAtTime(0.4, now + 0.05);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.5);
+      const activeRing = overrideRing || selectedRing;
 
-      // Dong (Note 2) - played slightly delayed
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(659.25, now + 0.15); // E5
-      gain2.gain.setValueAtTime(0, now + 0.15);
-      gain2.gain.linearRampToValueAtTime(0.4, now + 0.20);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.15);
-      osc2.stop(now + 0.85);
+      if (activeRing === 'ifood') {
+        // Ding (Note 1)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, now); // A5
+        gain1.gain.setValueAtTime(0, now);
+        gain1.gain.linearRampToValueAtTime(0.4, now + 0.05);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.5);
+
+        // Dong (Note 2) - played slightly delayed
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(659.25, now + 0.15); // E5
+        gain2.gain.setValueAtTime(0, now + 0.15);
+        gain2.gain.linearRampToValueAtTime(0.4, now + 0.20);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.15);
+        osc2.stop(now + 0.85);
+      } else if (activeRing === 'chime') {
+        // Ascending Sweet Chime
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + i * 0.1);
+          gain.gain.setValueAtTime(0, now + i * 0.1);
+          gain.gain.linearRampToValueAtTime(0.3, now + i * 0.1 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.1);
+          osc.stop(now + i * 0.1 + 0.4);
+        });
+      } else if (activeRing === 'buzzer') {
+        // Classic buzzer / Retro telephone: double pulse of sawtooth wave
+        for (let i = 0; i < 2; i++) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(380, now + i * 0.25);
+          
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1200, now);
+
+          gain.gain.setValueAtTime(0, now + i * 0.25);
+          gain.gain.linearRampToValueAtTime(0.2, now + i * 0.25 + 0.02);
+          gain.gain.linearRampToValueAtTime(0.2, now + i * 0.25 + 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.25 + 0.2);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.25);
+          osc.stop(now + i * 0.25 + 0.22);
+        }
+      } else if (activeRing === 'urgent') {
+        // Urgent alert: Fast, high beeps (1100Hz)
+        const times = [0, 0.12, 0.24, 0.36];
+        times.forEach((startTime) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1100, now + startTime);
+          gain.gain.setValueAtTime(0, now + startTime);
+          gain.gain.linearRampToValueAtTime(0.4, now + startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + startTime + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + startTime);
+          osc.stop(now + startTime + 0.1);
+        });
+      } else if (activeRing === 'sonar') {
+        // Digital Radar / Sci-Fi Sonar sweep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1500, now);
+        osc.frequency.exponentialRampToValueAtTime(500, now + 0.6);
+        
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.85);
+      } else if (activeRing === 'classic_bell') {
+        // Bell / Service desk trilim: high frequency crystal clear ping
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1800, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.5, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+        
+        const oscOver = ctx.createOscillator();
+        const gainOver = ctx.createGain();
+        oscOver.type = 'sine';
+        oscOver.frequency.setValueAtTime(2210, now);
+        gainOver.gain.setValueAtTime(0, now);
+        gainOver.gain.linearRampToValueAtTime(0.15, now + 0.01);
+        gainOver.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        oscOver.connect(gainOver);
+        gainOver.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 1.3);
+        oscOver.start(now);
+        oscOver.stop(now + 0.9);
+      }
     } catch (e) {
       console.error("Audio error", e);
     }
@@ -2620,6 +2735,8 @@ export default function App() {
                         playNotificationSound={playNotificationSound} 
                         isSoundEnabled={isSoundEnabled} 
                         setIsSoundEnabled={setIsSoundEnabled} 
+                        selectedRing={selectedRing}
+                        setSelectedRing={setSelectedRing}
                         autoPrintOnNew={autoPrintOnNew} 
                         setAutoPrintOnNew={setAutoPrintOnNew} 
                         autoPrintOnPrep={autoPrintOnPrep} 
@@ -2737,32 +2854,55 @@ export default function App() {
                       {isPrinterConfigOpen && (
                         <div className="p-5 border-t border-slate-100/60 space-y-5">
                           {/* Part 1: Audio Bell controls */}
-                          <div className="bg-rose-50/15 border border-rose-100/30 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="space-y-0.5 text-left">
-                              <span className="text-[10px] font-black text-rose-550 uppercase tracking-wide block">🔔 Campainha iFood (Som de Novos Pedidos)</span>
-                              <p className="text-[11px] text-slate-450 leading-relaxed">
-                                Toca automaticamente um &ldquo;Ding-Dong&rdquo; acústico assim que um novo cliente finaliza e envia um pedido.
-                              </p>
+                          <div className="bg-rose-50/15 border border-rose-100/30 p-3.5 rounded-xl space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="space-y-0.5 text-left">
+                                <span className="text-[10px] font-black text-rose-550 uppercase tracking-wide block">🔔 Campainha iFood (Som de Novos Pedidos)</span>
+                                <p className="text-[11px] text-slate-450 leading-relaxed">
+                                  Toca automaticamente uma campainha acústica assim que um novo cliente finaliza e envia um pedido.
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => playNotificationSound()}
+                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-extrabold uppercase tracking-wide cursor-pointer flex items-center gap-1"
+                                  title="Libera permissão de áudio no navegador e testa o gongo de alerta."
+                                >
+                                  🔊 Testar Som
+                                </button>
+                                
+                                <button
+                                  onClick={() => setIsSoundEnabled(!isSoundEnabled)}
+                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                    isSoundEnabled
+                                      ? 'bg-emerald-500 text-white shadow-xs'
+                                      : 'bg-slate-200 text-slate-500 hover:bg-slate-350 hover:text-slate-700'
+                                  }`}
+                                >
+                                  {isSoundEnabled ? '● Ativado' : '○ Desativado'}
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={playNotificationSound}
-                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-extrabold uppercase tracking-wide cursor-pointer flex items-center gap-1"
-                                title="Libera permissão de áudio no navegador e testa o gongo de alerta."
+
+                            {/* Dropdown to select Ringtone directly in orders dashboard */}
+                            <div className="flex items-center gap-2 pt-1.5 border-t border-rose-100/20 text-xs font-semibold text-slate-600">
+                              <span className="text-[10.5px] font-black text-slate-500 uppercase tracking-wide">Escolher Toque:</span>
+                              <select
+                                value={selectedRing}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSelectedRing(val);
+                                  playNotificationSound(val);
+                                }}
+                                className="text-[11px] p-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-rose-500 font-bold text-slate-800 cursor-pointer"
                               >
-                                🔊 Testar Som
-                              </button>
-                              
-                              <button
-                                onClick={() => setIsSoundEnabled(!isSoundEnabled)}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                  isSoundEnabled
-                                    ? 'bg-emerald-500 text-white shadow-xs'
-                                    : 'bg-slate-200 text-slate-500 hover:bg-slate-350 hover:text-slate-700'
-                                }`}
-                              >
-                                {isSoundEnabled ? '● Ativado' : '○ Desativado'}
-                              </button>
+                                <option value="ifood">🔔 iFood Clássico (Ding-Dong)</option>
+                                <option value="chime">🎐 Chime Melodia (Suave)</option>
+                                <option value="classic_bell">🛎️ Sino de Balcão (Trilim)</option>
+                                <option value="sonar">📡 Radar Sonar (Digital)</option>
+                                <option value="urgent">⚡ Alerta Rápido (Beeps)</option>
+                                <option value="buzzer">🚨 Campainha Retrô (Buzzer)</option>
+                              </select>
                             </div>
                           </div>
 
