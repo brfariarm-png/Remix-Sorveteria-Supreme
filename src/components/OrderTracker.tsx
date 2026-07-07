@@ -458,6 +458,37 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
         </div>
       )}
 
+      {/* WhatsApp Support Section with QR Code */}
+      <div className="bg-[#FAF8F5] border border-amber-200/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-left">
+        <div className="bg-white p-2 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border border-amber-100 flex-shrink-0">
+          <img 
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://wa.me/55${(storeSettings?.phone || '17999999999').replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Estou acompanhando meu pedido #${order.id.slice(-6).toUpperCase()} e gostaria de tirar uma dúvida.`)}`)}`}
+            alt="WhatsApp QR Code"
+            className="w-24 h-24 object-contain"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <div className="space-y-1.5 flex-1">
+          <div className="flex items-center gap-1.5 text-rose-600 font-black text-xs uppercase tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Atendimento via WhatsApp
+          </div>
+          <h4 className="text-sm font-black text-slate-800 font-display">Dúvidas com o seu pedido? Fale Conosco!</h4>
+          <p className="text-[10.5px] leading-relaxed text-slate-500 font-medium">
+            Escaneie o QR Code ao lado com a câmera do seu celular para abrir o suporte automático direto da nossa loja física, ou clique no botão abaixo.
+          </p>
+          <div className="pt-1">
+            <a 
+              href={`https://wa.me/55${(storeSettings?.phone || '17999999999').replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Estou acompanhando meu pedido #${order.id.slice(-6).toUpperCase()} e gostaria de tirar uma dúvida.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] uppercase font-black tracking-wider transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-50"
+            >
+              💬 Iniciar Conversa no WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Inner items summaries collapsible */}
       <div className="border border-slate-150 rounded-2xl p-4 space-y-2.5">
         <h4 className="text-xs font-bold text-slate-600 border-b border-rose-50 pb-1.5 uppercase tracking-wide">Resumo dos Produtos</h4>

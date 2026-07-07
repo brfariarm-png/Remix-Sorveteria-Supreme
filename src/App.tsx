@@ -296,6 +296,7 @@ export default function App() {
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [showShareQrModal, setShowShareQrModal] = useState(false);
+  const [showWhatsAppQrModal, setShowWhatsAppQrModal] = useState(false);
   const [isCustomInstallModalOpen, setIsCustomInstallModalOpen] = useState(false);
 
   // Custom confirm state to avoid blocked window.confirm inside iframe
@@ -3733,6 +3734,91 @@ E-mail: ${storeSettings.email}`;
         )}
       </AnimatePresence>
 
+      {/* 8.6. WhatsApp QR Code Help Modal */}
+      <AnimatePresence>
+        {showWhatsAppQrModal && (
+          <div className="fixed inset-0 z-55 overflow-y-auto flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowWhatsAppQrModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs" 
+            />
+
+            {/* Container */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl max-w-sm w-full flex flex-col overflow-hidden shadow-2xl border border-rose-100 relative z-50 font-sans p-6 text-center"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Suporte Oficial WhatsApp</span>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setShowWhatsAppQrModal(false)}
+                  className="p-1 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-col items-center space-y-4">
+                <div className="bg-emerald-50 text-emerald-700 font-black text-[10px] tracking-wider px-3 py-1 rounded-full uppercase select-none">
+                  Atendimento Online 🟢
+                </div>
+
+                <div className="bg-white p-4 rounded-3xl border border-emerald-100 shadow-md">
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://wa.me/55${storeSettings.phone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Gostaria de falar com o atendimento da Sorveteria Supreme.')}`)}`} 
+                    alt="WhatsApp QR Code" 
+                    className="w-44 h-44"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-slate-900 text-sm leading-snug">
+                    Fale Conosco no WhatsApp
+                  </h3>
+                  <p className="text-[11.5px] text-slate-500 leading-normal font-medium">
+                    Escaneie o código acima com a câmera do seu celular para iniciar uma conversa direto no WhatsApp, ou clique no botão abaixo para ir direto.
+                  </p>
+                </div>
+
+                <div className="w-full text-xs font-mono font-bold text-slate-700 bg-slate-50 border border-slate-150 p-2.5 rounded-2xl break-all flex items-center justify-center gap-1.5">
+                  <Phone className="w-4 h-4 text-emerald-600" />
+                  <span>{storeSettings.phone}</span>
+                </div>
+
+                <div className="w-full flex flex-col gap-2 pt-1">
+                  <a
+                    href={`https://wa.me/55${storeSettings.phone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Gostaria de falar com o atendimento da Sorveteria Supreme.')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs py-3 rounded-xl uppercase tracking-wider transition-all cursor-pointer shadow-md shadow-emerald-50 text-center flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" /> Iniciar Conversa
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsAppQrModal(false)}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-[11px] py-2 rounded-xl transition-all cursor-pointer"
+                  >
+                    Voltar ao App
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* 9.1 Connection & Diagnostics Modal */}
       <AnimatePresence>
         {isAuthModalOpen && (
@@ -5237,6 +5323,24 @@ E-mail: ${storeSettings.email}`;
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating WhatsApp Support Trigger Button */}
+      {!isAdmin && (
+        <motion.button
+          onClick={() => setShowWhatsAppQrModal(true)}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+          className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-[90] bg-emerald-500 hover:bg-emerald-600 text-white p-3.5 rounded-full shadow-2xl flex items-center justify-center gap-2 cursor-pointer group active:scale-90"
+          title="Fale Conosco no WhatsApp"
+        >
+          <MessageCircle className="w-6 h-6 animate-pulse" />
+          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out font-black text-[10px] uppercase tracking-wider block whitespace-nowrap leading-none">
+            Suporte WhatsApp
+          </span>
+        </motion.button>
+      )}
 
     </div>
   );
