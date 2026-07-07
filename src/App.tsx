@@ -275,6 +275,19 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showAdminSection, setShowAdminSection] = useState(false);
 
+  const [currentMinutes, setCurrentMinutes] = useState(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const d = new Date();
+      setCurrentMinutes(d.getHours() * 60 + d.getMinutes());
+    }, 15000); // tick every 15 seconds to update open/closed state in real-time
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     if (!isAuthModalOpen) {
       setShowAdminSection(false);
@@ -712,12 +725,7 @@ export default function App() {
     if (storeSettings.statusOverride === 'open') return true;
     if (storeSettings.statusOverride === 'closed') return false;
 
-    // Automatic calculation
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
-
+    // Automatic calculation using dynamic ticking currentMinutes
     const [openHour, openMin] = (storeSettings.openTime || "11:00").split(':').map(Number);
     const [closeHour, closeMin] = (storeSettings.closeTime || "23:00").split(':').map(Number);
     
@@ -726,12 +734,12 @@ export default function App() {
 
     if (closeTotalMinutes > openTotalMinutes) {
       // Normal range e.g. 11:00 to 23:00
-      return currentTotalMinutes >= openTotalMinutes && currentTotalMinutes < closeTotalMinutes;
+      return currentMinutes >= openTotalMinutes && currentMinutes < closeTotalMinutes;
     } else {
       // Overnight range e.g. 18:00 to 02:00
-      return currentTotalMinutes >= openTotalMinutes || currentTotalMinutes < closeTotalMinutes;
+      return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
     }
-  }, [storeSettings.statusOverride, storeSettings.openTime, storeSettings.closeTime]);
+  }, [storeSettings.statusOverride, storeSettings.openTime, storeSettings.closeTime, currentMinutes]);
 
   const [activeTab, setActiveTab] = useState<'menu' | 'tracker'>('menu');
   const [isPrinterConfigOpen, setIsPrinterConfigOpen] = useState(false);
