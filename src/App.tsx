@@ -774,6 +774,62 @@ export default function App() {
         gain2.connect(ctx.destination);
         osc2.start(now + 0.15);
         osc2.stop(now + 0.85);
+      } else if (activeRing === 'tritone') {
+        // Classic Tri-tone (Apple / WhatsApp notification)
+        const notes = [830.61, 1108.73, 1479.98]; // G#5, C#6, F#6
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          
+          const startTime = now + i * 0.11;
+          osc.frequency.setValueAtTime(freq, startTime);
+          
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+          
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.25);
+        });
+      } else if (activeRing === 'whatsapp') {
+        // WhatsApp Whistle: dual tone whistle sweep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.exponentialRampToValueAtTime(1800, now + 0.15);
+        osc.frequency.exponentialRampToValueAtTime(1400, now + 0.25);
+        
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else if (activeRing === 'mario') {
+        // Super Mario Coin Sound
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        
+        osc.frequency.setValueAtTime(987.77, now); // B5
+        osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+        
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.35, now + 0.01);
+        gain.gain.setValueAtTime(0.35, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.55);
       } else if (activeRing === 'chime') {
         // Ascending Sweet Chime
         const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
@@ -2897,6 +2953,9 @@ export default function App() {
                                 className="text-[11px] p-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-rose-500 font-bold text-slate-800 cursor-pointer"
                               >
                                 <option value="ifood">🔔 iFood Clássico (Ding-Dong)</option>
+                                <option value="tritone">💬 WhatsApp Tri-tone (Sino)</option>
+                                <option value="whatsapp">📱 Assobio WhatsApp (Whistle)</option>
+                                <option value="mario">🪙 Moeda do Mario (Arcade)</option>
                                 <option value="chime">🎐 Chime Melodia (Suave)</option>
                                 <option value="classic_bell">🛎️ Sino de Balcão (Trilim)</option>
                                 <option value="sonar">📡 Radar Sonar (Digital)</option>
