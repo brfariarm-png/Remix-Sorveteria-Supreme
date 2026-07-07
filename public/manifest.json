@@ -19,6 +19,8 @@
   "orientation": "portrait",
   "prefer_related_applications": false,
   "related_applications": [],
+  "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
+  "scope_extensions": [],
   "icons": [
     {
       "src": "/icon-192.png",
