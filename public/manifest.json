@@ -13,6 +13,8 @@
   "display": "standalone",
   "orientation": "portrait",
   "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
+  "prefer_related_applications": false,
+  "related_applications": [],
   "scope_extensions": [
     {
       "origin": "sorveteriasupreme.vercel.app"
