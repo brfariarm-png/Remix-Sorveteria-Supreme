@@ -11,6 +11,11 @@
   "background_color": "#ffffff",
   "theme_color": "#ED2024",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "minimal-ui",
+    "standalone"
+  ],
   "orientation": "portrait",
   "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
   "prefer_related_applications": false,
