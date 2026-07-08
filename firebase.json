@@ -7,6 +7,10 @@
     {
       "database": "remixed-firestore-database-id",
       "rules": "firestore.rules"
+    },
+    {
+      "database": "ai-studio-remixsorveterias-394250e3-c97c-4dba-be9b-43921c0168c3",
+      "rules": "firestore.rules"
     }
   ]
 }
