@@ -1,5 +1,5 @@
 // Service Worker for Sorveteria Supreme (PWA compliance & performance)
-const CACHE_NAME = 'supreme-cache-v4';
+const CACHE_NAME = 'supreme-cache-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -16,10 +16,14 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Pre-caching static resources');
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn('Pre-cache partial warning:', err);
-      });
+      console.log('Pre-caching static resources individually');
+      return Promise.all(
+        ASSETS_TO_CACHE.map((url) => {
+          return cache.add(url).catch((err) => {
+            console.warn(`Failed to pre-cache asset: ${url}`, err);
+          });
+        })
+      );
     })
   );
   self.skipWaiting();
