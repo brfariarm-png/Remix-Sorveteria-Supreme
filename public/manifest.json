@@ -28,16 +28,16 @@
   "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
   "scope_extensions": [
     {
-      "origin": "https://sorveteriasupreme.vercel.app"
+      "origin": "sorveteriasupreme.vercel.app"
     },
     {
-      "origin": "https://*.vercel.app"
+      "origin": "*.vercel.app"
     },
     {
-      "origin": "https://*.run.app"
+      "origin": "*.run.app"
     },
     {
-      "origin": "https://*.us-west2.run.app"
+      "origin": "*.us-west2.run.app"
     }
   ],
   "launch_handler": {
