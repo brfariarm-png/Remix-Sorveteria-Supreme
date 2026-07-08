@@ -28,6 +28,12 @@
   "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
   "scope_extensions": [
     {
+      "origin": "https://sorveteriasupreme.vercel.app"
+    },
+    {
+      "origin": "https://*.vercel.app"
+    },
+    {
       "origin": "https://*.run.app"
     },
     {
