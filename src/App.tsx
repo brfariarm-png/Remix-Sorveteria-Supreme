@@ -425,7 +425,7 @@ export default function App() {
     // Register Service Worker correctly for PWA standard standalone compliance
     if ('serviceWorker' in navigator) {
       const registerSW = () => {
-        navigator.serviceWorker.register('/sw.js?v=3')
+        navigator.serviceWorker.register('/sw.js')
           .then((registration) => {
             console.log('ServiceWorker registrado com sucesso:', registration.scope);
           })
