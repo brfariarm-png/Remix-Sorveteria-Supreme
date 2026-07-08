@@ -1196,9 +1196,11 @@ export default function App() {
 
     const ordersCol = collection(db, 'orders');
 
-    // Connect to Firestore orders matching current user
+    // Connect to Firestore orders matching current user.
+    // A blanket list query is only allowed by the security rules if the user is a verified DB administrator.
     let q;
-    if (isAdmin) {
+    const isRealDbAdmin = currentUser && currentUser.email === 'brfariarm@gmail.com' && currentUser.emailVerified;
+    if (isRealDbAdmin) {
       q = query(ordersCol);
     } else {
       q = query(ordersCol, where('ownerId', '==', currentUser.uid));

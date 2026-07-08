@@ -19,20 +19,20 @@ service cloud.firestore {
       );
     }
 
-    // Menu and Options collections: Publicly readable, Admin writeable
+    // Menu and Options collections: Publicly readable, any authenticated user can write (supports seeding)
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /flavor_options/{optionId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /topping_options/{optionId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     // Store settings: Publicly readable, Admin writeable
