@@ -4,6 +4,6 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|logo.*\\.png|icon-.*\\.png|apple-touch-icon\\.png|manifest\\.json|sw\\.js|favicon\\.ico).*)", "destination": "/index.html" }
   ]
 }
