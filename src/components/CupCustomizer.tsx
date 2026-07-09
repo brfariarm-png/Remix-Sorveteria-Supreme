@@ -37,6 +37,7 @@ export default function CupCustomizer({
 }: CupCustomizerProps) {
   const isMilkshake = customizingItem?.category === 'milkshake' || customizingItem?.category === 'milkshake_especiais' || customizingItem?.category?.includes('milkshake');
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
+  const isSplit = customizingItem?.name?.toLowerCase()?.includes('split') || customizingItem?.id?.toLowerCase()?.includes('split');
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
     if (customizingItem?.sizeMode) {
@@ -156,11 +157,12 @@ export default function CupCustomizer({
   // Max flavors allowed
   const maxFlavors = useMemo(() => {
     if (isMilkshake) return 1;
+    if (isSplit) return 2;
     if (customizingItem?.id === 'gelato-supreme' || customizingItem?.name?.toLowerCase()?.includes('triplo') || customizingItem?.name?.toLowerCase()?.includes('premium')) {
       return 3;
     }
     return 2;
-  }, [isMilkshake, customizingItem]);
+  }, [isMilkshake, customizingItem, isSplit]);
 
   // Filter flavors based on base type chosen
   const availableFlavors = useMemo(() => {
@@ -264,7 +266,15 @@ export default function CupCustomizer({
     if (selectedToppings.includes(id)) {
       setSelectedToppings(selectedToppings.filter((t) => t !== id));
     } else {
-      setSelectedToppings([...selectedToppings, id]);
+      let nextToppings = [...selectedToppings, id];
+      if (isSplit) {
+        if (id === 'gratis-banana' || id === 'dobro-banana') {
+          nextToppings = nextToppings.filter((t) => t !== 'gratis-morango' && t !== 'dobro-morango');
+        } else if (id === 'gratis-morango' || id === 'dobro-morango') {
+          nextToppings = nextToppings.filter((t) => t !== 'gratis-banana' && t !== 'dobro-banana');
+        }
+      }
+      setSelectedToppings(nextToppings);
     }
   };
 
@@ -653,6 +663,16 @@ export default function CupCustomizer({
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
                 </label>
+                
+                {isSplit && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-3 mb-4 text-xs font-semibold leading-relaxed flex items-start gap-2">
+                    <span className="text-base">⚠️</span>
+                    <div>
+                      <p className="font-bold text-amber-950">Aviso sobre o Split:</p>
+                      <p className="opacity-90">Por favor, selecione apenas uma fruta como adicional: ou <strong>Banana</strong> ou <strong>Morango</strong>. Ao escolher uma delas, a outra será desmarcada automaticamente.</p>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="space-y-4">
                   {(Object.entries(toppingsByCategory) as [string, ToppingOption[]][]).map(([catName, list]) => {
