@@ -28,6 +28,319 @@ import SupremeLogo from './SupremeLogo';
 import { MenuItem, StoreSettings } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS } from '../data';
 
+function GourmetCup({ type, size = 80, className = "" }: { type: string; size?: number; className?: string }) {
+  switch (type) {
+    case 'milkshake':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Straw */}
+          <line x1="60" y1="35" x2="75" y2="10" stroke="#ED2024" strokeWidth="4" strokeLinecap="round" />
+          <line x1="60" y1="35" x2="75" y2="10" stroke="#FFFFFF" strokeWidth="4" strokeDasharray="4 4" strokeLinecap="round" />
+          {/* Whipped Cream */}
+          <path d="M 30 45 C 30 30, 40 23, 50 23 C 60 23, 70 30, 70 45 Z" fill="#FFFFFF" />
+          <path d="M 35 40 C 35 32, 43 28, 50 28 C 57 28, 65 32, 65 40 Z" fill="#FDF4E7" />
+          <circle cx="50" cy="21" r="5" fill="#D01C1C" />
+          {/* Drippings */}
+          <path d="M 24 55 Q 35 65, 38 52 Q 45 68, 50 55 Q 58 70, 65 52 Q 74 62, 76 55" fill="none" stroke="#3E1E09" strokeWidth="4" strokeLinecap="round" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 114, 66 114, 67 110 L 75 45 Z" fill="#FFF2E6" fillOpacity="0.8" stroke="#E2E8F0" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#F0B5C1" />
+          {/* Internal Swirl */}
+          <path d="M 30 60 Q 40 75, 45 90" stroke="#3E1E09" strokeWidth="3" fill="none" opacity="0.6" />
+          <path d="M 70 65 Q 60 80, 55 95" stroke="#3E1E09" strokeWidth="3" fill="none" opacity="0.6" />
+          {/* Sticker */}
+          <circle cx="50" cy="78" r="12" fill="#ED2024" />
+          <circle cx="50" cy="78" r="11" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="82" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'acai':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Straw/Spoon */}
+          <line x1="62" y1="35" x2="70" y2="15" stroke="#4A5568" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Toppings top */}
+          <ellipse cx="50" cy="45" rx="22" ry="6" fill="#F6AD55" />
+          <circle cx="38" cy="42" r="4.5" fill="#FEFCBF" stroke="#D97706" strokeWidth="0.5" />
+          <circle cx="62" cy="43" r="4.5" fill="#FEFCBF" stroke="#D97706" strokeWidth="0.5" />
+          <circle cx="50" cy="41" r="5" fill="#FEB2B2" stroke="#DC2626" strokeWidth="0.5" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 114, 66 114, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.3" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#3B114D" />
+          {/* Layers */}
+          <path d="M 28 65 Q 50 68, 72 65" stroke="#FFFDF5" strokeWidth="4.5" fill="none" opacity="0.85" />
+          <path d="M 31 90 Q 50 93, 69 90" stroke="#FFFDF5" strokeWidth="4.5" fill="none" opacity="0.85" />
+          <path d="M 33 55 Q 40 52, 45 56" stroke="#FEFCBF" strokeWidth="3.5" fill="none" />
+          <path d="M 55 56 Q 60 52, 67 55" stroke="#FEB2B2" strokeWidth="3.5" fill="none" />
+          <path d="M 30 78 Q 45 80, 52 76" stroke="#FEB2B2" strokeWidth="3.5" fill="none" />
+          <path d="M 50 82 Q 62 79, 70 81" stroke="#FEFCBF" strokeWidth="3.5" fill="none" />
+          {/* Sticker */}
+          <circle cx="50" cy="78" r="12" fill="#ED2024" />
+          <circle cx="50" cy="78" r="11" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="82" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'copo_especial':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Spoon / Wafer stick */}
+          <rect x="65" y="10" width="5" height="38" rx="2" fill="#DEB887" stroke="#8B4513" strokeWidth="0.5" transform="rotate(15 65 10)" />
+          <line x1="30" y1="40" x2="20" y2="20" stroke="#4A5568" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Toppings */}
+          <circle cx="42" cy="40" r="7" fill="#1C1C1C" stroke="#2D3748" strokeWidth="0.5" />
+          <circle cx="42" cy="40" r="4" fill="#FFFFFF" />
+          <circle cx="42" cy="40" r="2.5" fill="#1C1C1C" />
+          <circle cx="58" cy="42" r="7" fill="#1C1C1C" stroke="#2D3748" strokeWidth="0.5" />
+          <circle cx="58" cy="42" r="4" fill="#FFFFFF" />
+          <circle cx="58" cy="42" r="2.5" fill="#1C1C1C" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 114, 66 114, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#FFFDF5" />
+          {/* Layers */}
+          <path d="M 26 52 C 35 62, 65 42, 74 52 L 73 62 C 65 52, 35 72, 27 62 Z" fill="#4A2810" />
+          <path d="M 28 82 C 35 92, 65 72, 71 82 L 70 90 C 65 80, 35 100, 29 90 Z" fill="#4A2810" />
+          {/* Cookies */}
+          <circle cx="35" cy="72" r="1.5" fill="#1C1C1C" />
+          <circle cx="62" cy="68" r="1.5" fill="#1C1C1C" />
+          <circle cx="48" cy="98" r="2" fill="#1C1C1C" />
+          {/* Sticker */}
+          <circle cx="50" cy="78" r="12" fill="#ED2024" />
+          <circle cx="50" cy="78" r="11" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="82" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'trufado':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="45" rx="22" ry="5" fill="#D97706" />
+          <circle cx="35" cy="44" r="1.5" fill="#FEF3C7" />
+          <circle cx="42" cy="45" r="1.5" fill="#FEF3C7" />
+          <circle cx="50" cy="43" r="1.5" fill="#FEF3C7" />
+          <circle cx="58" cy="45" r="1.5" fill="#FEF3C7" />
+          <circle cx="65" cy="44" r="1.5" fill="#FEF3C7" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 114, 66 114, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#FEF3C7" />
+          <path d="M 26 48 L 35 108 L 42 108 L 32 48 Z" fill="#3E1E09" />
+          <path d="M 74 48 L 65 108 L 58 108 L 68 48 Z" fill="#3E1E09" />
+          {/* Peanuts */}
+          <circle cx="48" cy="60" r="2" fill="#B45309" />
+          <circle cx="52" cy="90" r="2" fill="#B45309" />
+          <circle cx="45" cy="78" r="1.5" fill="#B45309" />
+          {/* Sticker */}
+          <circle cx="50" cy="78" r="12" fill="#ED2024" />
+          <circle cx="50" cy="78" r="11" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="82" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'felicidade':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Cream dome */}
+          <path d="M 26 45 Q 50 15, 74 45 Z" fill="#FFFFFF" />
+          <path d="M 32 45 Q 50 25, 68 45 Z" fill="#FFF5F5" />
+          <circle cx="45" cy="35" r="3" fill="#EF4444" />
+          <circle cx="55" cy="32" r="3" fill="#3B82F6" />
+          <circle cx="50" cy="40" r="2.5" fill="#10B981" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 114, 66 114, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#FEE2E2" />
+          <rect x="27" y="52" width="46" height="10" fill="#EF4444" opacity="0.8" rx="2" />
+          <circle cx="34" cy="57" r="2.5" fill="#FEE2E2" />
+          <circle cx="45" cy="57" r="2.5" fill="#FEE2E2" />
+          <circle cx="56" cy="57" r="2.5" fill="#FEE2E2" />
+          <rect x="29" y="66" width="42" height="12" fill="#3E1E09" rx="2" />
+          <rect x="31" y="82" width="38" height="10" fill="#FEF08A" rx="2" />
+          {/* M&Ms */}
+          <circle cx="38" cy="100" r="3" fill="#EF4444" />
+          <circle cx="46" cy="102" r="3" fill="#3B82F6" />
+          <circle cx="54" cy="100" r="3" fill="#F59E0B" />
+          <circle cx="62" cy="101" r="3" fill="#10B981" />
+          {/* Sticker */}
+          <circle cx="50" cy="74" r="11" fill="#ED2024" />
+          <circle cx="50" cy="74" r="10" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="78" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'split':
+      return (
+        <svg width={size * 1.2} height={size} viewBox="0 0 120 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Ice cream balls */}
+          <circle cx="40" cy="45" r="18" fill="#5C3D2E" />
+          <circle cx="60" cy="40" r="18" fill="#F472B6" />
+          <circle cx="80" cy="45" r="18" fill="#FEF3C7" />
+          {/* Banana */}
+          <path d="M 15 50 Q 60 75, 105 50 Q 60 85, 15 50" fill="#FBBF24" stroke="#D97706" strokeWidth="1" />
+          {/* Cream & Cherry */}
+          <path d="M 32 38 Q 40 28, 48 38 Z" fill="#FFFFFF" />
+          <path d="M 52 32 Q 60 22, 68 32 Z" fill="#FFFFFF" />
+          <path d="M 72 38 Q 80 28, 88 38 Z" fill="#FFFFFF" />
+          <circle cx="60" cy="20" r="4.5" fill="#D01C1C" />
+          <line x1="60" y1="16" x2="63" y2="8" stroke="#111111" strokeWidth="1" />
+          {/* Chocolate sauce */}
+          <path d="M 32 40 Q 50 35, 68 40" stroke="#3E1E09" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          {/* Bowl */}
+          <path d="M 10 52 L 20 80 C 30 85, 90 85, 100 80 L 110 52 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <line x1="30" y1="80" x2="45" y2="92" stroke="#CBD5E1" strokeWidth="1.5" />
+          <line x1="90" y1="80" x2="75" y2="92" stroke="#CBD5E1" strokeWidth="1.5" />
+          <rect x="42" y="90" width="36" height="4" rx="1" fill="#CBD5E1" />
+        </svg>
+      );
+    case 'banoffee':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 45 Q 50 20, 72 45 Z" fill="#FFFFFF" />
+          <circle cx="45" cy="35" r="1.2" fill="#B45309" />
+          <circle cx="49" cy="32" r="1.2" fill="#B45309" />
+          <circle cx="55" cy="34" r="1.2" fill="#B45309" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 115, 66 115, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#FEF3C7" />
+          {/* Caramel */}
+          <path d="M 28 58 Q 50 62, 72 58 L 71 66 Q 50 70, 29 66 Z" fill="#D97706" />
+          <path d="M 30 84 Q 50 88, 70 84 L 69 92 Q 50 96, 31 92 Z" fill="#D97706" />
+          {/* Banana slices */}
+          <ellipse cx="38" cy="52" rx="4" ry="2.5" fill="#FEF08A" stroke="#CA8A04" strokeWidth="0.5" />
+          <ellipse cx="62" cy="53" rx="4" ry="2.5" fill="#FEF08A" stroke="#CA8A04" strokeWidth="0.5" />
+          <ellipse cx="48" cy="76" rx="4" ry="2.5" fill="#FEF08A" stroke="#CA8A04" strokeWidth="0.5" />
+          {/* Crumbs */}
+          <rect x="32" y="100" width="36" height="8" fill="#B45309" rx="1" />
+          {/* Sticker */}
+          <circle cx="50" cy="74" r="11" fill="#ED2024" />
+          <circle cx="50" cy="74" r="10" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="78" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'balde':
+      return (
+        <svg width={size * 1.2} height={size} viewBox="0 0 120 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Scoops */}
+          <circle cx="45" cy="40" r="18" fill="#FEE2E2" />
+          <circle cx="75" cy="40" r="18" fill="#FEF3C7" />
+          <circle cx="60" cy="35" r="20" fill="#5C3D2E" />
+          {/* Brownie cubes */}
+          <rect x="32" y="24" width="12" height="12" rx="1.5" fill="#1C0F0A" stroke="#3E1E09" strokeWidth="1" transform="rotate(15 32 24)" />
+          <rect x="76" y="22" width="12" height="12" rx="1.5" fill="#1C0F0A" stroke="#3E1E09" strokeWidth="1" transform="rotate(-10 76 22)" />
+          <path d="M 38 32 Q 60 45, 82 32" stroke="#3E1E09" strokeWidth="3" fill="none" strokeLinecap="round" />
+          {/* Bucket */}
+          <path d="M 22 45 L 32 90 C 33 93, 87 93, 88 90 L 98 45 Z" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
+          <path d="M 23 48 L 32 88 C 33 91, 87 91, 88 88 L 97 48 Z" fill="#D01C1C" />
+          {/* Supreme Text */}
+          <circle cx="60" cy="68" r="14" fill="#FFFFFF" />
+          <circle cx="60" cy="68" r="13" stroke="#ED2024" strokeWidth="1" fill="none" />
+          <text x="60" y="71" fontSize="4.5" fontWeight="900" fill="#ED2024" textAnchor="middle" fontFamily="sans-serif">SUPREME</text>
+        </svg>
+      );
+    case 'cafe':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Whipped cream */}
+          <path d="M 30 45 C 30 30, 40 22, 50 22 C 60 22, 70 30, 70 45 Z" fill="#FFFFFF" />
+          <path d="M 35 40 C 35 30, 43 25, 50 25 C 57 25, 65 30, 65 40 Z" fill="#FDF4E7" />
+          <path d="M 38 35 Q 50 30, 62 35" stroke="#B45309" strokeWidth="2" fill="none" />
+          {/* Cup */}
+          <path d="M 28 45 L 34 110 C 34 113, 66 113, 66 110 L 72 45 Z" fill="#E2E8F0" fillOpacity="0.3" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 29 48 L 34 108 C 34 111, 66 111, 66 108 L 71 48 Z" fill="#3E1E09" />
+          <path d="M 29 48 L 31 70 C 50 72, 60 72, 71 70 L 71 48 Z" fill="#DDB892" />
+          {/* Bean */}
+          <ellipse cx="42" cy="95" rx="3" ry="1.8" fill="#1C0F0A" transform="rotate(30 42 95)" />
+          {/* Sticker */}
+          <circle cx="50" cy="78" r="11" fill="#ED2024" />
+          <circle cx="50" cy="78" r="10" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="82" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'kids_unicorn':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          {/* Horn */}
+          <polygon points="46,18 54,18 50,2" fill="#F59E0B" stroke="#D97706" strokeWidth="0.5" />
+          {/* Ears */}
+          <polygon points="32,26 38,20 42,28" fill="#F9A8D4" />
+          <polygon points="68,26 62,20 58,28" fill="#F9A8D4" />
+          <path d="M 28 45 C 28 30, 38 24, 50 24 C 62 24, 72 30, 72 45 Z" fill="#FBCFE8" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 115, 66 115, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#F472B6" />
+          {/* Eyes */}
+          <path d="M 40 65 Q 44 68, 46 63" stroke="#111111" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          <path d="M 60 65 Q 56 68, 54 63" stroke="#111111" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          {/* Sticker */}
+          <circle cx="50" cy="84" r="11" fill="#ED2024" />
+          <circle cx="50" cy="84" r="10" stroke="#FFFFFF" strokeWidth="1" fill="none" />
+          <text x="50" y="88" fontSize="6" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="sans-serif">S</text>
+        </svg>
+      );
+    case 'kids_spiderman':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 45 C 28 32, 38 25, 50 25 C 62 25, 72 32, 72 45 Z" fill="#FFFFFF" />
+          <path d="M 32 40 Q 50 32, 68 40" stroke="#3B82F6" strokeWidth="2.5" fill="none" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 115, 66 115, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#EF4444" />
+          <path d="M 33 108 L 31 85 C 50 82, 60 82, 69 85 L 67 108 Z" fill="#3B82F6" />
+          {/* Web */}
+          <path d="M 28 55 Q 50 65, 72 55" stroke="#111111" strokeWidth="0.8" fill="none" opacity="0.6" />
+          <path d="M 29 68 Q 50 78, 71 68" stroke="#111111" strokeWidth="0.8" fill="none" opacity="0.6" />
+          <line x1="50" y1="48" x2="50" y2="108" stroke="#111111" strokeWidth="0.8" opacity="0.6" />
+          {/* Eyes */}
+          <polygon points="38,62 46,65 44,57" fill="#FFFFFF" stroke="#111111" strokeWidth="1" />
+          <polygon points="62,62 54,65 56,57" fill="#FFFFFF" stroke="#111111" strokeWidth="1" />
+        </svg>
+      );
+    case 'kids_barbie':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 45 C 28 30, 38 22, 50 22 C 62 22, 72 30, 72 45 Z" fill="#F472B6" />
+          <path d="M 34 40 C 34 32, 42 27, 50 27 C 58 27, 66 32, 66 40 Z" fill="#FBCFE8" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 115, 66 115, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#EC4899" />
+          {/* Decal */}
+          <path d="M 50 62 C 48 58, 42 58, 42 64 C 42 70, 50 74, 50 74 C 50 74, 58 70, 58 64 C 58 58, 52 58, 50 62 Z" fill="#FFFFFF" />
+        </svg>
+      );
+    case 'kids_stitch':
+      return (
+        <svg width={size} height={size * 1.2} viewBox="0 0 100 120" className={className} xmlns="http://www.w3.org/2000/svg">
+          <path d="M 20 40 Q 10 25, 28 35" stroke="#2563EB" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M 80 40 Q 90 25, 72 35" stroke="#2563EB" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M 28 45 C 28 32, 38 25, 50 25 C 62 25, 72 32, 72 45 Z" fill="#FFFFFF" />
+          {/* Cup */}
+          <path d="M 25 45 L 33 110 C 34 115, 66 115, 67 110 L 75 45 Z" fill="#E2E8F0" fillOpacity="0.4" stroke="#CBD5E1" strokeWidth="1.5" />
+          <path d="M 26 48 L 33 108 C 34 112, 66 112, 67 108 L 74 48 Z" fill="#3B82F6" />
+          {/* Eyes */}
+          <ellipse cx="40" cy="65" rx="5" ry="7" fill="#1E3A8A" transform="rotate(-15 40 65)" />
+          <circle cx="41" cy="63" r="1.5" fill="#FFFFFF" />
+          <ellipse cx="60" cy="65" rx="5" ry="7" fill="#1E3A8A" transform="rotate(15 60 65)" />
+          <circle cx="59" cy="63" r="1.5" fill="#FFFFFF" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function getGourmetCupType(item: any): string {
+  const nameLower = (item.name || '').toLowerCase();
+  const catLower = (item.category || '').toLowerCase();
+  
+  if (nameLower.includes('trufado')) return 'trufado';
+  if (nameLower.includes('felicidade')) return 'felicidade';
+  if (nameLower.includes('split')) return 'split';
+  if (nameLower.includes('banoffee')) return 'banoffee';
+  if (nameLower.includes('balde') || catLower.includes('balde')) return 'balde';
+  if (nameLower.includes('café') || nameLower.includes('coffee') || nameLower.includes('frappuccino') || catLower.includes('cafe') || catLower.includes('linha_cafe')) return 'cafe';
+  if (nameLower.includes('unicorn') || nameLower.includes('unicórnio')) return 'kids_unicorn';
+  if (nameLower.includes('spider') || nameLower.includes('aranha')) return 'kids_spiderman';
+  if (nameLower.includes('barbie')) return 'kids_barbie';
+  if (nameLower.includes('stitch')) return 'kids_stitch';
+  if (nameLower.includes('shake') || catLower.includes('milkshake')) return 'milkshake';
+  if (catLower.includes('acai') || catLower.includes('sorvete') || nameLower.includes('açai') || nameLower.includes('açaí')) return 'acai';
+  return 'copo_especial';
+}
+
 interface AdminCardapioProps {
   menuItems: MenuItem[];
   onRefreshMenu?: () => void;
@@ -2974,29 +3287,31 @@ export default function AdminCardapio({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="fixed inset-0 z-[10000] bg-[#FAF8F5] p-8 sm:p-12 flex flex-col justify-between overflow-hidden font-sans select-none text-slate-800"
+            className="fixed inset-0 z-[10000] bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black p-6 sm:p-10 flex flex-col justify-between overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent font-sans select-none text-white h-full min-h-screen"
           >
             {/* Golden curves in corners */}
-            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-300/30 rounded-tl-3xl pointer-events-none" />
-            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-300/30 rounded-tr-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-300/30 rounded-bl-3xl pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-300/30 rounded-br-3xl pointer-events-none" />
-
+            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-500/20 rounded-tl-3xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-500/20 rounded-tr-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-500/20 rounded-bl-3xl pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-500/20 rounded-br-3xl pointer-events-none" />
+ 
             {/* Close Button */}
             <button
               onClick={() => setIsFullscreenBoardOpen(false)}
-              className="absolute top-6 right-6 p-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-full shadow-lg transition-all cursor-pointer z-[10010] group"
+              className="absolute top-6 right-6 p-2.5 bg-zinc-900/80 hover:bg-rose-950/80 text-rose-500 rounded-full shadow-lg border border-zinc-800 hover:border-rose-900 transition-all cursor-pointer z-[10010] group animate-pulse"
               title="Pressione ESC para Sair"
             >
               <X className="w-6 h-6 stroke-[2.5]" />
             </button>
-
+ 
             {/* Top Bar: Title & Brand slogan */}
-            <div className="flex justify-between items-center border-b-2 border-amber-200/50 pb-4">
+            <div className="flex justify-between items-center border-b border-zinc-800/80 pb-4">
               <div className="flex items-center gap-4 text-left">
-                <SupremeLogo size={64} className="flex-shrink-0 animate-bounce" />
+                <div className="p-1 bg-zinc-900/90 rounded-2xl border border-zinc-800 shadow-[0_0_15px_rgba(239,68,68,0.15)] flex items-center justify-center">
+                  <SupremeLogo size={72} className="flex-shrink-0 animate-pulse" />
+                </div>
                 <div className="leading-none">
-                  <h1 className="font-sans font-black text-slate-900 tracking-wider text-3xl sm:text-4xl lg:text-5xl uppercase">
+                  <h1 className="font-sans font-black text-white tracking-widest text-3xl sm:text-4xl lg:text-5xl uppercase drop-shadow-[0_2px_8px_rgba(239,68,68,0.2)]">
                     {boardTitle}
                   </h1>
                   <span className="block text-xs sm:text-sm lg:text-base text-rose-500 font-black tracking-widest uppercase mt-1">
@@ -3004,259 +3319,276 @@ export default function AdminCardapio({
                   </span>
                 </div>
               </div>
-
+ 
               <div className="text-right">
-                <p className="text-[10px] sm:text-xs font-bold text-slate-400 tracking-widest uppercase">NÃO É SÓ SORVETE, É UMA</p>
-                <p className="text-base sm:text-lg lg:text-2xl font-black text-rose-600 uppercase tracking-widest leading-none mt-1">
+                <p className="text-[10px] sm:text-xs font-bold text-zinc-500 tracking-widest uppercase">NÃO É SÓ SORVETE, É UMA</p>
+                <p className="text-base sm:text-lg lg:text-2xl font-black text-rose-500 uppercase tracking-widest leading-none mt-1 drop-shadow-[0_2px_6px_rgba(239,68,68,0.15)]">
                   {boardSlogan}
                 </p>
               </div>
             </div>
-
+ 
             {/* Main Menu Widescreen Columns Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 my-6 flex-1 items-stretch overflow-hidden">
               
               {/* Left Column (Açaí & Copos Especiais) */}
-              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs">
+              <div className="bg-zinc-900/30 p-5 rounded-3xl border border-zinc-800/40 flex flex-col justify-between text-left shadow-2xl backdrop-blur-xs min-h-0">
                 {/* Açaí Section */}
                 <div>
-                  <h3 className="font-black text-rose-600 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-3 flex items-center gap-1.5 border-b border-rose-100 pb-1.5">
-                    💜 Copos de Açaí & Sorvete
+                  <h3 className="font-black text-rose-500 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-3 flex items-center gap-1.5 border-b border-rose-950 pb-1.5">
+                    <span className="text-lg">💜</span> Copos de Açaí & Sorvete
                   </h3>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
-                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label300}</span>
-                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price300}</span>
-                    </div>
-                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
-                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label400}</span>
-                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price400}</span>
-                    </div>
-                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
-                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label500}</span>
-                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price500}</span>
-                    </div>
-                    <div className="bg-rose-50/20 p-2.5 rounded-xl border border-rose-100/10 flex justify-between items-center">
-                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{label700}</span>
-                      <span className="font-black text-rose-600 text-sm sm:text-base">R$ {price700}</span>
-                    </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { size: label300, price: price300, vol: '300ml' },
+                      { size: label400, price: price400, vol: '400ml' },
+                      { size: label500, price: price500, vol: '500ml' },
+                      { size: label700, price: price700, vol: '700ml' }
+                    ].map((sz, idx) => (
+                      <div key={idx} className="bg-zinc-900/80 p-2.5 rounded-2xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
+                        <div className="flex items-center gap-2">
+                          <GourmetCup type="acai" size={24} className="opacity-80 group-hover:opacity-100 transition-opacity" />
+                          <span className="font-bold text-zinc-200 text-xs sm:text-sm">{sz.size}</span>
+                        </div>
+                        <span className="font-black text-rose-500 text-xs sm:text-sm bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20">R$ {sz.price}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
+ 
                 {/* Cortesias Section */}
-                <div className="my-4 bg-rose-50/50 p-3 rounded-xl border border-rose-100/30 text-left">
-                  <h4 className="font-black text-rose-800 uppercase text-[9px] sm:text-[10px] tracking-widest mb-1">
+                <div className="my-4 bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl text-left">
+                  <h4 className="font-black text-amber-400 uppercase text-[9.5px] sm:text-[10px] tracking-wider mb-1 flex items-center gap-1">
                     ✨ CORTESIAS INCLUSAS EM TODOS OS COPOS:
                   </h4>
-                  <p className="text-[11px] sm:text-xs font-semibold leading-relaxed text-slate-600">
+                  <p className="text-[11px] sm:text-xs font-medium leading-relaxed text-amber-200/90">
                     {boardCortesiasList}
                   </p>
                 </div>
-
+ 
                 {/* Copos Especiais Section */}
                 <div className="flex-1 flex flex-col min-h-0">
-                  <h3 className="font-black text-slate-800 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-150 pb-1.5">
-                    🍓 Copos Especiais & Taças
+                  <h3 className="font-black text-zinc-100 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-zinc-800 pb-1.5">
+                    <span className="text-lg">🍓</span> Copos Especiais & Taças
                   </h3>
-                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
                     {specialCups.length > 0 ? (
-                      specialCups.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {item.image && (
-                              <LazyImage 
-                                src={item.image} 
-                                alt={item.name} 
-                                className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
-                              />
-                            )}
-                            <div className="min-w-0 text-left">
-                              <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
-                              {item.description && (
-                                <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
-                              )}
+                      specialCups.map((item) => {
+                        const cupType = getGourmetCupType(item);
+                        return (
+                          <div key={item.id} className="flex items-center justify-between gap-3 p-2 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/90 rounded-2xl transition-all duration-200 group">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-11 h-11 flex-shrink-0 bg-zinc-950/80 rounded-xl flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
+                                {item.image ? (
+                                  <LazyImage 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-full h-full object-cover rounded-xl"
+                                    containerClassName="w-full h-full rounded-xl"
+                                  />
+                                ) : (
+                                  <GourmetCup type={cupType} size={36} className="opacity-90 group-hover:opacity-100 transition-opacity" />
+                                )}
+                              </div>
+                              <div className="min-w-0 text-left">
+                                <span className="font-black text-zinc-100 text-xs sm:text-sm block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
+                                {item.description && (
+                                  <span className="block text-[10px] sm:text-[11px] text-zinc-400 truncate leading-tight mt-0.5 font-medium">{item.description}</span>
+                                )}
+                              </div>
                             </div>
+                            <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/20">{getItemPriceText(item)}</span>
                           </div>
-                          <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0">{getItemPriceText(item)}</span>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <>
                         <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-slate-600">Copo Trufado Nutella/Amendoim</span>
-                          <span className="font-black text-slate-800">R$ 20,00</span>
+                          <span className="font-bold text-zinc-300">Copo Trufado Nutella/Amendoim</span>
+                          <span className="font-black text-rose-400">R$ 20,00</span>
                         </div>
                         <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-slate-600">Copo da Felicidade Supremo</span>
-                          <span className="font-black text-slate-800">R$ 30,00</span>
+                          <span className="font-bold text-zinc-300">Copo da Felicidade Supremo</span>
+                          <span className="font-black text-rose-400">R$ 30,00</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-
+ 
               {/* Center Column (Milk Shakes) */}
-              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs min-h-0">
+              <div className="bg-zinc-900/30 p-5 rounded-3xl border border-zinc-800/40 flex flex-col justify-between text-left shadow-2xl backdrop-blur-xs min-h-0">
                 <div className="flex-1 flex flex-col min-h-0">
-                  <div className="bg-rose-500 text-white text-center py-1 px-3 rounded-xl font-black uppercase text-xs sm:text-sm tracking-wider mb-3 flex-shrink-0">
+                  <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white text-center py-1.5 px-4 rounded-2xl font-black uppercase text-xs sm:text-sm tracking-wider mb-3 flex-shrink-0 shadow-lg shadow-rose-950/20">
                     🥤 MILK SHAKES GOURMET
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 flex-shrink-0">
-                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
-                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel300}</span>
-                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice300}</span>
-                    </div>
-                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
-                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel400}</span>
-                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice400}</span>
-                    </div>
-                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
-                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel500}</span>
-                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice500}</span>
-                    </div>
-                    <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
-                      <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel700}</span>
-                      <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice700}</span>
-                    </div>
+                  <div className="grid grid-cols-2 gap-3 flex-shrink-0">
+                    {[
+                      { size: msLabel300, price: msPrice300 },
+                      { size: msLabel400, price: msPrice400 },
+                      { size: msLabel500, price: msPrice500 },
+                      { size: msLabel700, price: msPrice700 }
+                    ].map((sz, idx) => (
+                      <div key={idx} className="bg-zinc-900/80 p-2.5 rounded-2xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
+                        <div className="flex items-center gap-2">
+                          <GourmetCup type="milkshake" size={24} className="opacity-80 group-hover:opacity-100 transition-opacity" />
+                          <span className="font-bold text-zinc-200 text-xs sm:text-sm">{sz.size}</span>
+                        </div>
+                        <span className="font-black text-rose-500 text-xs sm:text-sm bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20">R$ {sz.price}</span>
+                      </div>
+                    ))}
                   </div>
-
+ 
                   {/* Sabores de Sorvete */}
-                  <div className="my-3 bg-slate-100/60 p-2.5 rounded-xl border border-slate-150 text-left flex-shrink-0">
-                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                  <div className="my-3 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-2xl text-left flex-shrink-0">
+                    <span className="text-[9px] sm:text-[10px] font-black text-rose-400 uppercase tracking-widest block mb-1.5">
                       🍨 SABORES DE SORVETE DISPONÍVEIS:
                     </span>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {boardMsFlavorList.split(',').map((flav, idx) => (
-                        <span key={idx} className="bg-white px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-black text-slate-700 border border-slate-200/50 shadow-xs">
+                        <span key={idx} className="bg-zinc-950 px-2.5 py-1 rounded-xl text-[9px] sm:text-[10px] font-bold text-zinc-200 border border-zinc-800/65 shadow-sm">
                           {flav.trim()}
                         </span>
                       ))}
                     </div>
                   </div>
-
+ 
                   {/* Premium Shakes */}
                   <div className="flex-1 flex flex-col min-h-0">
                     {premiumShakes.length > 0 && (
                       <>
-                        <h3 className="font-black text-rose-600 uppercase text-xs sm:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-100 pb-1.5 flex-shrink-0">
-                          ✨ Shakes Especiais & Premium
+                        <h3 className="font-black text-rose-500 uppercase text-xs sm:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-950 pb-1.5 flex-shrink-0">
+                          <span className="text-lg">✨</span> Shakes Especiais & Premium
                         </h3>
-                        <div className="space-y-2 max-h-[140px] md:max-h-[180px] lg:max-h-[220px] overflow-y-auto pr-1">
-                          {premiumShakes.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                {item.image && (
-                                  <LazyImage 
-                                    src={item.image} 
-                                    alt={item.name} 
-                                    className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                    containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
-                                  />
-                                )}
-                                <div className="min-w-0 text-left">
-                                  <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
-                                  {item.description && (
-                                    <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
-                                  )}
+                        <div className="space-y-2 max-h-[140px] md:max-h-[180px] lg:max-h-[220px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                          {premiumShakes.map((item) => {
+                            const cupType = getGourmetCupType(item);
+                            return (
+                              <div key={item.id} className="flex items-center justify-between gap-3 p-2 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/90 rounded-2xl transition-all duration-200 group">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-11 h-11 flex-shrink-0 bg-zinc-950/80 rounded-xl flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
+                                    {item.image ? (
+                                      <LazyImage 
+                                        src={item.image} 
+                                        alt={item.name} 
+                                        className="w-full h-full object-cover rounded-xl"
+                                        containerClassName="w-full h-full rounded-xl"
+                                      />
+                                    ) : (
+                                      <GourmetCup type={cupType} size={36} className="opacity-90 group-hover:opacity-100 transition-opacity" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 text-left">
+                                    <span className="font-black text-zinc-100 text-xs sm:text-sm block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
+                                    {item.description && (
+                                      <span className="block text-[10px] sm:text-[11px] text-zinc-400 truncate leading-tight mt-0.5 font-medium">{item.description}</span>
+                                    )}
+                                  </div>
                                 </div>
+                                <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/20">{getItemPriceText(item)}</span>
                               </div>
-                              <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0">{getItemPriceText(item)}</span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-
+ 
               {/* Right Column (Buckets, Coffee & Toppings) */}
-              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs min-h-0">
+              <div className="bg-zinc-900/30 p-5 rounded-3xl border border-zinc-800/40 flex flex-col justify-between text-left shadow-2xl backdrop-blur-xs min-h-0">
                 <div className="flex-1 flex flex-col min-h-0">
-                  <h3 className="font-black text-amber-600 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-amber-200/50 pb-1.5 flex-shrink-0">
-                    🍨 Baldes & Cafés Premium
+                  <h3 className="font-black text-amber-500 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-amber-950 pb-1.5 flex-shrink-0">
+                    <span className="text-lg">🍨</span> Baldes & Linha Café
                   </h3>
                   
-                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
                     {baldesAndCafes.length > 0 ? (
-                      baldesAndCafes.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {item.image && (
-                              <LazyImage 
-                                src={item.image} 
-                                alt={item.name} 
-                                className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
-                              />
-                            )}
-                            <div className="min-w-0 text-left">
-                              <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
-                              {item.description && (
-                                <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
-                              )}
+                      baldesAndCafes.map((item) => {
+                        const cupType = getGourmetCupType(item);
+                        return (
+                          <div key={item.id} className="flex items-center justify-between gap-3 p-2 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/90 rounded-2xl transition-all duration-200 group">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-11 h-11 flex-shrink-0 bg-zinc-950/80 rounded-xl flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
+                                {item.image ? (
+                                  <LazyImage 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-full h-full object-cover rounded-xl"
+                                    containerClassName="w-full h-full rounded-xl"
+                                  />
+                                ) : (
+                                  <GourmetCup type={cupType} size={36} className="opacity-90 group-hover:opacity-100 transition-opacity" />
+                                )}
+                              </div>
+                              <div className="min-w-0 text-left">
+                                <span className="font-black text-zinc-100 text-xs sm:text-sm block truncate group-hover:text-amber-450 transition-colors">{item.name}</span>
+                                {item.description && (
+                                  <span className="block text-[10px] sm:text-[11px] text-zinc-400 truncate leading-tight mt-0.5 font-medium">{item.description}</span>
+                                )}
+                              </div>
                             </div>
+                            <span className="font-black text-amber-400 text-xs sm:text-sm flex-shrink-0 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">{getItemPriceText(item)}</span>
                           </div>
-                          <span className="font-black text-amber-600 text-xs sm:text-sm flex-shrink-0">{getItemPriceText(item)}</span>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <>
                         <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-slate-600">Balde Brownie 700ml</span>
-                          <span className="font-black text-amber-600">R$ {brPrice700}</span>
+                          <span className="font-bold text-zinc-300">Balde Brownie 700ml</span>
+                          <span className="font-black text-amber-450">R$ {brPrice700}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-slate-600">Doce de Leite 700ml</span>
-                          <span className="font-black text-amber-600">R$ 25,00</span>
+                          <span className="font-bold text-zinc-300">Doce de Leite 700ml</span>
+                          <span className="font-black text-amber-450">R$ 25,00</span>
                         </div>
                         <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-slate-600">Frappuccino 500ml</span>
-                          <span className="font-black text-amber-600">R$ 25,00</span>
+                          <span className="font-bold text-zinc-300">Frappuccino 500ml</span>
+                          <span className="font-black text-amber-450">R$ 25,00</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
-
+ 
                 {/* Additional Extras */}
                 <div className="mt-4 text-left flex-1 flex flex-col justify-end">
-                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 border-t border-slate-150 pt-3">
+                  <span className="text-[9.5px] sm:text-[10px] font-black text-amber-400 uppercase tracking-widest block mb-2 border-t border-zinc-800/80 pt-3">
                     ➕ COMPLEMENTOS & ADICIONAIS EXTRA:
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {boardAdicionaisList.split(',').map((item, idx) => (
-                      <span key={idx} className="bg-slate-100 px-2.5 py-1 rounded-xl text-[10px] font-bold text-slate-600 border border-slate-200/35">
+                      <span key={idx} className="bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-2xl text-[10px] font-bold text-zinc-300 hover:border-zinc-700 hover:text-white transition-all cursor-default">
                         {item.trim()}
                       </span>
                     ))}
                   </div>
                 </div>
               </div>
-
+ 
             </div>
-
+ 
             {/* Bottom Section: Socials & Contact */}
-            <div className="flex justify-between items-center border-t-2 border-amber-200/50 pt-4 text-xs sm:text-sm lg:text-base font-black text-slate-700">
+            <div className="flex justify-between items-center border-t border-zinc-800/80 pt-4 text-xs sm:text-sm lg:text-base font-black text-zinc-400 bg-zinc-950/40">
               <div className="flex items-center gap-2">
-                <span className="bg-emerald-500 text-white p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center animate-pulse">📞</span>
-                <span className="font-mono text-slate-800">{boardCustomNote} — {boardPhone}</span>
+                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center animate-pulse">📞</span>
+                <span className="font-mono text-zinc-200">{boardCustomNote} — {boardPhone}</span>
               </div>
               
-              <div className="text-[10px] sm:text-xs font-black text-slate-350 tracking-widest uppercase">
+              <div className="text-[10px] sm:text-xs font-black text-zinc-600 tracking-widest uppercase">
                 📺 MODO TV ATIVO • PRESSIONE ESC PARA SAIR
               </div>
-
+ 
               <div className="flex items-center gap-2">
-                <span className="bg-rose-500 text-white p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center">📷</span>
-                <span className="text-rose-600">{boardInstagram}</span>
+                <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center">📷</span>
+                <span className="text-rose-400">{boardInstagram}</span>
               </div>
             </div>
-
+ 
           </motion.div>
         )}
       </AnimatePresence>
