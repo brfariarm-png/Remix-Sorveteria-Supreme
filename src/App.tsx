@@ -71,6 +71,7 @@ import CupCustomizer from './components/CupCustomizer';
 import Checkout from './components/Checkout';
 import OrderTracker from './components/OrderTracker';
 import PlayStoreMobileHub from './components/PlayStoreMobileHub';
+import LazyImage from './components/LazyImage';
 import SupremeLogo from './components/SupremeLogo';
 import { printOrderReceipt } from './utils/printHelper';
 import AdminPDV from './components/AdminPDV';
@@ -2407,11 +2408,11 @@ export default function App() {
             {/* Elegant Hero Banner card */}
             <div className="relative bg-gradient-to-r from-rose-500 to-indigo-650 rounded-3xl h-[260px] md:h-[340px] overflow-hidden shadow-xl flex items-center p-6 md:p-12 text-white">
               <div className="absolute inset-0 z-0">
-                <img 
+                <LazyImage 
                   src={BannerImage} 
                   alt="Delicioso Açaí Gourmet e Sorvetes" 
-                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover opacity-35 hover:scale-105 transition-transform duration-1000" 
+                  containerClassName="w-full h-full"
                   id="heroBannerPic"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-pink-950 via-slate-900/80 to-transparent" />
@@ -2543,11 +2544,11 @@ export default function App() {
                         {/* Image wrapped in premium frame */}
                         <div>
                           <div className="w-full h-36 bg-rose-50/40 rounded-2xl mb-4 relative overflow-hidden flex items-center justify-center border border-rose-100/20 group">
-                            <img 
+                            <LazyImage 
                               src={item.image} 
                               alt={item.name} 
-                              referrerPolicy="no-referrer"
                               className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500" 
+                              containerClassName="w-full h-full rounded-2xl"
                             />
                             
                             {/* Badges */}
@@ -3634,11 +3635,11 @@ export default function App() {
                         <div key={item.id} className="flex gap-3 border-b border-slate-100 pb-3">
                           {/* Mini visual frame */}
                           <div className="w-14 h-14 bg-neutral-100 rounded-xl overflow-hidden flex-shrink-0">
-                            <img 
+                            <LazyImage 
                               src={item.menuItem.image} 
                               alt={item.menuItem.name} 
-                              referrerPolicy="no-referrer"
                               className="w-full h-full object-cover" 
+                              containerClassName="w-full h-full rounded-xl"
                             />
                           </div>
 
@@ -3966,11 +3967,11 @@ E-mail: ${storeSettings.email}`;
                 </span>
 
                 <div className="bg-white p-3.5 rounded-2xl border border-rose-100 shadow-xs">
-                  <img 
+                  <LazyImage 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href.replace('ais-dev-', 'ais-pre-'))}`} 
                     alt="QR Code do App" 
                     className="w-40 h-40"
-                    referrerPolicy="no-referrer"
+                    containerClassName="w-40 h-40"
                   />
                 </div>
                 
@@ -4059,11 +4060,11 @@ E-mail: ${storeSettings.email}`;
                 </div>
 
                 <div className="bg-white p-4 rounded-3xl border border-emerald-100 shadow-md">
-                  <img 
+                  <LazyImage 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://wa.me/55${storeSettings.phone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Gostaria de falar com o atendimento da Sorveteria Supreme.')}`)}`} 
                     alt="WhatsApp QR Code" 
                     className="w-44 h-44"
-                    referrerPolicy="no-referrer"
+                    containerClassName="w-44 h-44"
                   />
                 </div>
                 
@@ -4376,11 +4377,11 @@ E-mail: ${storeSettings.email}`;
 
                       <div className="bg-slate-50 border border-slate-200/60 rounded-3xl p-5 flex flex-col sm:flex-row items-center gap-5 shadow-xs">
                         <div className="bg-white p-3 rounded-2xl border border-slate-150 shadow-sm flex-shrink-0 flex flex-col items-center gap-1.5">
-                          <img 
+                          <LazyImage 
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(getPublicShareUrl())}`} 
                             alt="QR Code Oficial" 
                             className="w-32 h-32"
-                            referrerPolicy="no-referrer"
+                            containerClassName="w-32 h-32"
                           />
                           <span className="text-[8.5px] text-slate-400 font-black uppercase tracking-wider">Escanear Teste</span>
                         </div>

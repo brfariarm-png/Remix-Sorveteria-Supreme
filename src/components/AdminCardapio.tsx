@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { collection, addDoc, setDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import LazyImage from './LazyImage';
 import { MenuItem, StoreSettings } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS } from '../data';
 
@@ -1703,11 +1704,11 @@ export default function AdminCardapio({
                 </div>
                 
                 <div className="relative group overflow-hidden rounded-xl border border-slate-100">
-                  <img
+                  <LazyImage
                     src="/assets/images/digital_menu_banner_1783440971538.jpg"
                     alt="Cardápio Digital Supremo"
                     className="w-full object-cover aspect-[16/9] hover:scale-102 transition-transform duration-300"
-                    referrerPolicy="no-referrer"
+                    containerClassName="w-full aspect-[16/9]"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <a
@@ -1960,11 +1961,11 @@ export default function AdminCardapio({
                             <div key={item.id} className="flex items-center justify-between text-[7px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
                               <div className="flex items-center gap-1 min-w-0">
                                 {item.image && (
-                                  <img 
+                                  <LazyImage 
                                     src={item.image} 
                                     alt={item.name} 
                                     className="w-3.5 h-3.5 object-cover rounded-md flex-shrink-0"
-                                    referrerPolicy="no-referrer"
+                                    containerClassName="w-3.5 h-3.5 flex-shrink-0"
                                   />
                                 )}
                                 <span className="font-bold text-slate-700 truncate">{item.name}</span>
@@ -2039,11 +2040,11 @@ export default function AdminCardapio({
                             <div key={item.id} className="flex items-center justify-between text-[6.5px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
                               <div className="flex items-center gap-1 min-w-0">
                                 {item.image && (
-                                  <img 
+                                  <LazyImage 
                                     src={item.image} 
                                     alt={item.name} 
                                     className="w-3 h-3 object-cover rounded-md flex-shrink-0"
-                                    referrerPolicy="no-referrer"
+                                    containerClassName="w-3 h-3 flex-shrink-0"
                                   />
                                 )}
                                 <span className="font-bold text-slate-700 truncate">{item.name}</span>
@@ -2068,11 +2069,11 @@ export default function AdminCardapio({
                             <div key={item.id} className="flex items-center justify-between text-[7px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
                               <div className="flex items-center gap-1 min-w-0">
                                 {item.image && (
-                                  <img 
+                                  <LazyImage 
                                     src={item.image} 
                                     alt={item.name} 
                                     className="w-3.5 h-3.5 object-cover rounded-md flex-shrink-0"
-                                    referrerPolicy="no-referrer"
+                                    containerClassName="w-3.5 h-3.5 flex-shrink-0"
                                   />
                                 )}
                                 <span className="font-bold text-slate-700 truncate">{item.name}</span>
@@ -2216,11 +2217,11 @@ export default function AdminCardapio({
                 >
                   {/* Image & Price Tag */}
                   <div className="h-32 bg-slate-100 relative overflow-hidden flex-shrink-0">
-                    <img 
+                    <LazyImage 
                       src={item.image} 
                       alt={item.name} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      referrerPolicy="no-referrer"
+                      containerClassName="w-full h-full"
                     />
                     <div className="absolute top-2.5 right-2.5 bg-rose-600 text-white px-2.5 py-1 text-[11px] font-black tracking-widest uppercase rounded-lg shadow-sm">
                       R$ {item.price.toFixed(2)}
@@ -3032,11 +3033,11 @@ export default function AdminCardapio({
                         <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {item.image && (
-                              <img 
+                              <LazyImage 
                                 src={item.image} 
                                 alt={item.name} 
                                 className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                referrerPolicy="no-referrer"
+                                containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
                               />
                             )}
                             <div className="min-w-0 text-left">
@@ -3118,11 +3119,11 @@ export default function AdminCardapio({
                           <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
                             <div className="flex items-center gap-2.5 min-w-0">
                               {item.image && (
-                                <img 
+                                <LazyImage 
                                   src={item.image} 
                                   alt={item.name} 
                                   className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                  referrerPolicy="no-referrer"
+                                  containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
                                 />
                               )}
                               <div className="min-w-0 text-left">
@@ -3154,11 +3155,11 @@ export default function AdminCardapio({
                         <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {item.image && (
-                              <img 
+                              <LazyImage 
                                 src={item.image} 
                                 alt={item.name} 
                                 className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                referrerPolicy="no-referrer"
+                                containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
                               />
                             )}
                             <div className="min-w-0 text-left">

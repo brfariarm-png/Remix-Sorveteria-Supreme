@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Download, Star, ShieldCheck, Laptop, Smartphone, Tablet, ExternalLink, HelpCircle, AlertCircle, Copy, Check } from 'lucide-react';
 import SupremeLogo from './SupremeLogo';
+import LazyImage from './LazyImage';
 
 interface PlayStoreMobileHubProps {
   customDomain?: string;
@@ -80,11 +81,11 @@ export default function PlayStoreMobileHub({ customDomain }: PlayStoreMobileHubP
       {/* SEÇÃO QR CODE E LINK PÚBLICO (Dispositivo Móvel / Outro Aparelho) */}
       <div className="bg-amber-50/60 border border-amber-200/60 rounded-3xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-sm">
         <div className="bg-white p-3 rounded-2xl border border-amber-100 shadow-sm flex-shrink-0 flex flex-col items-center gap-1.5">
-          <img 
+          <LazyImage 
             src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getPublicShareUrl())}`} 
             alt="QR Code do App Público" 
             className="w-36 h-36"
-            referrerPolicy="no-referrer"
+            containerClassName="w-36 h-36"
           />
           <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">URL Pública</span>
         </div>

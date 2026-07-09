@@ -14,6 +14,7 @@ import {
 import { MenuItem, CartItem, Order, OrderStatus, PaymentType, CustomCupConfig } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, getCustomCupBasePrice } from '../data';
 import { cleanDescriptionForSingleSize } from '../utils/description';
+import LazyImage from './LazyImage';
 
 interface AdminPDVProps {
   onPlacePDVOrder: (order: Order, shouldPrint: boolean) => Promise<void>;
@@ -485,14 +486,11 @@ export default function AdminPDV({
                   >
                     {/* Visual Card image or price indicator */}
                     <div className="relative h-28 bg-slate-100 overflow-hidden">
-                      <img
-                        src={p.image}
+                      <LazyImage
+                        src={p.image || 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400'}
                         alt={p.name}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400';
-                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        referrerPolicy="no-referrer"
+                        containerClassName="w-full h-full"
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6">
                         <span className="text-[9px] uppercase font-black tracking-wider text-amber-350 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-xs">

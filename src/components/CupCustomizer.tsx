@@ -9,6 +9,7 @@ import { Plus, Minus, Check, ShoppingBag, Sparkles, Layers, CupSoda, Ruler } fro
 import { ToppingOption, FlavorOption, CustomCupConfig, CartItem, MenuItem, StoreSettings } from '../types';
 import { FLAVOR_OPTIONS, TOPPING_OPTIONS, getCustomCupBasePrice } from '../data';
 import { cleanDescriptionForSingleSize } from '../utils/description';
+import LazyImage from './LazyImage';
 
 const EXTRA_BROWNIE_PRODUCTS = [
   { id: 'fatia-brownie', name: 'Fatia de Brownie Tradicional Extra', price: 9.95, desc: 'Fatia fresca de brownie artesanal' },
@@ -431,11 +432,11 @@ export default function CupCustomizer({
           {/* Premium Açaí Image Visualizer (Replacing animated visualizer) */}
           <div className="my-6 flex justify-center items-center relative py-2 flex-1">
             <div className="relative w-56 h-[340px] rounded-[36px] overflow-hidden shadow-2xl border-4 border-white bg-slate-100 transition-all duration-300 hover:scale-[1.02]">
-              <img 
+              <LazyImage 
                 src={customizingItem?.image || "/assets/images/supreme_acai_cup_1781179584520.jpg"} 
                 alt={customizingItem ? customizingItem.name : "Açaí Gourmet Supreme"}
                 className="w-full h-full object-cover transition-transform duration-500 rounded-[30px]"
-                referrerPolicy="no-referrer"
+                containerClassName="w-full h-full"
               />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 flex flex-col justify-end text-white">
                 <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest drop-shadow">

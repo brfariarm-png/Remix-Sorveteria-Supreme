@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CreditCard, QrCode, ClipboardCheck, Clipboard, Compass, MapPin, Truck, Check, Wallet, RotateCcw, AlertCircle } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { CheckoutDetails, PaymentType, CartItem } from '../types';
+import LazyImage from './LazyImage';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -905,11 +906,11 @@ export default function Checkout({
                     <div className="flex flex-col items-center">
                       <div className="bg-white p-3 rounded-2xl shadow-md border border-neutral-100 mb-2 relative flex items-center justify-center w-48 h-48 mx-auto">
                         {/* Dynamic QR code linked to custom Pix payload */}
-                        <img 
+                        <LazyImage 
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pixMockCode)}`}
                           alt="QR Code Pix"
                           className="w-40 h-40 object-contain rounded-lg select-none"
-                          referrerPolicy="no-referrer"
+                          containerClassName="w-40 h-40"
                         />
                         
                         <div className="absolute inset-0 bg-white/70 backdrop-blur-[0.5px] items-center justify-center flex flex-col rounded-2xl opacity-0 hover:opacity-100 transition-opacity">

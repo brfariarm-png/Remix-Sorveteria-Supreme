@@ -9,6 +9,7 @@ import { ChefHat, Bike, Clock, CheckCircle2, AlertCircle, RefreshCw, Star, Arrow
 import { Order, OrderStatus } from '../types';
 import { FLAVOR_OPTIONS, TOPPING_OPTIONS } from '../data';
 import { printOrderReceipt } from '../utils/printHelper';
+import LazyImage from './LazyImage';
 
 interface OrderTrackerProps {
   order: Order;
@@ -461,11 +462,11 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
       {/* WhatsApp Support Section with QR Code */}
       <div className="bg-[#FAF8F5] border border-amber-200/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-left">
         <div className="bg-white p-2 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border border-amber-100 flex-shrink-0">
-          <img 
+          <LazyImage 
             src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://wa.me/55${(storeSettings?.phone || '17999999999').replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Estou acompanhando meu pedido #${order.id.slice(-6).toUpperCase()} e gostaria de tirar uma dúvida.`)}`)}`}
             alt="WhatsApp QR Code"
             className="w-24 h-24 object-contain"
-            referrerPolicy="no-referrer"
+            containerClassName="w-24 h-24"
           />
         </div>
         <div className="space-y-1.5 flex-1">
