@@ -12,9 +12,8 @@
   "theme_color": "#ED2024",
   "display": "standalone",
   "display_override": [
-    "window-controls-overlay",
-    "minimal-ui",
-    "standalone"
+    "standalone",
+    "minimal-ui"
   ],
   "orientation": "portrait",
   "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
@@ -62,7 +61,7 @@
       "ms_ac_template": "widgets/status.json",
       "icons": [
         {
-          "src": "/logo-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -70,36 +69,6 @@
     }
   ],
   "icons": [
-    {
-      "src": "/logo-192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo-192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/logo-512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo-512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/logo.png",
-      "type": "image/png",
-      "sizes": "1024x1024",
-      "purpose": "any"
-    },
     {
       "src": "/icon-192.png",
       "type": "image/png",
@@ -139,7 +108,7 @@
       "url": "/?shortcut=order",
       "icons": [
         {
-          "src": "/logo-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -152,7 +121,7 @@
       "url": "/?shortcut=orders",
       "icons": [
         {
-          "src": "/logo-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
