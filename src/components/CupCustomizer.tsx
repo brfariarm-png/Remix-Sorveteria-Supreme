@@ -38,6 +38,7 @@ export default function CupCustomizer({
   const isMilkshake = customizingItem?.category === 'milkshake' || customizingItem?.category === 'milkshake_especiais' || customizingItem?.category?.includes('milkshake');
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
   const isSplit = customizingItem?.name?.toLowerCase()?.includes('banana split') || customizingItem?.name?.toLowerCase()?.includes('morango split') || customizingItem?.id?.toLowerCase()?.includes('banana-split') || customizingItem?.id?.toLowerCase()?.includes('morango-split');
+  const isCopoTrufado = customizingItem?.name?.toLowerCase()?.includes('trufado') || customizingItem?.id?.toLowerCase()?.includes('trufado');
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
     if (customizingItem?.sizeMode) {
@@ -96,12 +97,14 @@ export default function CupCustomizer({
   const [base, setBase] = useState<'acai' | 'sorvete' | 'casadinho'>(() => {
     if (isMilkshake) return 'sorvete';
     if (isSplit) return 'sorvete';
+    if (isCopoTrufado) return 'sorvete';
     if (customizingItem?.category === 'sorvete') return 'sorvete';
     return 'casadinho';
   });
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>(() => {
     if (isMilkshake) return ['baunilha'];
     if (isSplit) return [];
+    if (isCopoTrufado) return [];
     if (customizingItem?.category === 'sorvete') return [];
     return ['acai-puro-organico'];
   });
@@ -160,11 +163,12 @@ export default function CupCustomizer({
   const maxFlavors = useMemo(() => {
     if (isMilkshake) return 1;
     if (isSplit) return 2;
+    if (isCopoTrufado) return 2;
     if (customizingItem?.id === 'gelato-supreme' || customizingItem?.name?.toLowerCase()?.includes('triplo') || customizingItem?.name?.toLowerCase()?.includes('premium')) {
       return 3;
     }
     return 2;
-  }, [isMilkshake, customizingItem, isSplit]);
+  }, [isMilkshake, customizingItem, isSplit, isCopoTrufado]);
 
   // Filter flavors based on base type chosen
   const availableFlavors = useMemo(() => {
