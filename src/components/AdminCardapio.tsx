@@ -295,7 +295,7 @@ export default function AdminCardapio({
   // Compute unique non-standard categories in database
   const uniqueCategories = useMemo(() => {
     const cats = new Set(menuItems.map(item => item.category));
-    const standardValues = ['acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'baldes', 'sorvete', 'sundae', 'combo', 'custom', 'copos-especiais', 'milkshake-especiais'];
+    const standardValues = ['acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'baldes', 'linha_cafe', 'sorvete', 'sundae', 'combo', 'custom', 'copos-especiais', 'milkshake-especiais'];
     return Array.from(cats).filter(c => c && !standardValues.includes(c));
   }, [menuItems]);
 
@@ -306,9 +306,10 @@ export default function AdminCardapio({
       { value: 'milkshake', label: 'MILKSHAKE' },
       { value: 'copos_especiais', label: 'COPOS ESPECIAIS' },
       { value: 'milkshake_especiais', label: 'MILKSHAKE ESPECIAIS' },
-      { value: 'baldes', label: 'BALDES' }
+      { value: 'baldes', label: 'BALDES' },
+      { value: 'linha_cafe', label: 'LINHA CAFÉ' }
     ];
-    const coreValues = ['all', 'acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'baldes', 'sorvete', 'sundae', 'copos-especiais', 'milkshake-especiais'];
+    const coreValues = ['all', 'acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'baldes', 'linha_cafe', 'sorvete', 'sundae', 'copos-especiais', 'milkshake-especiais'];
     const cats = new Set(menuItems.map(item => item.category));
     Array.from(cats).forEach(cat => {
       if (cat && !coreValues.includes(cat)) {
@@ -2235,6 +2236,7 @@ export default function AdminCardapio({
                          item.category === 'copos_especiais' ? '🍧 COPOS ESPECIAIS' : 
                          item.category === 'milkshake_especiais' ? '🥤 MILKSHAKE ESPECIAIS' : 
                          item.category === 'baldes' ? '🪣 BALDES' :
+                         item.category === 'linha_cafe' ? '☕ LINHA CAFÉ' :
                          item.category === 'sorvete' ? '🍧 COPOS ESPECIAIS' : 
                          item.category === 'sundae' ? '🍧 COPOS ESPECIAIS' : 
                          item.category === 'combo' ? '📦 Combo' : 
@@ -2373,6 +2375,7 @@ export default function AdminCardapio({
                     <option value="copos_especiais">🍧 COPOS ESPECIAIS</option>
                     <option value="milkshake_especiais">🥤 MILKSHAKE ESPECIAIS</option>
                     <option value="baldes">🪣 BALDES</option>
+                    <option value="linha_cafe">☕ LINHA CAFÉ</option>
                     <option value="sorvete">🍧 Sorvete (Legado)</option>
                     <option value="sundae">🍒 Sundae (Legado)</option>
                     <option value="combo">📦 Combo / Especial</option>

@@ -1900,9 +1900,10 @@ export default function App() {
       { id: 'milkshake', label: 'MILKSHAKE', desc: 'Batidos e cremosos' },
       { id: 'copos_especiais', label: 'COPOS ESPECIAIS', desc: 'Taças e copos especiais' },
       { id: 'milkshake_especiais', label: 'MILKSHAKE ESPECIAIS', desc: 'Gourmet e crocantes' },
-      { id: 'baldes', label: 'BALDES', desc: 'Para compartilhar em família' }
+      { id: 'baldes', label: 'BALDES', desc: 'Para compartilhar em família' },
+      { id: 'linha_cafe', label: 'LINHA CAFÉ', desc: 'Cafés deliciosos e cremosos' }
     ];
-    const coreIds = ['all', 'acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'baldes', 'sorvete', 'sundae', 'copos-especiais', 'milkshake-especiais'];
+    const coreIds = ['all', 'acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'baldes', 'linha_cafe', 'sorvete', 'sundae', 'copos-especiais', 'milkshake-especiais'];
     const cats = new Set(menuItems.map(item => item.category));
     Array.from(cats).forEach(cat => {
       if (cat && !coreIds.includes(cat)) {

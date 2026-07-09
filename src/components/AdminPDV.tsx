@@ -344,14 +344,15 @@ export default function AdminPDV({
   const categoryTabs = useMemo(() => {
     const list = menuItems && menuItems.length > 0 ? menuItems : MENU_ITEMS;
     const cats = new Set(list.map(item => item.category));
-    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo', 'copos_especiais', 'milkshake_especiais', 'baldes', 'copos-especiais', 'milkshake-especiais'];
+    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo', 'copos_especiais', 'milkshake_especiais', 'baldes', 'linha_cafe', 'copos-especiais', 'milkshake-especiais'];
     const tabs = [
       { id: 'all', label: 'Todos 🌟' },
       { id: 'acai', label: 'Açaí 🍇' },
       { id: 'milkshake', label: 'Milkshake 🥤' },
       { id: 'copos_especiais', label: 'Copos Esp. 🍧' },
       { id: 'milkshake_especiais', label: 'Shake Esp. 🥤' },
-      { id: 'baldes', label: 'Baldes 🪣' }
+      { id: 'baldes', label: 'Baldes 🪣' },
+      { id: 'linha_cafe', label: 'Linha Café ☕' }
     ];
     // Add any non-standard ones that aren't already included
     Array.from(cats).forEach(cat => {
@@ -494,7 +495,7 @@ export default function AdminPDV({
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6">
                         <span className="text-[9px] uppercase font-black tracking-wider text-amber-350 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-xs">
-                          {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Milkshake Especial' : p.category === 'baldes' ? '🪣 Balde' : p.category === 'copos_especiais' ? '🍧 Copo Especial' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
+                          {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Milkshake Especial' : p.category === 'baldes' ? '🪣 Balde' : p.category === 'linha_cafe' ? '☕ Café' : p.category === 'copos_especiais' ? '🍧 Copo Especial' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
                         </span>
                       </div>
                       <span className="absolute top-2.5 right-2.5 bg-slate-900 text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg shadow-md">
