@@ -30,7 +30,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'acai-sensacao',
     name: 'Linha Brownie',
-    description: 'Deliciosa combinação da nossa Linha Brownie! Açaí intercalado com sorvete de baunilha cremoso, pedaços de brownie artesanal, pedaços de morango fresco, gotas de chocolate e calda de morango.',
+    description: 'Deliciosa combinação da nossa Linha Brownie! Açaí intercalado with sorvete de baunilha cremoso, pedaços de brownie artesanal, pedaços de morango fresco, gotas de chocolate e calda de morango.',
     price: 22.90,
     category: 'acai',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
@@ -42,7 +42,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Taça Sorvete Premium',
     description: 'Três bolas de sorvete premium à sua escolha, servidas com cobertura quente de chocolate, chantilly artesanal, canudinhos wafer e raspas de chocolate belga.',
     price: 28.90,
-    category: 'sorvete',
+    category: 'copos_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
     popular: true
   },
@@ -51,7 +51,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Cascão Trufado Duplo',
     description: 'Cascão gigante crocante, com borda trufada de chocolate, duas bolas de sorvete artesanal (escolha seus sabores) e finalizado com confetes coloridos.',
     price: 16.50,
-    category: 'sorvete',
+    category: 'copos_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg'
   },
   {
@@ -59,7 +59,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Milkshake Supreme Nutella',
     description: 'Milkshake ultra cremoso de baunilha e chocolate belga batido com muita Nutella original, servido com taça decorada de chocolate e chantilly.',
     price: 23.90,
-    category: 'milkshake',
+    category: 'milkshake_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
     popular: true,
     tags: ['Favorito']
@@ -69,7 +69,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Milkshake Ovomaltine Crocante',
     description: 'Sorvete de chocolate cremoso batido com calda de caramelo e abundante Ovomaltine crocante, finalizado com calda de chocolate belga nas laterais.',
     price: 21.90,
-    category: 'milkshake',
+    category: 'milkshake_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg'
   },
   {
@@ -77,7 +77,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Grand Sundae Especial',
     description: 'Taça gigante com duas bolas de sorvete de baunilha, uma bola de sorvete de morango, bolo de chocolate picado, muita calda quente, farofa de amendoim e cereja.',
     price: 29.90,
-    category: 'sundae',
+    category: 'copos_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
     tags: ['Especial do Chefe']
   },
@@ -86,7 +86,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Banana Split Supreme',
     description: 'A clássica sobremesa: uma banana aberta ao meio servindo three bolas de sorvete (morango, baunilha e chocolate), caldas de caramelo, chocolate e morango, chantilly, canudos wafer e cerejas.',
     price: 32.90,
-    category: 'sundae',
+    category: 'copos_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg'
   }
 ];

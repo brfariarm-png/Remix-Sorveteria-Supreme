@@ -171,6 +171,7 @@ export default function AdminCardapio({
         item.category === 'acai' || 
         item.category === 'sundae' || 
         item.category === 'sorvete' ||
+        item.category === 'copos_especiais' ||
         item.name.toLowerCase().includes('copo') ||
         item.name.toLowerCase().includes('trufado') ||
         item.name.toLowerCase().includes('felicidade')
@@ -180,7 +181,7 @@ export default function AdminCardapio({
 
   const premiumShakes = useMemo(() => {
     return menuItems.filter(item => 
-      item.category === 'milkshake' && 
+      (item.category === 'milkshake' || item.category === 'milkshake_especiais' || item.category?.includes('milkshake')) && 
       item.id !== 'milkshake-gourmet-supreme'
     ).slice(0, 3);
   }, [menuItems]);
@@ -294,26 +295,25 @@ export default function AdminCardapio({
   // Compute unique non-standard categories in database
   const uniqueCategories = useMemo(() => {
     const cats = new Set(menuItems.map(item => item.category));
-    const standardValues = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo', 'custom'];
+    const standardValues = ['acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'sorvete', 'sundae', 'combo', 'custom', 'copos-especiais', 'milkshake-especiais'];
     return Array.from(cats).filter(c => c && !standardValues.includes(c));
   }, [menuItems]);
 
   const adminFilterCategories = useMemo(() => {
-    const cats = new Set(menuItems.map(item => item.category));
-    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo'];
     const list = [
       { value: 'all', label: 'Todos' },
-      { value: 'acai', label: 'Açaí' },
-      { value: 'sorvete', label: 'Sorvete' },
-      { value: 'milkshake', label: 'Milkshake' },
-      { value: 'sundae', label: 'Sundae' },
-      { value: 'combo', label: 'Combos' }
+      { value: 'acai', label: 'AÇAI' },
+      { value: 'milkshake', label: 'MILKSHAKE' },
+      { value: 'copos_especiais', label: 'COPOS ESPECIAIS' },
+      { value: 'milkshake_especiais', label: 'MILKSHAKE ESPECIAIS' }
     ];
+    const coreValues = ['all', 'acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'sorvete', 'sundae', 'copos-especiais', 'milkshake-especiais'];
+    const cats = new Set(menuItems.map(item => item.category));
     Array.from(cats).forEach(cat => {
-      if (cat && !standards.includes(cat)) {
+      if (cat && !coreValues.includes(cat)) {
         list.push({
           value: cat,
-          label: cat.charAt(0).toUpperCase() + cat.slice(1)
+          label: cat.toUpperCase()
         });
       }
     });
@@ -2229,12 +2229,14 @@ export default function AdminCardapio({
 
                     <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
                       <span className="bg-slate-900/90 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md">
-                        {item.category === 'acai' ? '💜 Açaí' : 
-                         item.category === 'sorvete' ? '🍧 Sorvete' :
-                         item.category === 'milkshake' ? '🥤 Shake' : 
-                         item.category === 'sundae' ? '🍒 Sundae' : 
+                        {item.category === 'acai' ? '💜 AÇAI' : 
+                         item.category === 'milkshake' ? '🥤 MILKSHAKE' :
+                         item.category === 'copos_especiais' ? '🍧 COPOS ESPECIAIS' : 
+                         item.category === 'milkshake_especiais' ? '🥤 MILKSHAKE ESPECIAIS' : 
+                         item.category === 'sorvete' ? '🍧 COPOS ESPECIAIS' : 
+                         item.category === 'sundae' ? '🍧 COPOS ESPECIAIS' : 
                          item.category === 'combo' ? '📦 Combo' : 
-                         `📦 ${item.category.charAt(0).toUpperCase() + item.category.slice(1)}`}
+                         `📦 ${item.category.toUpperCase()}`}
                       </span>
                       {item.popular && (
                         <span className="bg-amber-500 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md flex items-center gap-0.5">
@@ -2364,10 +2366,12 @@ export default function AdminCardapio({
                     }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-705 focus:outline-hidden focus:border-rose-450 transition-colors cursor-pointer"
                   >
-                    <option value="acai">💜 Açaí</option>
-                    <option value="sorvete">🍧 Sorvete</option>
-                    <option value="milkshake">🥤 Milkshake</option>
-                    <option value="sundae">🍒 Sundae</option>
+                    <option value="acai">💜 AÇAÍ</option>
+                    <option value="milkshake">🥤 MILKSHAKE</option>
+                    <option value="copos_especiais">🍧 COPOS ESPECIAIS</option>
+                    <option value="milkshake_especiais">🥤 MILKSHAKE ESPECIAIS</option>
+                    <option value="sorvete">🍧 Sorvete (Legado)</option>
+                    <option value="sundae">🍒 Sundae (Legado)</option>
                     <option value="combo">📦 Combo / Especial</option>
                     
                     {/* Render any custom categories present in the database */}
@@ -2717,9 +2721,9 @@ export default function AdminCardapio({
                       ) : (
                         <div className="space-y-3">
                           <p className="text-[8.5px] text-slate-450 leading-normal">
-                            Usando as configurações globais de tamanhos e preços para a categoria <span className="font-bold text-rose-500">{(category === 'acai' ? 'Açaí' : category === 'sorvete' ? 'Sorvete' : category === 'milkshake' ? 'Milkshake' : category)}.</span> Todos os copos dessa categoria compartilham esses preços base:
+                            Usando as configurações globais de tamanhos e preços para a categoria <span className="font-bold text-rose-500">{(category === 'acai' ? 'Açaí' : category === 'sorvete' ? 'Sorvete' : category === 'milkshake' ? 'Milkshake' : category === 'milkshake_especiais' ? 'Milkshake Especial' : category === 'copos_especiais' ? 'Copos Especiais' : category)}.</span> Todos os copos dessa categoria compartilham esses preços base:
                           </p>
-                          {category === 'milkshake' ? (
+                          {(category === 'milkshake' || category === 'milkshake_especiais' || category?.includes('milkshake')) ? (
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               <div className="space-y-1">
                                 <label className="block text-[8px] uppercase text-slate-400">300ml</label>

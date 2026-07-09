@@ -35,7 +35,7 @@ export default function CupCustomizer({
   flavorOptions = FLAVOR_OPTIONS,
   toppingOptions = TOPPING_OPTIONS
 }: CupCustomizerProps) {
-  const isMilkshake = customizingItem?.category === 'milkshake';
+  const isMilkshake = customizingItem?.category === 'milkshake' || customizingItem?.category === 'milkshake_especiais' || customizingItem?.category?.includes('milkshake');
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {

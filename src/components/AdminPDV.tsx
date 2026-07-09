@@ -494,7 +494,7 @@ export default function AdminPDV({
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6">
                         <span className="text-[9px] uppercase font-black tracking-wider text-amber-350 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-xs">
-                          {p.category === 'acai' ? '🍇 Açaí' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'milkshake' ? '🥤 Batido' : '🍧 Taças'}
+                          {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Milkshake Especial' : p.category === 'copos_especiais' ? '🍧 Copo Especial' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
                         </span>
                       </div>
                       <span className="absolute top-2.5 right-2.5 bg-slate-900 text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg shadow-md">
@@ -618,7 +618,7 @@ export default function AdminPDV({
                             <div className="text-[9.5px] font-bold text-indigo-800 mt-1 pl-1 space-y-0.5 border-l-2 border-indigo-400 bg-indigo-50/50 p-1 rounded-r-lg">
                               <p>Tamanho: {(() => {
                                 const sz = item.customCupConfig.size;
-                                const isMilkshake = item.menuItem.category === 'milkshake';
+                                const isMilkshake = item.menuItem.category === 'milkshake' || item.menuItem.category === 'milkshake_especiais' || item.menuItem.category?.includes('milkshake');
                                 const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
                                 return isLinhaBrownie 
                                   ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')

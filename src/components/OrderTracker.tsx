@@ -387,7 +387,7 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                         <div className="text-[8.5px] text-slate-500 pl-2 space-y-0.5">
                           <p>• Tamanho: {(() => {
                             const sz = item.customCupConfig.size;
-                            const isMilkshake = item.menuItem.category === 'milkshake';
+                            const isMilkshake = item.menuItem.category === 'milkshake' || item.menuItem.category === 'milkshake_especiais' || item.menuItem.category?.includes('milkshake');
                             const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
                             return isLinhaBrownie 
                               ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
@@ -505,7 +505,7 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                   <div className="text-[10px] text-indigo-650 font-semibold leading-normal mt-0.5 space-y-0.5 pl-4">
                     <p>🥣 Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'} | Tamanho: {(() => {
                       const sz = item.customCupConfig.size;
-                      const isMilkshake = item.menuItem.category === 'milkshake';
+                      const isMilkshake = item.menuItem.category === 'milkshake' || item.menuItem.category === 'milkshake_especiais' || item.menuItem.category?.includes('milkshake');
                       const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
                       return isLinhaBrownie 
                         ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')

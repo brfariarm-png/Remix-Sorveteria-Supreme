@@ -1809,7 +1809,7 @@ export default function App() {
 
   // Add standard product to cart
   const handleAddProductToCart = (item: MenuItem) => {
-    if (item.customizable || item.category === 'sorvete') {
+    if (item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae') {
       setCustomizingItem(item);
       setIsCustomizerOpen(true);
       return;
@@ -1877,7 +1877,15 @@ export default function App() {
   // Filtered menu items
   const filteredMenuItems = useMemo(() => {
     return menuItems.filter((item) => {
-      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+      let itemCat = item.category || '';
+      // Normalization of legacy or alternative categories
+      if (itemCat === 'sorvete' || itemCat === 'sundae' || itemCat === 'copos-especiais') {
+        itemCat = 'copos_especiais';
+      }
+      if (itemCat === 'milkshake-especiais') {
+        itemCat = 'milkshake_especiais';
+      }
+      const matchesCategory = selectedCategory === 'all' || itemCat === selectedCategory;
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             item.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
@@ -1886,22 +1894,20 @@ export default function App() {
 
   // Dynamically compute the client's navigation category pills
   const clientFilterCategories = useMemo(() => {
-    const cats = new Set(menuItems.map(item => item.category));
-    const standards = ['acai', 'sorvete', 'milkshake', 'sundae', 'combo'];
     const list = [
       { id: 'all', label: 'Tudo', desc: 'Os mais queridos' },
-      { id: 'acai', label: 'Açaís', desc: 'Combinações divinas' },
-      { id: 'sorvete', label: 'Sorvetes', desc: 'Massa artesanal fina' },
-      { id: 'milkshake', label: 'Milkshakes', desc: 'Batidos e cremosos' },
-      { id: 'sundae', label: 'Taças & Sundaes', desc: 'Sobremesas de colher' },
-      { id: 'combo', label: 'Combos & Promos', desc: 'Melhores combinados' }
+      { id: 'acai', label: 'AÇAI', desc: 'Combinações divinas' },
+      { id: 'milkshake', label: 'MILKSHAKE', desc: 'Batidos e cremosos' },
+      { id: 'copos_especiais', label: 'COPOS ESPECIAIS', desc: 'Taças e copos especiais' },
+      { id: 'milkshake_especiais', label: 'MILKSHAKE ESPECIAIS', desc: 'Gourmet e crocantes' }
     ];
-    // Add any non-standard ones that aren't already included
+    const coreIds = ['all', 'acai', 'milkshake', 'copos_especiais', 'milkshake_especiais', 'sorvete', 'sundae', 'copos-especiais', 'milkshake-especiais'];
+    const cats = new Set(menuItems.map(item => item.category));
     Array.from(cats).forEach(cat => {
-      if (cat && !standards.includes(cat)) {
+      if (cat && !coreIds.includes(cat)) {
         list.push({
           id: cat,
-          label: cat.charAt(0).toUpperCase() + cat.slice(1),
+          label: cat.toUpperCase(),
           desc: 'Preparados especiais da casa'
         });
       }
@@ -2574,7 +2580,7 @@ export default function App() {
 
                         {/* Interactive price and checkout trigger */}
                         <div className="flex justify-between items-center mt-5 pt-3 border-t border-rose-50/50">
-                          {item.customizable || item.category === 'sorvete' ? (
+                          {item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae' ? (
                             <div className="flex flex-col">
                               <span className="text-sm font-black text-slate-900">R$ {item.price.toFixed(2)}</span>
                               <span className="text-[10px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 uppercase tracking-wider mt-0.5 self-start">
@@ -3333,7 +3339,7 @@ export default function App() {
                                 <div className="text-[10px] text-indigo-650 font-semibold leading-normal space-y-0.5">
                                   <p>🥣 Base: {item.customCupConfig.base === 'acai' ? 'Açaí' : item.customCupConfig.base === 'sorvete' ? 'Sorvete' : 'Casadinho'} | Tamanho: {(() => {
                                     const sz = item.customCupConfig.size;
-                                    const isMilkshake = item.menuItem.category === 'milkshake';
+                                    const isMilkshake = item.menuItem.category === 'milkshake' || item.menuItem.category === 'milkshake_especiais' || item.menuItem.category?.includes('milkshake');
                                     const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
                                     return isLinhaBrownie 
                                       ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
