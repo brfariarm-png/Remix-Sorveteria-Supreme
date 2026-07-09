@@ -95,11 +95,13 @@ export default function CupCustomizer({
 
   const [base, setBase] = useState<'acai' | 'sorvete' | 'casadinho'>(() => {
     if (isMilkshake) return 'sorvete';
+    if (isSplit) return 'sorvete';
     if (customizingItem?.category === 'sorvete') return 'sorvete';
     return 'casadinho';
   });
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>(() => {
     if (isMilkshake) return ['baunilha'];
+    if (isSplit) return [];
     if (customizingItem?.category === 'sorvete') return [];
     return ['acai-puro-organico'];
   });
