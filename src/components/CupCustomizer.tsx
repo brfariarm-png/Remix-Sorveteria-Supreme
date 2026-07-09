@@ -37,7 +37,7 @@ export default function CupCustomizer({
 }: CupCustomizerProps) {
   const isMilkshake = customizingItem?.category === 'milkshake' || customizingItem?.category === 'milkshake_especiais' || customizingItem?.category?.includes('milkshake');
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
-  const isSplit = customizingItem?.name?.toLowerCase()?.includes('split') || customizingItem?.id?.toLowerCase()?.includes('split');
+  const isSplit = customizingItem?.name?.toLowerCase()?.includes('banana split') || customizingItem?.name?.toLowerCase()?.includes('morango split') || customizingItem?.id?.toLowerCase()?.includes('banana-split') || customizingItem?.id?.toLowerCase()?.includes('morango-split');
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
     if (customizingItem?.sizeMode) {
