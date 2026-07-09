@@ -24,6 +24,7 @@ import {
 import { collection, addDoc, setDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import LazyImage from './LazyImage';
+import SupremeLogo from './SupremeLogo';
 import { MenuItem, StoreSettings } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS } from '../data';
 
@@ -164,6 +165,25 @@ export default function AdminCardapio({
 
   const [isFullscreenBoardOpen, setIsFullscreenBoardOpen] = useState(false);
 
+  // Helper to format custom and size-based prices on the digital board
+  const getItemPriceText = (item: MenuItem) => {
+    if (item.sizeMode === 'single') {
+      return `R$ ${Number(item.singleSizePrice ?? item.price ?? 0).toFixed(2)}`;
+    } else if (item.sizeMode === 'custom' && item.customSizes) {
+      const activeSizes = Object.values(item.customSizes).filter(s => s.active);
+      if (activeSizes.length > 0) {
+        const prices = activeSizes.map(s => Number(s.price));
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        if (minPrice === maxPrice) {
+          return `R$ ${minPrice.toFixed(2)}`;
+        }
+        return `A partir de R$ ${minPrice.toFixed(2)}`;
+      }
+    }
+    return `R$ ${Number(item.price ?? 0).toFixed(2)}`;
+  };
+
   // Dynamic products filtering for the Digital Board (so it stays 100% synced with Menu edits)
   const specialCups = useMemo(() => {
     return menuItems.filter(item => 
@@ -176,18 +196,20 @@ export default function AdminCardapio({
         item.name.toLowerCase().includes('trufado') ||
         item.name.toLowerCase().includes('felicidade')
       )
-    ).slice(0, 3);
+    ).slice(0, 15);
   }, [menuItems]);
 
   const premiumShakes = useMemo(() => {
     return menuItems.filter(item => 
       (item.category === 'milkshake' || item.category === 'milkshake_especiais' || item.category?.includes('milkshake')) && 
       item.id !== 'milkshake-gourmet-supreme'
-    ).slice(0, 3);
+    ).slice(0, 15);
   }, [menuItems]);
 
   const baldesAndCafes = useMemo(() => {
     return menuItems.filter(item => 
+      item.category === 'baldes' ||
+      item.category === 'linha_cafe' ||
       item.name.toLowerCase().includes('balde') || 
       item.name.toLowerCase().includes('café') || 
       item.name.toLowerCase().includes('coffee') || 
@@ -195,7 +217,7 @@ export default function AdminCardapio({
       item.name.toLowerCase().includes('affogato') ||
       item.category === 'bebidas' ||
       item.category === 'combos'
-    ).slice(0, 3);
+    ).slice(0, 15);
   }, [menuItems]);
 
   const [search, setSearch] = useState('');
@@ -1893,7 +1915,7 @@ export default function AdminCardapio({
                 <div className="flex justify-between items-center border-b border-amber-200/40 pb-2">
                   <div className="flex items-center gap-2">
                     {/* Tiny representation of crown and logo */}
-                    <span className="text-rose-500 text-lg">👑</span>
+                    <SupremeLogo size={22} className="flex-shrink-0" />
                     <div className="text-left leading-none">
                       <span className="font-sans font-black text-slate-900 tracking-wider text-sm sm:text-base uppercase">
                         {boardTitle}
@@ -1953,11 +1975,11 @@ export default function AdminCardapio({
                     </div>
 
                     {/* Copos Especiais Section */}
-                    <div className="mt-2 text-left">
+                    <div className="mt-2 text-left flex-1 flex flex-col min-h-0">
                       <h5 className="font-black text-slate-800 uppercase text-[8px] tracking-wider mb-1 flex items-center gap-1">
                         🍓 Copos Especiais
                       </h5>
-                      <div className="space-y-1">
+                      <div className="space-y-1 max-h-[85px] overflow-y-auto pr-0.5 scrollbar-none">
                         {specialCups.length > 0 ? (
                           specialCups.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-[7px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
@@ -1972,18 +1994,18 @@ export default function AdminCardapio({
                                 )}
                                 <span className="font-bold text-slate-700 truncate">{item.name}</span>
                               </div>
-                              <span className="font-black text-rose-500 flex-shrink-0">R$ {item.price.toFixed(0)}</span>
+                              <span className="font-black text-rose-500 flex-shrink-0">{getItemPriceText(item)}</span>
                             </div>
                           ))
                         ) : (
                           <>
                             <div className="flex justify-between items-center text-[8px]">
                               <span className="font-bold text-slate-600">Copo Trufado Nutella/Amendoim</span>
-                              <span className="font-black text-slate-800">R$ 20</span>
+                              <span className="font-black text-slate-800">R$ 20.00</span>
                             </div>
                             <div className="flex justify-between items-center text-[8px]">
                               <span className="font-bold text-slate-600">Copo da Felicidade Supremo</span>
-                              <span className="font-black text-slate-800">R$ 30</span>
+                              <span className="font-black text-slate-800">R$ 30.00</span>
                             </div>
                           </>
                         )}
@@ -1992,7 +2014,7 @@ export default function AdminCardapio({
                   </div>
 
                   {/* Middle Column (Milk Shakes) (4/12 Columns) */}
-                  <div className="col-span-4 flex flex-col justify-between border-r border-slate-100 pr-3 text-left">
+                  <div className="col-span-4 flex flex-col justify-between border-r border-slate-100 pr-3 text-left min-h-0">
                     <div>
                       <div className="bg-rose-500 text-white text-center py-0.5 px-2 rounded-md font-black uppercase text-[8px] tracking-wider mb-1.5">
                         🥤 MILK SHAKES
@@ -2033,11 +2055,11 @@ export default function AdminCardapio({
 
                     {/* Premium Shakes Dynamic Section */}
                     {premiumShakes.length > 0 && (
-                      <div className="mt-1.5 text-left">
+                      <div className="mt-1.5 text-left flex-1 flex flex-col min-h-0">
                         <span className="text-[6.5px] font-black text-rose-500 uppercase tracking-wider block mb-0.5">
                           ✨ SHAKES ESPECIAIS:
                         </span>
-                        <div className="space-y-0.5">
+                        <div className="space-y-0.5 max-h-[80px] overflow-y-auto pr-0.5 scrollbar-none">
                           {premiumShakes.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-[6.5px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
                               <div className="flex items-center gap-1 min-w-0">
@@ -2051,7 +2073,7 @@ export default function AdminCardapio({
                                 )}
                                 <span className="font-bold text-slate-700 truncate">{item.name}</span>
                               </div>
-                              <span className="font-black text-rose-500 flex-shrink-0">R$ {item.price.toFixed(0)}</span>
+                              <span className="font-black text-rose-500 flex-shrink-0">{getItemPriceText(item)}</span>
                             </div>
                           ))}
                         </div>
@@ -2060,12 +2082,12 @@ export default function AdminCardapio({
                   </div>
 
                   {/* Right Column (Buckets, Coffee & Toppings) (3/12 Columns) */}
-                  <div className="col-span-3 flex flex-col justify-between text-left">
-                    <div>
+                  <div className="col-span-3 flex flex-col justify-between text-left min-h-0">
+                    <div className="flex-1 flex flex-col min-h-0">
                       <h5 className="font-black text-amber-600 uppercase text-[8px] tracking-wider mb-1 flex items-center gap-1">
                         🍨 Baldes & Cafés
                       </h5>
-                      <div className="space-y-1">
+                      <div className="space-y-1 max-h-[105px] overflow-y-auto pr-0.5 scrollbar-none">
                         {baldesAndCafes.length > 0 ? (
                           baldesAndCafes.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-[7px] gap-1 pb-0.5 border-b border-dashed border-slate-200/20">
@@ -2080,7 +2102,7 @@ export default function AdminCardapio({
                                 )}
                                 <span className="font-bold text-slate-700 truncate">{item.name}</span>
                               </div>
-                              <span className="font-black text-amber-600 flex-shrink-0">R$ {item.price.toFixed(0)}</span>
+                              <span className="font-black text-amber-600 flex-shrink-0">{getItemPriceText(item)}</span>
                             </div>
                           ))
                         ) : (
@@ -2972,7 +2994,7 @@ export default function AdminCardapio({
             {/* Top Bar: Title & Brand slogan */}
             <div className="flex justify-between items-center border-b-2 border-amber-200/50 pb-4">
               <div className="flex items-center gap-4 text-left">
-                <span className="text-rose-500 text-4xl sm:text-5xl animate-bounce">👑</span>
+                <SupremeLogo size={64} className="flex-shrink-0 animate-bounce" />
                 <div className="leading-none">
                   <h1 className="font-sans font-black text-slate-900 tracking-wider text-3xl sm:text-4xl lg:text-5xl uppercase">
                     {boardTitle}
@@ -3033,11 +3055,11 @@ export default function AdminCardapio({
                 </div>
 
                 {/* Copos Especiais Section */}
-                <div>
+                <div className="flex-1 flex flex-col min-h-0">
                   <h3 className="font-black text-slate-800 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-150 pb-1.5">
                     🍓 Copos Especiais & Taças
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1">
                     {specialCups.length > 0 ? (
                       specialCups.map((item) => (
                         <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
@@ -3057,7 +3079,7 @@ export default function AdminCardapio({
                               )}
                             </div>
                           </div>
-                          <span className="font-black text-slate-900 text-xs sm:text-sm flex-shrink-0">R$ {item.price.toFixed(2)}</span>
+                          <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0">{getItemPriceText(item)}</span>
                         </div>
                       ))
                     ) : (
@@ -3077,13 +3099,13 @@ export default function AdminCardapio({
               </div>
 
               {/* Center Column (Milk Shakes) */}
-              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs">
-                <div>
-                  <div className="bg-rose-500 text-white text-center py-1 px-3 rounded-xl font-black uppercase text-xs sm:text-sm tracking-wider mb-3">
+              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs min-h-0">
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="bg-rose-500 text-white text-center py-1 px-3 rounded-xl font-black uppercase text-xs sm:text-sm tracking-wider mb-3 flex-shrink-0">
                     🥤 MILK SHAKES GOURMET
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 flex-shrink-0">
                     <div className="bg-rose-50/10 p-2.5 rounded-xl flex justify-between items-center border border-rose-100/10">
                       <span className="font-bold text-slate-700 text-xs sm:text-sm">{msLabel300}</span>
                       <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice300}</span>
@@ -3101,65 +3123,65 @@ export default function AdminCardapio({
                       <span className="font-black text-rose-500 text-sm sm:text-base">R$ {msPrice700}</span>
                     </div>
                   </div>
-                </div>
 
-                {/* Sabores de Sorvete */}
-                <div className="my-4 bg-slate-100/60 p-3.5 rounded-xl border border-slate-150 text-left">
-                  <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    🍨 SABORES DE SORVETE DISPONÍVEIS:
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {boardMsFlavorList.split(',').map((flav, idx) => (
-                      <span key={idx} className="bg-white px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-black text-slate-700 border border-slate-200/50 shadow-xs">
-                        {flav.trim()}
-                      </span>
-                    ))}
+                  {/* Sabores de Sorvete */}
+                  <div className="my-3 bg-slate-100/60 p-2.5 rounded-xl border border-slate-150 text-left flex-shrink-0">
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      🍨 SABORES DE SORVETE DISPONÍVEIS:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {boardMsFlavorList.split(',').map((flav, idx) => (
+                        <span key={idx} className="bg-white px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-black text-slate-700 border border-slate-200/50 shadow-xs">
+                          {flav.trim()}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Premium Shakes */}
-                <div>
-                  {premiumShakes.length > 0 && (
-                    <>
-                      <h3 className="font-black text-rose-600 uppercase text-xs sm:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-100 pb-1.5">
-                        ✨ Shakes Especiais & Premium
-                      </h3>
-                      <div className="space-y-2">
-                        {premiumShakes.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              {item.image && (
-                                <LazyImage 
-                                  src={item.image} 
-                                  alt={item.name} 
-                                  className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
-                                  containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
-                                />
-                              )}
-                              <div className="min-w-0 text-left">
-                                <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
-                                {item.description && (
-                                  <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
+                  {/* Premium Shakes */}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {premiumShakes.length > 0 && (
+                      <>
+                        <h3 className="font-black text-rose-600 uppercase text-xs sm:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-100 pb-1.5 flex-shrink-0">
+                          ✨ Shakes Especiais & Premium
+                        </h3>
+                        <div className="space-y-2 max-h-[140px] md:max-h-[180px] lg:max-h-[220px] overflow-y-auto pr-1">
+                          {premiumShakes.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {item.image && (
+                                  <LazyImage 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-9 h-9 object-cover rounded-xl flex-shrink-0 border border-slate-100"
+                                    containerClassName="w-9 h-9 flex-shrink-0 border border-slate-100 rounded-xl"
+                                  />
                                 )}
+                                <div className="min-w-0 text-left">
+                                  <span className="font-extrabold text-slate-800 text-xs block truncate">{item.name}</span>
+                                  {item.description && (
+                                    <span className="block text-[9px] sm:text-[10px] text-slate-450 truncate leading-none mt-0.5">{item.description}</span>
+                                  )}
+                                </div>
                               </div>
+                              <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0">{getItemPriceText(item)}</span>
                             </div>
-                            <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0">R$ {item.price.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Right Column (Buckets, Coffee & Toppings) */}
-              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs">
-                <div>
-                  <h3 className="font-black text-amber-600 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-amber-200/50 pb-1.5">
+              <div className="bg-white/45 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between text-left shadow-xs min-h-0">
+                <div className="flex-1 flex flex-col min-h-0">
+                  <h3 className="font-black text-amber-600 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-amber-200/50 pb-1.5 flex-shrink-0">
                     🍨 Baldes & Cafés Premium
                   </h3>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1">
                     {baldesAndCafes.length > 0 ? (
                       baldesAndCafes.map((item) => (
                         <div key={item.id} className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50/50 rounded-xl transition-colors">
@@ -3179,7 +3201,7 @@ export default function AdminCardapio({
                               )}
                             </div>
                           </div>
-                          <span className="font-black text-amber-600 text-xs sm:text-sm flex-shrink-0">R$ {item.price.toFixed(2)}</span>
+                          <span className="font-black text-amber-600 text-xs sm:text-sm flex-shrink-0">{getItemPriceText(item)}</span>
                         </div>
                       ))
                     ) : (
