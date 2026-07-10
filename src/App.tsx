@@ -1807,6 +1807,39 @@ export default function App() {
     return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
   };
 
+  // Helper to get the correct display price of a menu item based on store configurations
+  const getMenuItemDisplayPrice = (item: MenuItem): number => {
+    const sizeMode = item.sizeMode || (item.customizable ? 'default' : 'single');
+
+    if (sizeMode === 'single') {
+      return Number(item.singleSizePrice ?? item.price ?? 0);
+    }
+
+    if (sizeMode === 'custom' && item.customSizes) {
+      const activeSizes = Object.values(item.customSizes).filter((s: any) => s.active);
+      if (activeSizes.length > 0) {
+        const prices = activeSizes.map((s: any) => Number(s.price));
+        return Math.min(...prices);
+      }
+      return Number(item.price ?? 0);
+    }
+
+    // Default sizeMode
+    const isLinhaBrownie = item.id === 'acai-sensacao' || item.name === 'Linha Brownie' || item.name?.toLowerCase().includes('brownie');
+    const isMilkshake = item.category === 'milkshake' || item.category === 'milkshake_especiais' || item.category?.includes('milkshake');
+
+    if (isLinhaBrownie) {
+      return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
+    }
+
+    if (isMilkshake) {
+      return Number(storeSettings?.milkshakePrices?.['300ml'] ?? 15.00);
+    }
+
+    // Default customizable cup
+    return Number(storeSettings?.cupPrices?.['300ml'] ?? 18.00);
+  };
+
   // Add standard product to cart
   const handleAddProductToCart = (item: MenuItem) => {
     if (item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae') {
@@ -2585,13 +2618,17 @@ export default function App() {
                         <div className="flex justify-between items-center mt-5 pt-3 border-t border-rose-50/50">
                           {item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae' ? (
                             <div className="flex flex-col">
-                              <span className="text-sm font-black text-slate-900">R$ {item.price.toFixed(2)}</span>
+                              <span className="text-sm font-black text-slate-900">
+                                {item.sizeMode === 'single' ? '' : 'A partir de '}R$ {getMenuItemDisplayPrice(item).toFixed(2)}
+                              </span>
                               <span className="text-[10px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 uppercase tracking-wider mt-0.5 self-start">
                                 Monte o seu!
                               </span>
                             </div>
                           ) : (
-                            <span className="text-lg font-black text-slate-900">R$ {item.price.toFixed(2)}</span>
+                            <span className="text-lg font-black text-slate-900">
+                              {item.sizeMode === 'single' || !item.sizeMode ? '' : 'A partir de '}R$ {getMenuItemDisplayPrice(item).toFixed(2)}
+                            </span>
                           )}
                           <div className="text-[10px] font-black uppercase text-rose-500/80 tracking-wider flex items-center gap-1 group-hover:text-rose-600 transition-colors">
                             <span>{item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae' ? 'Personalizar' : 'Adicionar'}</span>

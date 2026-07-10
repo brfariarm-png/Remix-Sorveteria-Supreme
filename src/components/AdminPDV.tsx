@@ -36,6 +36,39 @@ export default function AdminPDV({
   // Toggle for Immersive Full Screen layout versus embedded window
   const [isFullscreen, setIsFullscreen] = useState(true);
 
+  // Helper to get the correct display price of a menu item based on store configurations
+  const getMenuItemDisplayPrice = (item: MenuItem): number => {
+    const sizeMode = item.sizeMode || (item.customizable ? 'default' : 'single');
+
+    if (sizeMode === 'single') {
+      return Number(item.singleSizePrice ?? item.price ?? 0);
+    }
+
+    if (sizeMode === 'custom' && item.customSizes) {
+      const activeSizes = Object.values(item.customSizes).filter((s: any) => s.active);
+      if (activeSizes.length > 0) {
+        const prices = activeSizes.map((s: any) => Number(s.price));
+        return Math.min(...prices);
+      }
+      return Number(item.price ?? 0);
+    }
+
+    // Default sizeMode
+    const isLinhaBrownie = item.id === 'acai-sensacao' || item.name === 'Linha Brownie' || item.name?.toLowerCase().includes('brownie');
+    const isMilkshake = item.category === 'milkshake' || item.category === 'milkshake_especiais' || item.category?.includes('milkshake');
+
+    if (isLinhaBrownie) {
+      return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
+    }
+
+    if (isMilkshake) {
+      return Number(storeSettings?.milkshakePrices?.['300ml'] ?? 15.00);
+    }
+
+    // Default customizable cup
+    return Number(storeSettings?.cupPrices?.['300ml'] ?? 18.00);
+  };
+
   // POS Cart State
   const [pdvCart, setPdvCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -561,7 +594,7 @@ export default function AdminPDV({
                             {p.name}
                           </h4>
                           <span className="font-mono font-black text-rose-600 text-xs bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100/60 flex-shrink-0">
-                            R$ {p.price.toFixed(2)}
+                            {p.sizeMode === 'single' || !p.sizeMode ? '' : 'A partir de '}R$ {getMenuItemDisplayPrice(p).toFixed(2)}
                           </span>
                         </div>
                         <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed line-clamp-3 mt-1">
