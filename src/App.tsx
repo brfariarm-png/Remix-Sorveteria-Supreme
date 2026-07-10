@@ -2547,7 +2547,8 @@ export default function App() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.2 }}
-                        className="bg-white rounded-[32px] p-5 shadow-xs border border-rose-50 flex flex-col justify-between hover:border-rose-200 hover:shadow-md transition-all duration-350 relative group"
+                        onClick={() => handleAddProductToCart(item)}
+                        className="bg-white rounded-[32px] p-5 shadow-xs border border-rose-50 flex flex-col justify-between hover:border-rose-200 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 relative group cursor-pointer select-none text-left"
                       >
                         {/* Image wrapped in premium frame */}
                         <div>
@@ -2574,7 +2575,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          <h3 className="text-[17px] font-black text-slate-800 font-display tracking-tight leading-snug line-clamp-1">{item.name}</h3>
+                          <h3 className="text-[17px] font-black text-slate-800 font-display tracking-tight leading-snug line-clamp-1 group-hover:text-rose-600 transition-colors">{item.name}</h3>
                           <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-3">
                             {item.sizeMode === 'single' ? cleanDescriptionForSingleSize(item.description) : item.description}
                           </p>
@@ -2592,12 +2593,10 @@ export default function App() {
                           ) : (
                             <span className="text-lg font-black text-slate-900">R$ {item.price.toFixed(2)}</span>
                           )}
-                          <button
-                            onClick={() => handleAddProductToCart(item)}
-                            className="w-10 h-10 bg-rose-500 hover:bg-rose-600 text-white rounded-xl flex items-center justify-center font-black transition-all transform active:scale-90 shadow-xs shadow-rose-100 cursor-pointer"
-                          >
-                            +
-                          </button>
+                          <div className="text-[10px] font-black uppercase text-rose-500/80 tracking-wider flex items-center gap-1 group-hover:text-rose-600 transition-colors">
+                            <span>{item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae' ? 'Personalizar' : 'Adicionar'}</span>
+                            <span className="text-xs">⚡</span>
+                          </div>
                         </div>
                       </motion.div>
                     ))}
