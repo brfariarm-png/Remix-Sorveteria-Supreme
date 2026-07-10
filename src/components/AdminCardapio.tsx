@@ -482,6 +482,15 @@ export default function AdminCardapio({
   const [selectedAiArt, setSelectedAiArt] = useState<'board' | 'banner'>('board');
   const [useAiBoardBackground, setUseAiBoardBackground] = useState<boolean>(() => storeSettings?.useAiBoardBackground ?? false);
 
+  const [aiArtImageError, setAiArtImageError] = useState(false);
+  const [aiArtImageLoaded, setAiArtImageLoaded] = useState(false);
+  const [aiArtViewMode, setAiArtViewMode] = useState<'live' | 'static'>('live');
+
+  React.useEffect(() => {
+    setAiArtImageError(false);
+    setAiArtImageLoaded(false);
+  }, [selectedAiArt]);
+
   // Helper to get the correct display price of a menu item based on store configurations
   const getMenuItemDisplayPrice = (item: MenuItem): number => {
     const sizeMode = item.sizeMode || (item.customizable ? 'default' : 'single');
@@ -2100,30 +2109,560 @@ export default function AdminCardapio({
                     </button>
                   </div>
                 </div>
+
+                {/* Sub-tabs to choose between Live Mockup and Static Image */}
+                <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-150">
+                  <span className="text-[9.5px] font-black text-slate-500 uppercase tracking-wider ml-1">Modo de Exibição:</span>
+                  <div className="flex bg-slate-200/60 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setAiArtViewMode('live')}
+                      className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all cursor-pointer ${
+                        aiArtViewMode === 'live'
+                          ? 'bg-white text-slate-800 shadow-xs border border-slate-200/50'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      ✨ Mockup Live
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiArtViewMode('static')}
+                      className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all cursor-pointer ${
+                        aiArtViewMode === 'static'
+                          ? 'bg-white text-slate-800 shadow-xs border border-slate-200/50'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      🖼️ Foto Estática
+                    </button>
+                  </div>
+                </div>
                 
-                <div className="relative group overflow-hidden rounded-xl border border-slate-100">
-                  <LazyImage
-                    key={selectedAiArt}
-                    src={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
-                    alt={selectedAiArt === 'board' ? 'Painel de TV' : 'Banner de Promoção'}
-                    className="w-full object-cover aspect-[16/9] hover:scale-102 transition-transform duration-300"
-                    containerClassName="w-full aspect-[16/9]"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <div className="relative group overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+                  {aiArtViewMode === 'live' ? (
+                    selectedAiArt === 'board' ? (
+                      /* Live Mini TV Menu Board Poster Mockup */
+                      <div className="w-full aspect-[16/9] bg-[#fdfbf7] text-[#302122] relative flex flex-col justify-between p-2.5 select-none overflow-hidden rounded-xl border border-[#b28a38]/40 text-[7px] sm:text-[8px] font-sans shadow-lg">
+                        {/* Elegant vintage design border around the board */}
+                        <div className="absolute inset-1.5 border border-[#b28a38]/20 rounded-lg pointer-events-none" />
+                        <div className="absolute inset-2 border-2 border-[#7c0f14]/10 rounded-md pointer-events-none" />
+
+                        {/* Top Section */}
+                        <div className="grid grid-cols-12 gap-1 items-start relative z-10 border-b border-[#b28a38]/20 pb-1.5 flex-shrink-0">
+                          {/* Left Logo and Branding (5 Cols) */}
+                          <div className="col-span-5 flex flex-col items-start leading-none pr-1">
+                            <div className="flex items-center gap-1">
+                              <SupremeLogo size={20} className="flex-shrink-0 text-[#7c0f14]" />
+                              <div>
+                                <h1 className="font-serif font-black text-[#7c0f14] tracking-tight text-[11px] uppercase leading-none">
+                                  {boardTitle}
+                                </h1>
+                                <span className="block text-[5px] text-[#b28a38] font-bold tracking-widest leading-none mt-0.5">
+                                  — {boardSubtitle} —
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-1 bg-[#7c0f14]/5 px-1.5 py-0.5 rounded border border-[#7c0f14]/10 text-left">
+                              <p className="text-[4.5px] font-bold text-zinc-500 tracking-wider leading-none uppercase">NÃO É SÓ SORVETE,</p>
+                              <p className="text-[6px] font-black text-[#7c0f14] uppercase tracking-wide leading-none mt-0.5">
+                                É {boardSlogan.includes("EXPERIÊNCIA") ? "EXPERIÊNCIA." : boardSlogan}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right Milkshakes Sizes & Prices (7 Cols) */}
+                          <div className="col-span-7 grid grid-cols-12 gap-1.5 items-stretch">
+                            {/* Sizes Section (7 of 12) */}
+                            <div className="col-span-7 flex flex-col justify-center text-center">
+                              <div className="text-[6.5px] font-black text-[#7c0f14] tracking-wide uppercase flex items-center justify-center gap-0.5 mb-1 bg-[#7c0f14]/5 py-0.5 rounded">
+                                <span>★</span> MILK SHAKES <span>★</span>
+                              </div>
+                              <div className="grid grid-cols-4 gap-0.5">
+                                {[
+                                  { label: msLabel300, price: msPrice300 },
+                                  { label: msLabel400, price: msPrice400 },
+                                  { label: msLabel500, price: msPrice500 },
+                                  { label: msLabel700, price: msPrice700 }
+                                ].map((sz, i) => (
+                                  <div key={i} className="flex flex-col items-center bg-[#f7f2ea] border border-[#b28a38]/20 py-0.5 px-0.2 rounded">
+                                    <span className="text-[4px] font-extrabold text-zinc-500 leading-none">{sz.label}</span>
+                                    <span className="text-[5.5px] font-black text-[#7c0f14] leading-none mt-0.5">R$ {sz.price}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Sabores Section (5 of 12) */}
+                            <div className="col-span-5 bg-[#7c0f14] text-white p-1 rounded border border-[#b28a38]/30 flex flex-col justify-between min-h-[34px]">
+                              <div className="text-[5.5px] font-black uppercase text-center tracking-wider bg-white/10 py-0.2 rounded mb-0.5">
+                                SABORES
+                              </div>
+                              <div className="text-[4.5px] font-bold leading-tight text-[#fdfbf7]/90 line-clamp-4 overflow-hidden text-left">
+                                {boardMsFlavorList}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Middle Section */}
+                        <div className="grid grid-cols-12 gap-1.5 flex-1 my-1 items-stretch min-h-0 overflow-hidden text-left relative z-10">
+                          {/* Copos de Açaí list & details (3 Cols) */}
+                          <div className="col-span-3 bg-[#f7f2ea]/60 p-1 rounded-lg border border-[#b28a38]/15 flex flex-col justify-between overflow-hidden">
+                            <div className="flex flex-col min-h-0">
+                              <h3 className="font-black text-[#7c0f14] uppercase text-[6.5px] tracking-wider mb-1 pb-0.5 border-b border-[#7c0f14]/20 flex items-center gap-0.5">
+                                🍇 Copos de Açaí
+                              </h3>
+                              <div className="space-y-0.5">
+                                <div className="flex justify-between items-center text-[5.8px]">
+                                  <span className="font-bold text-zinc-600">{label300}</span>
+                                  <span className="font-black text-[#7c0f14]">R$ {price300}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[5.8px]">
+                                  <span className="font-bold text-zinc-600">{label400}</span>
+                                  <span className="font-black text-[#7c0f14]">R$ {price400}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[5.8px]">
+                                  <span className="font-bold text-zinc-600">{label500}</span>
+                                  <span className="font-black text-[#7c0f14]">R$ {price500}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[5.8px]">
+                                  <span className="font-bold text-zinc-600">{label700}</span>
+                                  <span className="font-black text-[#7c0f14]">R$ {price700}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Cortesias (3 Cols) */}
+                          <div className="col-span-3 bg-[#fdfaf2] p-1 rounded-lg border border-[#b28a38]/15 flex flex-col justify-between overflow-hidden">
+                            <div className="flex flex-col min-h-0">
+                              <h3 className="font-black text-[#b28a38] uppercase text-[6.5px] tracking-wider mb-1 pb-0.5 border-b border-[#b28a38]/20">
+                                ✨ Cortesias
+                              </h3>
+                              <p className="text-[5.5px] font-medium leading-normal text-zinc-600 line-clamp-5">
+                                {boardCortesiasList}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Adicionais List (3 Cols) */}
+                          <div className="col-span-3 bg-[#fdfaf2] p-1 rounded-lg border border-[#b28a38]/15 flex flex-col justify-between overflow-hidden">
+                            <div className="flex flex-col min-h-0">
+                              <h3 className="font-black text-[#7c0f14] uppercase text-[6.5px] tracking-wider mb-1 pb-0.5 border-b border-[#7c0f14]/20">
+                                ➕ Adicionais
+                              </h3>
+                              <p className="text-[5.2px] font-bold text-[#7c0f14]/85 leading-normal line-clamp-5 uppercase">
+                                {boardAdicionaisList}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Copos Especiais (3 Cols) */}
+                          <div className="col-span-3 bg-[#f7f2ea]/60 p-1 rounded-lg border border-[#b28a38]/15 flex flex-col justify-between overflow-hidden">
+                            <div className="flex flex-col min-h-0">
+                              <h3 className="font-black text-[#7c0f14] uppercase text-[6.5px] tracking-wider mb-1 pb-0.5 border-b border-[#7c0f14]/20">
+                                🍨 Copos Especiais
+                              </h3>
+                              <div className="space-y-0.5 flex-1 overflow-hidden">
+                                {specialCups.slice(0, 3).map((item) => (
+                                  <div key={item.id} className="flex justify-between items-center text-[5.5px] truncate">
+                                    <span className="font-bold text-zinc-700 truncate max-w-[48px]">{item.name}</span>
+                                    <span className="font-black text-[#7c0f14] flex-shrink-0">{getItemPriceText(item)}</span>
+                                  </div>
+                                ))}
+                                {specialCups.length === 0 && (
+                                  <>
+                                    <div className="flex justify-between items-center text-[5.5px]">
+                                      <span className="font-bold text-zinc-700">Ovomaltine</span>
+                                      <span className="font-black text-[#7c0f14]">R$ 18.00</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[5.5px]">
+                                      <span className="font-bold text-zinc-700">Oreo 300ml</span>
+                                      <span className="font-black text-[#7c0f14]">R$ 18.00</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Row (6 Columns for products / category boxes) */}
+                        <div className="grid grid-cols-6 gap-1 relative z-10 border-t border-[#b28a38]/20 pt-1 flex-shrink-0 items-stretch">
+                          {/* Card 1: Copo Trufado */}
+                          <div className="border border-[#7c0f14]/20 bg-white/40 p-0.5 rounded flex flex-col justify-between min-h-[34px]">
+                            <div className="text-[5px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/10 pb-0.2 mb-0.5">
+                              COPO TRUFADO
+                            </div>
+                            <p className="text-[4px] leading-none text-zinc-500 scale-[0.9] origin-left line-clamp-2">Sorvete trufado com Nutella, amendoim.</p>
+                            <div className="flex justify-between items-center text-[5.5px] font-black text-[#7c0f14] mt-0.5 leading-none">
+                              <span>400ml</span>
+                              <span>R$ 20.00</span>
+                            </div>
+                          </div>
+
+                          {/* Card 2: Copo Felicidade */}
+                          <div className="border border-[#7c0f14]/20 bg-white/40 p-0.5 rounded flex flex-col justify-between min-h-[34px]">
+                            <div className="text-[5px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/10 pb-0.2 mb-0.5">
+                              COPO FELICIDADE
+                            </div>
+                            <p className="text-[4px] leading-none text-zinc-500 scale-[0.9] origin-left line-clamp-2">Sorvete, Nutella, Ovomaltine, disquete.</p>
+                            <div className="flex justify-between items-center text-[5.5px] font-black text-[#7c0f14] mt-0.5 leading-none">
+                              <span>500ml</span>
+                              <span>R$ 30.00</span>
+                            </div>
+                          </div>
+
+                          {/* Card 3: Split */}
+                          <div className="border border-[#7c0f14]/20 bg-white/40 p-0.5 rounded flex flex-col justify-between min-h-[34px]">
+                            <div className="text-[5px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/10 pb-0.2 mb-0.5">
+                              SPLIT CUP
+                            </div>
+                            <p className="text-[4px] leading-none text-zinc-500 scale-[0.9] origin-left line-clamp-2">Sorvete, banana/morango, chantilly, cereja.</p>
+                            <div className="flex justify-between items-center text-[5.5px] font-black text-[#7c0f14] mt-0.5 leading-none">
+                              <span>400ml</span>
+                              <span>R$ 20.00</span>
+                            </div>
+                          </div>
+
+                          {/* Card 4: Banoffee */}
+                          <div className="border border-[#7c0f14]/20 bg-white/40 p-0.5 rounded flex flex-col justify-between min-h-[34px]">
+                            <div className="text-[5px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/10 pb-0.2 mb-0.5">
+                              COPO BANOFFEE
+                            </div>
+                            <p className="text-[4px] leading-none text-zinc-500 scale-[0.9] origin-left line-clamp-2">Sorvete, banana, farofa bolacha, chantilly.</p>
+                            <div className="flex justify-between items-center text-[5.5px] font-black text-[#7c0f14] mt-0.5 leading-none">
+                              <span>400ml</span>
+                              <span>R$ 20.00</span>
+                            </div>
+                          </div>
+
+                          {/* Card 5: Baldes */}
+                          <div className="border border-[#b28a38]/30 bg-[#fbf6ec] p-0.5 rounded flex flex-col justify-between min-h-[34px]">
+                            <div className="text-[5px] font-black uppercase text-[#b28a38] leading-tight text-center truncate border-b border-[#b28a38]/25 pb-0.2 mb-0.5 bg-[#7c0f14] text-white rounded-xs">
+                              BALDES
+                            </div>
+                            <div className="space-y-0.2 flex-1 overflow-hidden">
+                              {baldesAndCafes.filter(x => x.name.toLowerCase().includes('balde') || x.category === 'baldes').slice(0, 2).map(b => (
+                                <div key={b.id} className="flex justify-between items-center text-[4.5px] leading-none text-zinc-700 truncate">
+                                  <span className="truncate max-w-[32px] font-bold">{b.name}</span>
+                                  <span className="font-black text-[#7c0f14] scale-[0.9] origin-right">{getItemPriceText(b).replace('R$', '')}</span>
+                                </div>
+                              ))}
+                              {baldesAndCafes.filter(x => x.name.toLowerCase().includes('balde') || x.category === 'baldes').length === 0 && (
+                                <>
+                                  <div className="flex justify-between items-center text-[4px] leading-none text-zinc-700">
+                                    <span className="font-bold">B. Brownie</span>
+                                    <span className="font-black text-[#7c0f14]">25</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[4px] leading-none text-zinc-700">
+                                    <span className="font-bold">B. D. Leite</span>
+                                    <span className="font-black text-[#7c0f14]">25</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Card 6: Cafés / Shakes Kids */}
+                          <div className="border border-[#b28a38]/30 bg-[#fbf6ec] p-0.5 rounded flex flex-col justify-between min-h-[34px]">
+                            <div className="text-[5px] font-black uppercase text-[#b28a38] leading-tight text-center truncate border-b border-[#b28a38]/25 pb-0.2 mb-0.5 bg-[#b28a38] text-white rounded-xs">
+                              CAFÉS
+                            </div>
+                            <div className="space-y-0.2 flex-1 overflow-hidden">
+                              {baldesAndCafes.filter(x => !x.name.toLowerCase().includes('balde') && x.category !== 'baldes').slice(0, 2).map(c => (
+                                <div key={c.id} className="flex justify-between items-center text-[4.5px] leading-none text-zinc-700 truncate">
+                                  <span className="truncate max-w-[32px] font-bold">{c.name}</span>
+                                  <span className="font-black text-[#7c0f14] scale-[0.9] origin-right">{getItemPriceText(c).replace('R$', '')}</span>
+                                </div>
+                              ))}
+                              {baldesAndCafes.filter(x => !x.name.toLowerCase().includes('balde') && x.category !== 'baldes').length === 0 && (
+                                <>
+                                  <div className="flex justify-between items-center text-[4px] leading-none text-zinc-700">
+                                    <span className="font-bold">Frappuccino</span>
+                                    <span className="font-black text-[#7c0f14]">25</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[4px] leading-none text-zinc-700">
+                                    <span className="font-bold">Affogatto</span>
+                                    <span className="font-black text-[#7c0f14]">25</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-between items-center border-t border-[#b28a38]/20 pt-1 text-[5px] sm:text-[6px] font-black text-zinc-500 bg-[#f7f2ea]/40 flex-shrink-0 leading-none">
+                          <div className="flex items-center gap-0.5">
+                            <span>📞</span>
+                            <span className="font-mono text-[#7c0f14]">{boardCustomNote} — {boardPhone}</span>
+                          </div>
+                          <div className="text-[5px] font-black text-[#b28a38] tracking-widest uppercase">
+                            📺 PREMIUM TV MENU BOARD LIVE
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <span>📸</span>
+                            <span className="text-[#7c0f14] font-bold">{boardInstagram}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Live Mini Promotional Banner Mockup */
+                      <div className="w-full aspect-[16/9] bg-gradient-to-br from-rose-750 via-zinc-950 to-pink-900 text-white relative flex flex-col justify-between p-3 select-none overflow-hidden rounded-xl border border-rose-900/40 text-[8.5px] sm:text-[10px] font-sans">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                        <div className="flex justify-between items-start flex-shrink-0">
+                          <div className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[6.5px] font-black uppercase tracking-wider shadow-sm animate-pulse flex items-center gap-0.5">
+                            🔥 SUPER PROMOÇÃO DA SEMANA
+                          </div>
+                          <SupremeLogo size={24} className="flex-shrink-0" />
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-1 my-1">
+                          <h2 className="font-sans font-black text-white text-[15px] sm:text-[18px] uppercase tracking-widest drop-shadow-[0_2px_8px_rgba(239,68,68,0.4)] leading-none">
+                            {boardTitle}
+                          </h2>
+                          <p className="text-amber-400 font-extrabold tracking-widest text-[8px] sm:text-[9px] uppercase leading-none italic">
+                            — {boardSlogan} —
+                          </p>
+
+                          <div className="flex gap-2.5 mt-1">
+                            <div className="bg-white/10 backdrop-blur-xs px-2 py-1 rounded-lg border border-white/10 text-center flex flex-col justify-center min-w-[65px]">
+                              <span className="text-[5.5px] text-zinc-300 font-black uppercase block leading-none">Copo {label300 || '300ml'}</span>
+                              <span className="text-[9.5px] font-black text-rose-450 leading-none mt-0.5">R$ {price300 || '15,00'}</span>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-xs px-2 py-1 rounded-lg border border-white/10 text-center flex flex-col justify-center min-w-[65px]">
+                              <span className="text-[5.5px] text-zinc-300 font-black uppercase block leading-none">Copo {label400 || '400ml'}</span>
+                              <span className="text-[9.5px] font-black text-rose-450 leading-none mt-0.5">R$ {price400 || '18,00'}</span>
+                            </div>
+                            <div className="bg-rose-500/20 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-rose-500/30 text-center flex flex-col justify-center min-w-[70px]">
+                              <span className="text-[5.5px] text-amber-300 font-black uppercase block leading-none">Cortesias Inclusas</span>
+                              <span className="text-[6.5px] font-extrabold text-zinc-100 truncate leading-none mt-0.5">{boardCortesiasList ? boardCortesiasList.split(',')[0] : 'Leite em Pó'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center border-t border-white/10 pt-1 mt-0.5 text-[6.5px] text-zinc-300 flex-shrink-0 leading-none">
+                          <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                            <span className="text-emerald-400">📞</span>
+                            <span className="font-mono text-zinc-200">{boardPhone}</span>
+                          </div>
+                          <div className="text-[6px] font-bold text-zinc-500 tracking-widest uppercase">
+                            ✨ ART DESIGN LIVE • SUPREME AÇAÍ
+                          </div>
+                          <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                            <span className="text-rose-400 font-bold">📸</span>
+                            <span className="text-zinc-200 font-bold">{boardInstagram}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    /* Static Image with error fallback to live mockup */
+                    <div className="relative w-full aspect-[16/9]">
+                      {!aiArtImageLoaded && !aiArtImageError && (
+                        <div className="absolute inset-0 bg-slate-150 animate-pulse flex items-center justify-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+                          Carregando Imagem...
+                        </div>
+                      )}
+                      {!aiArtImageError ? (
+                        <img
+                          key={selectedAiArt}
+                          src={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
+                          alt={selectedAiArt === 'board' ? 'Painel de TV' : 'Banner de Promoção'}
+                          onLoad={() => setAiArtImageLoaded(true)}
+                          onError={() => setAiArtImageError(true)}
+                          className={`w-full object-cover aspect-[16/9] hover:scale-102 transition-all duration-300 ${
+                            aiArtImageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
+                          }`}
+                        />
+                      ) : (
+                        selectedAiArt === 'board' ? (
+                          /* Fallback Live Mini TV Menu Board */
+                          <div className="w-full aspect-[16/9] bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black text-white relative flex flex-col justify-between p-2.5 select-none overflow-hidden rounded-xl border border-zinc-800 text-[8px] sm:text-[9.5px] font-sans">
+                            <div className="absolute top-0 left-0 w-6 h-6 border-t border-l border-amber-500/20 rounded-tl-lg pointer-events-none" />
+                            <div className="absolute top-0 right-0 w-6 h-6 border-t border-r border-amber-500/20 rounded-tr-lg pointer-events-none" />
+                            <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l border-amber-500/20 rounded-bl-lg pointer-events-none" />
+                            <div className="absolute bottom-0 right-0 w-6 h-6 border-b border-r border-amber-500/20 rounded-br-lg pointer-events-none" />
+
+                            <div className="flex justify-between items-center border-b border-zinc-800/60 pb-1 flex-shrink-0">
+                              <div className="flex items-center gap-1.5 text-left leading-none">
+                                <SupremeLogo size={22} className="flex-shrink-0 text-rose-550" />
+                                <div>
+                                  <h1 className="font-sans font-black text-white tracking-wider text-[11px] uppercase">
+                                    {boardTitle}
+                                  </h1>
+                                  <span className="block text-[6.5px] text-rose-500 font-extrabold tracking-widest leading-none mt-0.5">
+                                    — {boardSubtitle} —
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[5.5px] font-bold text-zinc-500 tracking-widest leading-none uppercase">NÃO É SÓ SORVETE, É UMA</p>
+                                <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest leading-none mt-0.5">
+                                  {boardSlogan}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 flex-1 my-1.5 items-stretch overflow-hidden min-h-0 text-left">
+                              <div className="bg-zinc-900/40 p-1.5 rounded-lg border border-zinc-800/40 flex flex-col justify-between overflow-hidden">
+                                <div className="flex flex-col min-h-0">
+                                  <h3 className="font-black text-rose-500 uppercase text-[7.5px] tracking-wider mb-1 pb-0.5 border-b border-rose-950/40">
+                                    💜 Copos de Açaí
+                                  </h3>
+                                  <div className="space-y-0.5">
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{label300}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {price300}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{label400}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {price400}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{label500}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {price500}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{label700}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {price700}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="bg-amber-500/5 border border-amber-500/10 p-1 rounded-sm mt-1">
+                                  <span className="text-[5.5px] font-black text-amber-400 block leading-none mb-0.5 uppercase">✨ CORTESIAS:</span>
+                                  <p className="text-[5.8px] text-amber-200/80 truncate leading-none">{boardCortesiasList}</p>
+                                </div>
+                              </div>
+
+                              <div className="bg-zinc-900/40 p-1.5 rounded-lg border border-zinc-800/40 flex flex-col justify-between overflow-hidden">
+                                <div className="flex flex-col min-h-0">
+                                  <h3 className="font-black text-rose-500 uppercase text-[7.5px] tracking-wider mb-1 pb-0.5 border-b border-rose-950/40">
+                                    🥤 Milk Shakes Gourmet
+                                  </h3>
+                                  <div className="space-y-0.5">
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{msLabel300}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {msPrice300}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{msLabel400}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {msPrice400}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{msLabel500}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {msPrice500}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px]">
+                                      <span className="font-bold text-zinc-350">{msLabel700}</span>
+                                      <span className="font-black text-rose-450 bg-rose-500/5 px-1 py-0.2 rounded-xs border border-rose-500/10">R$ {msPrice700}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="bg-rose-500/5 border border-rose-500/10 p-1 rounded-sm mt-1">
+                                  <span className="text-[5.5px] font-black text-rose-400 block leading-none mb-0.5 uppercase">🍨 SABORES:</span>
+                                  <p className="text-[5.8px] text-zinc-200 truncate leading-none">{boardMsFlavorList}</p>
+                                </div>
+                              </div>
+
+                              <div className="bg-zinc-900/40 p-1.5 rounded-lg border border-zinc-800/40 flex flex-col justify-between overflow-hidden">
+                                <div className="flex flex-col min-h-0">
+                                  <h3 className="font-black text-amber-500 uppercase text-[7.5px] tracking-wider mb-1 pb-0.5 border-b border-amber-950/40">
+                                    🍨 Baldes & Adicionais
+                                  </h3>
+                                  <div className="space-y-0.5 flex-1 overflow-hidden">
+                                    {baldesAndCafes.slice(0, 3).map((item) => (
+                                      <div key={item.id} className="flex justify-between items-center text-[7.2px] truncate">
+                                        <span className="font-bold text-zinc-350 truncate max-w-[45px]">{item.name}</span>
+                                        <span className="font-black text-amber-450">{getItemPriceText(item)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-950 p-1 rounded-sm mt-1 border border-zinc-800/80">
+                                  <span className="text-[5.5px] font-black text-amber-400 block leading-none mb-0.5 uppercase">➕ ADICIONAIS:</span>
+                                  <p className="text-[5.8px] text-zinc-350 truncate leading-none">{boardAdicionaisList}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center border-t border-zinc-800/60 pt-1 mt-0.5 text-[6.5px] text-zinc-400 bg-zinc-950/30 flex-shrink-0 leading-none">
+                              <div className="flex items-center gap-1">
+                                <span>📞</span>
+                                <span className="font-mono text-zinc-200">{boardPhone}</span>
+                              </div>
+                              <div className="text-[6px] font-bold text-rose-500 tracking-wider">
+                                ⚠️ FOTO NÃO CARREGOU • EXIBINDO PAINEL LIVE
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span>📸</span>
+                                <span className="text-rose-450 font-bold">{boardInstagram}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Fallback Live Promo Banner */
+                          <div className="w-full aspect-[16/9] bg-gradient-to-br from-rose-750 via-zinc-950 to-pink-900 text-white relative flex flex-col justify-between p-3 select-none overflow-hidden rounded-xl border border-rose-900/40 text-[8.5px] sm:text-[10px] font-sans">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                            <div className="flex justify-between items-start flex-shrink-0">
+                              <div className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[6.5px] font-black uppercase tracking-wider shadow-sm animate-pulse flex items-center gap-0.5">
+                                🔥 SUPER PROMOÇÃO DA SEMANA
+                              </div>
+                              <SupremeLogo size={24} className="flex-shrink-0" />
+                            </div>
+
+                            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-1 my-1">
+                              <h2 className="font-sans font-black text-white text-[15px] sm:text-[18px] uppercase tracking-widest drop-shadow-[0_2px_8px_rgba(239,68,68,0.4)] leading-none">
+                                {boardTitle}
+                              </h2>
+                              <p className="text-amber-400 font-extrabold tracking-widest text-[8px] sm:text-[9px] uppercase leading-none italic">
+                                — {boardSlogan} —
+                              </p>
+
+                              <div className="flex gap-2.5 mt-1">
+                                <div className="bg-white/10 backdrop-blur-xs px-2 py-1 rounded-lg border border-white/10 text-center flex flex-col justify-center min-w-[65px]">
+                                  <span className="text-[5.5px] text-zinc-350 font-black uppercase block leading-none">Copo {label300 || '300ml'}</span>
+                                  <span className="text-[9.5px] font-black text-rose-450 leading-none mt-0.5">R$ {price300 || '15,00'}</span>
+                                </div>
+                                <div className="bg-white/10 backdrop-blur-xs px-2 py-1 rounded-lg border border-white/10 text-center flex flex-col justify-center min-w-[65px]">
+                                  <span className="text-[5.5px] text-zinc-350 font-black uppercase block leading-none">Copo {label400 || '400ml'}</span>
+                                  <span className="text-[9.5px] font-black text-rose-450 leading-none mt-0.5">R$ {price400 || '18,00'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center border-t border-white/10 pt-1 mt-0.5 text-[6.5px] text-zinc-300 flex-shrink-0 leading-none">
+                              <div className="flex items-center gap-1">
+                                <span>📞</span>
+                                <span className="font-mono text-zinc-200">{boardPhone}</span>
+                              </div>
+                              <div className="text-[6px] font-bold text-rose-500 tracking-wider">
+                                ⚠️ FOTO NÃO CARREGOU • EXIBINDO BANNER LIVE
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span>📸</span>
+                                <span className="text-zinc-200 font-bold">{boardInstagram}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <a
                       href={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
                       download={selectedAiArt === 'board' ? 'painel_tv_supreme.jpg' : 'banner_promo_supreme.jpg'}
-                      className="bg-white hover:bg-rose-50 text-rose-600 p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
+                      className="bg-white hover:bg-rose-50 text-rose-600 p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1 z-20"
                     >
-                      <Download className="w-4 h-4" /> Baixar
-                    </a>
-                    <a
-                      href={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
-                    >
-                      🔍 Ampliar
+                      <Download className="w-4 h-4" /> Baixar Imagem Original
                     </a>
                   </div>
                 </div>
@@ -3376,316 +3915,289 @@ export default function AdminCardapio({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className={`fixed inset-0 z-[10000] p-4 lg:p-5 flex flex-col justify-between overflow-hidden font-sans select-none text-white w-screen h-screen max-h-screen ${
-              useAiBoardBackground 
-                ? 'bg-zinc-950/20' 
-                : 'bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black'
-            }`}
-            style={{ 
-              backgroundImage: useAiBoardBackground ? "url('/assets/images/digital_menu_board_1783442621544.jpg')" : undefined, 
-              backgroundSize: 'cover', 
-              backgroundPosition: 'center', 
-              backgroundRepeat: 'no-repeat' 
-            }}
+            className="fixed inset-0 z-[10000] p-6 lg:p-8 flex flex-col justify-between overflow-hidden font-sans select-none bg-[#fdfbf7] text-[#302122] w-screen h-screen max-h-screen"
           >
-            {/* Ambient Darkened Overlay for High-Contrast text reading when AI Background is active */}
-            {useAiBoardBackground && (
-              <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[1.5px] pointer-events-none z-0" />
-            )}
+            {/* Elegant double vintage border around the TV board */}
+            <div className="absolute inset-3 border border-[#b28a38]/30 rounded-2xl pointer-events-none" />
+            <div className="absolute inset-4 lg:inset-5 border-4 border-[#7c0f14]/15 rounded-xl pointer-events-none" />
 
-            {/* Golden curves in corners */}
-            <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-500/25 rounded-tl-2xl pointer-events-none z-10" />
-            <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-500/25 rounded-tr-2xl pointer-events-none z-10" />
-            <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-500/25 rounded-bl-2xl pointer-events-none z-10" />
-            <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-500/25 rounded-br-2xl pointer-events-none z-10" />
- 
-            <div className="relative z-10 flex flex-col justify-between flex-1 w-full h-full overflow-hidden min-h-0">
+            <div className="relative z-10 flex flex-col justify-between flex-1 w-full h-full overflow-hidden min-h-0 p-2">
               {/* Close Button */}
               <button
                 onClick={() => setIsFullscreenBoardOpen(false)}
-                className="absolute top-2 right-2 p-1.5 bg-zinc-900/80 hover:bg-rose-950/80 text-rose-500 rounded-full shadow-lg border border-zinc-800 hover:border-rose-900 transition-all cursor-pointer z-[10010] group animate-pulse"
+                className="absolute -top-1 -right-1 p-2 bg-[#7c0f14] hover:bg-[#610a0d] text-white rounded-full shadow-lg border-2 border-[#b28a38] transition-all cursor-pointer z-[10010]"
                 title="Pressione ESC para Sair"
               >
                 <X className="w-5 h-5 stroke-[2.5]" />
               </button>
- 
-            {/* Top Bar: Title & Brand slogan */}
-            <div className="flex justify-between items-center border-b border-zinc-800/80 pb-2 flex-shrink-0">
-              <div className="flex items-center gap-3 text-left">
-                <div className="p-1 bg-zinc-900/90 rounded-xl border border-zinc-800 shadow-[0_0_10px_rgba(239,68,68,0.15)] flex items-center justify-center">
-                  <SupremeLogo size={44} className="flex-shrink-0 animate-pulse" />
-                </div>
-                <div className="leading-none">
-                  <h1 className="font-sans font-black text-white tracking-widest text-xl sm:text-2xl lg:text-3xl uppercase drop-shadow-[0_2px_8px_rgba(239,68,68,0.2)]">
-                    {boardTitle}
-                  </h1>
-                  <span className="block text-[10px] lg:text-xs text-rose-500 font-black tracking-widest uppercase mt-0.5">
-                    — {boardSubtitle} —
-                  </span>
-                </div>
-              </div>
- 
-              <div className="text-right">
-                <p className="text-[8px] lg:text-[9px] font-bold text-zinc-500 tracking-widest uppercase">NÃO É SÓ SORVETE, É UMA</p>
-                <p className="text-sm lg:text-lg font-black text-rose-500 uppercase tracking-widest leading-none mt-0.5 drop-shadow-[0_2px_6px_rgba(239,68,68,0.15)]">
-                  {boardSlogan}
-                </p>
-              </div>
-            </div>
- 
-            {/* Main Menu Widescreen Columns Grid */}
-            <div className="grid grid-cols-3 gap-4 lg:gap-5 my-3 flex-1 items-stretch overflow-hidden min-h-0">
-              
-              {/* Left Column (Açaí & Copos Especiais) */}
-              <div className="bg-zinc-900/30 p-3.5 lg:p-4 rounded-2xl border border-zinc-800/40 flex flex-col text-left shadow-2xl backdrop-blur-xs min-h-0 overflow-hidden">
-                {/* Açaí Section */}
-                <div className="flex-shrink-0">
-                  <h3 className="font-black text-rose-500 uppercase text-xs lg:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-950 pb-1">
-                    <span className="text-sm lg:text-base">💜</span> Copos de Açaí & Sorvete
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {[
-                      { size: label300, price: price300, vol: '300ml' },
-                      { size: label400, price: price400, vol: '400ml' },
-                      { size: label500, price: price500, vol: '500ml' },
-                      { size: label700, price: price700, vol: '700ml' }
-                    ].map((sz, idx) => (
-                      <div key={idx} className="bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <GourmetCup type="acai" size={16} className="opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                          <span className="font-bold text-zinc-200 text-[10px] lg:text-xs truncate">{sz.size}</span>
-                        </div>
-                        <span className="font-black text-rose-450 text-[10px] lg:text-xs bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20">R$ {sz.price}</span>
-                      </div>
-                    ))}
+
+              {/* Header section (Logo and Milk Shakes) */}
+              <div className="grid grid-cols-12 gap-6 items-center border-b border-[#b28a38]/30 pb-4 flex-shrink-0">
+                {/* Left Brand Area (5 columns) */}
+                <div className="col-span-5 flex flex-col items-start leading-none pr-4 border-r border-[#b28a38]/20">
+                  <div className="flex items-center gap-3">
+                    <SupremeLogo size={48} className="flex-shrink-0 text-[#7c0f14] filter drop-shadow-sm" />
+                    <div>
+                      <h1 className="font-serif font-black text-[#7c0f14] tracking-tight text-3xl lg:text-4xl uppercase leading-none">
+                        {boardTitle}
+                      </h1>
+                      <span className="block text-xs text-[#b28a38] font-bold tracking-[0.25em] leading-none mt-1.5">
+                        — {boardSubtitle} —
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3.5 bg-[#7c0f14]/5 px-4 py-2 rounded-xl border border-[#7c0f14]/10 text-left">
+                    <p className="text-[10px] font-bold text-zinc-500 tracking-wider leading-none uppercase mb-1">NÃO É SÓ SORVETE,</p>
+                    <p className="text-lg lg:text-xl font-black text-[#7c0f14] uppercase tracking-wide leading-none">
+                      É {boardSlogan.includes("EXPERIÊNCIA") ? "EXPERIÊNCIA." : boardSlogan}
+                    </p>
                   </div>
                 </div>
 
-                {/* Cortesias Section */}
-                <div className="my-2.5 bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl text-left flex-shrink-0">
-                  <h4 className="font-black text-amber-400 uppercase text-[8px] lg:text-[9px] tracking-wider mb-0.5 flex items-center gap-1">
-                    ✨ CORTESIAS INCLUSAS EM TODOS OS COPOS:
-                  </h4>
-                  <p className="text-[9.5px] lg:text-[10.5px] font-medium leading-tight text-amber-200/90">
-                    {boardCortesiasList}
-                  </p>
-                </div>
-
-                {/* Copos Especiais Section */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <h3 className="font-black text-zinc-100 uppercase text-xs lg:text-sm tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-zinc-800 pb-1 flex-shrink-0">
-                    <span className="text-sm lg:text-base">🍓</span> Copos Especiais & Taças
-                  </h3>
-                  <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 overflow-hidden align-content-start">
-                    {specialCups.length > 0 ? (
-                      specialCups.map((item) => {
-                        const cupType = getGourmetCupType(item);
-                        return (
-                          <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/95 rounded-xl transition-all duration-200 group">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7.5 h-7.5 flex-shrink-0 bg-zinc-950/80 rounded-lg flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
-                                {item.image ? (
-                                  <LazyImage 
-                                    src={item.image} 
-                                    alt={item.name} 
-                                    className="w-full h-full object-cover rounded-lg"
-                                    containerClassName="w-full h-full rounded-lg"
-                                  />
-                                ) : (
-                                  <GourmetCup type={cupType} size={16} className="opacity-90 group-hover:opacity-100 transition-opacity" />
-                                )}
-                              </div>
-                              <div className="min-w-0 text-left">
-                                <span className="font-black text-zinc-100 text-[10px] lg:text-[11.5px] block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
-                              </div>
-                            </div>
-                            <span className="font-black text-rose-500 text-[9.5px] lg:text-[11px] flex-shrink-0 bg-rose-500/10 px-1.5 py-0.5 rounded-lg border border-rose-500/20">{getItemPriceText(item)}</span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-zinc-300">Copo Trufado Nutella/Amendoim</span>
-                          <span className="font-black text-rose-400">R$ 20,00</span>
+                {/* Right Milkshakes Area (7 columns) */}
+                <div className="col-span-7 grid grid-cols-12 gap-4 items-center">
+                  {/* Sizes (7 of 12) */}
+                  <div className="col-span-7 flex flex-col justify-center text-center pr-2">
+                    <div className="text-xs lg:text-sm font-black text-[#7c0f14] tracking-widest uppercase flex items-center justify-center gap-1.5 mb-2.5 bg-[#7c0f14]/5 py-1.5 rounded-lg border border-[#7c0f14]/10">
+                      <span>★</span> MILK SHAKES <span>★</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: msLabel300, price: msPrice300, type: '300ml' },
+                        { label: msLabel400, price: msPrice400, type: '400ml' },
+                        { label: msLabel500, price: msPrice500, type: '500ml' },
+                        { label: msLabel700, price: msPrice700, type: '700ml' }
+                      ].map((sz, i) => (
+                        <div key={i} className="flex flex-col items-center bg-[#f7f2ea] border border-[#b28a38]/25 py-2 px-1 rounded-xl shadow-xs hover:scale-105 transition-transform">
+                          <GourmetCup type="milkshake" size={16} className="opacity-90 mb-1" />
+                          <span className="text-[10px] font-extrabold text-zinc-500 leading-none">{sz.label}</span>
+                          <span className="text-xs lg:text-sm font-black text-[#7c0f14] leading-none mt-1.5">R$ {sz.price}</span>
                         </div>
-                        <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-zinc-300">Copo da Felicidade Supremo</span>
-                          <span className="font-black text-rose-400">R$ 30,00</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Center Column (Milk Shakes) */}
-              <div className="bg-zinc-900/30 p-3.5 lg:p-4 rounded-2xl border border-zinc-800/40 flex flex-col text-left shadow-2xl backdrop-blur-xs min-h-0 overflow-hidden">
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white text-center py-1 px-3 rounded-xl font-black uppercase text-xs lg:text-sm tracking-wider mb-2 flex-shrink-0 shadow-lg shadow-rose-950/20">
-                    🥤 MILK SHAKES GOURMET
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-1.5 flex-shrink-0">
-                    {[
-                      { size: msLabel300, price: msPrice300 },
-                      { size: msLabel400, price: msPrice400 },
-                      { size: msLabel500, price: msPrice500 },
-                      { size: msLabel700, price: msPrice700 }
-                    ].map((sz, idx) => (
-                      <div key={idx} className="bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <GourmetCup type="milkshake" size={16} className="opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                          <span className="font-bold text-zinc-200 text-[10px] lg:text-xs truncate">{sz.size}</span>
-                        </div>
-                        <span className="font-black text-rose-400 text-[10px] lg:text-xs bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20">R$ {sz.price}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Sabores de Sorvete */}
-                  <div className="my-2.5 bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl text-left flex-shrink-0">
-                    <span className="text-[8px] lg:text-[9px] font-black text-rose-450 uppercase tracking-widest block mb-1">
-                      🍨 SABORES DE SORVETE DISPONÍVEIS:
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {boardMsFlavorList.split(',').map((flav, idx) => (
-                        <span key={idx} className="bg-zinc-950 px-2 py-0.5 rounded-lg text-[8.5px] lg:text-[9.5px] font-bold text-zinc-200 border border-zinc-800/65 shadow-sm">
-                          {flav.trim()}
-                        </span>
                       ))}
                     </div>
                   </div>
 
-                  {/* Premium Shakes */}
-                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    {premiumShakes.length > 0 && (
-                      <>
-                        <h3 className="font-black text-rose-500 uppercase text-xs lg:text-sm tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-rose-950 pb-1 flex-shrink-0">
-                          <span className="text-sm lg:text-base">✨</span> Shakes Especiais & Premium
-                        </h3>
-                        <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 overflow-hidden align-content-start">
-                          {premiumShakes.map((item) => {
-                            const cupType = getGourmetCupType(item);
-                            return (
-                              <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/95 rounded-xl transition-all duration-200 group">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="w-7.5 h-7.5 flex-shrink-0 bg-zinc-950/80 rounded-lg flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
-                                    {item.image ? (
-                                      <LazyImage 
-                                        src={item.image} 
-                                        alt={item.name} 
-                                        className="w-full h-full object-cover rounded-lg"
-                                        containerClassName="w-full h-full rounded-lg"
-                                      />
-                                    ) : (
-                                      <GourmetCup type={cupType} size={16} className="opacity-90 group-hover:opacity-100 transition-opacity" />
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 text-left">
-                                    <span className="font-black text-zinc-100 text-[10px] lg:text-[11.5px] block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
-                                  </div>
-                                </div>
-                                <span className="font-black text-rose-500 text-[9.5px] lg:text-[11px] flex-shrink-0 bg-rose-500/10 px-1.5 py-0.5 rounded-lg border border-rose-500/20">{getItemPriceText(item)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
+                  {/* Sabores List (5 of 12) */}
+                  <div className="col-span-5 bg-[#7c0f14] text-white p-3 rounded-xl border-2 border-[#b28a38]/30 flex flex-col justify-between min-h-[96px] shadow-sm text-left">
+                    <div className="text-[10px] font-black uppercase text-center tracking-widest bg-white/10 py-1 rounded-lg mb-1.5">
+                      SABORES
+                    </div>
+                    <div className="text-[11px] lg:text-[12.5px] font-bold leading-relaxed text-[#fdfbf7]/90 line-clamp-4 overflow-hidden">
+                      {boardMsFlavorList}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column (Buckets, Coffee & Toppings) */}
-              <div className="bg-zinc-900/30 p-3.5 lg:p-4 rounded-2xl border border-zinc-800/40 flex flex-col text-left shadow-2xl backdrop-blur-xs min-h-0 overflow-hidden">
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <h3 className="font-black text-amber-500 uppercase text-xs lg:text-sm tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-amber-950 pb-1 flex-shrink-0">
-                    <span className="text-sm lg:text-base">🍨</span> Baldes & Linha Café
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 overflow-hidden align-content-start">
-                    {baldesAndCafes.length > 0 ? (
-                      baldesAndCafes.map((item) => {
-                        const cupType = getGourmetCupType(item);
-                        return (
-                          <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/95 rounded-xl transition-all duration-200 group">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7.5 h-7.5 flex-shrink-0 bg-zinc-950/80 rounded-lg flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
-                                {item.image ? (
-                                  <LazyImage 
-                                    src={item.image} 
-                                    alt={item.name} 
-                                    className="w-full h-full object-cover rounded-lg"
-                                    containerClassName="w-full h-full rounded-lg"
-                                  />
-                                ) : (
-                                  <GourmetCup type={cupType} size={16} className="opacity-90 group-hover:opacity-100 transition-opacity" />
-                                )}
-                              </div>
-                              <div className="min-w-0 text-left">
-                                <span className="font-black text-zinc-100 text-[10px] lg:text-[11.5px] block truncate group-hover:text-amber-450 transition-colors">{item.name}</span>
-                              </div>
-                            </div>
-                            <span className="font-black text-amber-400 text-[9.5px] lg:text-[11px] flex-shrink-0 bg-amber-500/10 px-1.5 py-0.5 rounded-lg border border-amber-500/20">{getItemPriceText(item)}</span>
+              {/* Middle Section (Açaí, Cortesias, Adicionais, Copos Especiais) */}
+              <div className="grid grid-cols-12 gap-5 flex-1 my-5 items-stretch min-h-0 overflow-hidden text-left">
+                {/* Açaí Sizes & Prices (3 columns) */}
+                <div className="col-span-3 bg-[#f7f2ea]/50 p-4 rounded-2xl border border-[#b28a38]/20 flex flex-col justify-between overflow-hidden shadow-xs">
+                  <div className="flex flex-col min-h-0">
+                    <h3 className="font-serif font-black text-[#7c0f14] uppercase text-sm lg:text-base tracking-wider mb-2 pb-1 border-b border-[#7c0f14]/20 flex items-center gap-1.5">
+                      🍇 Copos de Açaí
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1">
+                        <span className="font-bold text-zinc-600">{label300}</span>
+                        <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-2 py-0.5 rounded-md">R$ {price300}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1">
+                        <span className="font-bold text-zinc-600">{label400}</span>
+                        <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-2 py-0.5 rounded-md">R$ {price400}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1">
+                        <span className="font-bold text-zinc-600">{label500}</span>
+                        <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-2 py-0.5 rounded-md">R$ {price500}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs lg:text-sm">
+                        <span className="font-bold text-zinc-600">{label700}</span>
+                        <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-2 py-0.5 rounded-md">R$ {price700}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cortesias (3 columns) */}
+                <div className="col-span-3 bg-[#fdfaf2] p-4 rounded-2xl border border-[#b28a38]/20 flex flex-col justify-between overflow-hidden shadow-xs">
+                  <div className="flex flex-col min-h-0">
+                    <h3 className="font-serif font-black text-[#b28a38] uppercase text-sm lg:text-base tracking-wider mb-2 pb-1 border-b border-[#b28a38]/30">
+                      ✨ Cortesias
+                    </h3>
+                    <p className="text-xs lg:text-sm font-semibold leading-relaxed text-zinc-600">
+                      {boardCortesiasList}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Adicionais List (3 columns) */}
+                <div className="col-span-3 bg-[#fdfaf2] p-4 rounded-2xl border border-[#b28a38]/20 flex flex-col justify-between overflow-hidden shadow-xs">
+                  <div className="flex flex-col min-h-0">
+                    <h3 className="font-serif font-black text-[#7c0f14] uppercase text-sm lg:text-base tracking-wider mb-2 pb-1 border-b border-[#7c0f14]/20">
+                      ➕ Adicionais
+                    </h3>
+                    <div className="text-[11px] lg:text-[12.5px] font-bold text-[#7c0f14]/85 leading-relaxed uppercase">
+                      {boardAdicionaisList}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Copos Especiais (3 columns) */}
+                <div className="col-span-3 bg-[#f7f2ea]/50 p-4 rounded-2xl border border-[#b28a38]/20 flex flex-col justify-between overflow-hidden shadow-xs">
+                  <div className="flex flex-col min-h-0">
+                    <h3 className="font-serif font-black text-[#7c0f14] uppercase text-sm lg:text-base tracking-wider mb-2 pb-1 border-b border-[#7c0f14]/20 flex items-center gap-1.5">
+                      🍨 Copos Especiais
+                    </h3>
+                    <div className="space-y-2 flex-1 overflow-hidden">
+                      {specialCups.slice(0, 4).map((item) => (
+                        <div key={item.id} className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1 truncate">
+                          <span className="font-bold text-zinc-700 truncate max-w-[130px]">{item.name}</span>
+                          <span className="font-black text-[#7c0f14] flex-shrink-0 bg-white px-1.5 py-0.2 rounded border border-[#b28a38]/20">{getItemPriceText(item)}</span>
+                        </div>
+                      ))}
+                      {specialCups.length === 0 && (
+                        <>
+                          <div className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1">
+                            <span className="font-bold text-zinc-700">Copo Trufado Nutella</span>
+                            <span className="font-black text-[#7c0f14]">R$ 18.00</span>
                           </div>
-                        );
-                      })
-                    ) : (
+                          <div className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1">
+                            <span className="font-bold text-zinc-700">Oreo 300ml</span>
+                            <span className="font-black text-[#7c0f14]">R$ 18.00</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs lg:text-sm">
+                            <span className="font-bold text-zinc-700">Taça Suprema Ouro</span>
+                            <span className="font-black text-[#7c0f14]">R$ 22.00</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Row (6 Columns for products / category boxes) */}
+              <div className="grid grid-cols-6 gap-3.5 relative z-10 border-t border-[#b28a38]/30 pt-4 flex-shrink-0 items-stretch">
+                {/* Card 1: Copo Trufado */}
+                <div className="border-2 border-[#7c0f14]/20 bg-white/50 p-3 rounded-2xl flex flex-col justify-between min-h-[90px] shadow-xs text-left">
+                  <div className="text-[11px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/15 pb-1 mb-1">
+                    COPO TRUFADO
+                  </div>
+                  <p className="text-[10px] lg:text-[11px] leading-snug text-zinc-500 line-clamp-2">Sorvete trufado com Nutella, amendoim.</p>
+                  <div className="flex justify-between items-center text-xs lg:text-sm font-black text-[#7c0f14] mt-1">
+                    <span>400ml</span>
+                    <span className="bg-[#7c0f14] text-white px-2 py-0.5 rounded-lg text-[10px] lg:text-xs">R$ 20.00</span>
+                  </div>
+                </div>
+
+                {/* Card 2: Copo Felicidade */}
+                <div className="border-2 border-[#7c0f14]/20 bg-white/50 p-3 rounded-2xl flex flex-col justify-between min-h-[90px] shadow-xs text-left">
+                  <div className="text-[11px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/15 pb-1 mb-1">
+                    COPO FELICIDADE
+                  </div>
+                  <p className="text-[10px] lg:text-[11px] leading-snug text-zinc-500 line-clamp-2">Sorvete, Nutella, Ovomaltine, disquete.</p>
+                  <div className="flex justify-between items-center text-xs lg:text-sm font-black text-[#7c0f14] mt-1">
+                    <span>500ml</span>
+                    <span className="bg-[#7c0f14] text-white px-2 py-0.5 rounded-lg text-[10px] lg:text-xs">R$ 30.00</span>
+                  </div>
+                </div>
+
+                {/* Card 3: Split */}
+                <div className="border-2 border-[#7c0f14]/20 bg-white/50 p-3 rounded-2xl flex flex-col justify-between min-h-[90px] shadow-xs text-left">
+                  <div className="text-[11px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/15 pb-1 mb-1">
+                    SPLIT CUP
+                  </div>
+                  <p className="text-[10px] lg:text-[11px] leading-snug text-zinc-500 line-clamp-2">Sorvete, banana/morango, chantilly, cereja.</p>
+                  <div className="flex justify-between items-center text-xs lg:text-sm font-black text-[#7c0f14] mt-1">
+                    <span>400ml</span>
+                    <span className="bg-[#7c0f14] text-white px-2 py-0.5 rounded-lg text-[10px] lg:text-xs">R$ 20.00</span>
+                  </div>
+                </div>
+
+                {/* Card 4: Banoffee */}
+                <div className="border-2 border-[#7c0f14]/20 bg-white/50 p-3 rounded-2xl flex flex-col justify-between min-h-[90px] shadow-xs text-left">
+                  <div className="text-[11px] font-black uppercase text-[#7c0f14] leading-tight text-center truncate border-b border-[#7c0f14]/15 pb-1 mb-1">
+                    COPO BANOFFEE
+                  </div>
+                  <p className="text-[10px] lg:text-[11px] leading-snug text-zinc-500 line-clamp-2">Sorvete, banana, farofa bolacha, chantilly.</p>
+                  <div className="flex justify-between items-center text-xs lg:text-sm font-black text-[#7c0f14] mt-1">
+                    <span>400ml</span>
+                    <span className="bg-[#7c0f14] text-white px-2 py-0.5 rounded-lg text-[10px] lg:text-xs">R$ 20.00</span>
+                  </div>
+                </div>
+
+                {/* Card 5: Baldes */}
+                <div className="border-2 border-[#b28a38]/30 bg-[#fbf6ec] p-3 rounded-2xl flex flex-col justify-between min-h-[90px] shadow-xs text-left">
+                  <div className="text-[11px] font-black uppercase text-[#b28a38] leading-tight text-center truncate border-b border-[#b28a38]/25 pb-1 mb-1 bg-[#7c0f14] text-white rounded-lg">
+                    BALDES
+                  </div>
+                  <div className="space-y-1 flex-1 overflow-hidden mt-1">
+                    {baldesAndCafes.filter(x => x.name.toLowerCase().includes('balde') || x.category === 'baldes').slice(0, 2).map(b => (
+                      <div key={b.id} className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700 truncate">
+                        <span className="truncate max-w-[85px] font-bold">{b.name}</span>
+                        <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-1 rounded">{getItemPriceText(b).replace('R$', '')}</span>
+                      </div>
+                    ))}
+                    {baldesAndCafes.filter(x => x.name.toLowerCase().includes('balde') || x.category === 'baldes').length === 0 && (
                       <>
-                        <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-zinc-300">Balde Brownie 700ml</span>
-                          <span className="font-black text-amber-450">R$ {brPrice700}</span>
+                        <div className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700">
+                          <span className="font-bold">Balde Brownie</span>
+                          <span className="font-black text-[#7c0f14]">25,00</span>
                         </div>
-                        <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-zinc-300">Doce de Leite 700ml</span>
-                          <span className="font-black text-amber-450">R$ 25,00</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs p-1">
-                          <span className="font-bold text-zinc-300">Frappuccino 500ml</span>
-                          <span className="font-black text-amber-450">R$ 25,00</span>
+                        <div className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700">
+                          <span className="font-bold">Balde Doce Leite</span>
+                          <span className="font-black text-[#7c0f14]">25,00</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* Additional Extras */}
-                <div className="mt-3 text-left flex-shrink-0">
-                  <span className="text-[8px] lg:text-[9px] font-black text-amber-400 uppercase tracking-widest block mb-1.5 border-t border-zinc-800/80 pt-2 flex items-center">
-                    ➕ COMPLEMENTOS & ADICIONAIS EXTRA:
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {boardAdicionaisList.split(',').map((item, idx) => (
-                      <span key={idx} className="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-lg text-[8.5px] lg:text-[9.5px] font-bold text-zinc-300 hover:border-zinc-700 hover:text-white transition-all cursor-default">
-                        {item.trim()}
-                      </span>
+                {/* Card 6: Cafés */}
+                <div className="border-2 border-[#b28a38]/30 bg-[#fbf6ec] p-3 rounded-2xl flex flex-col justify-between min-h-[90px] shadow-xs text-left">
+                  <div className="text-[11px] font-black uppercase text-[#b28a38] leading-tight text-center truncate border-b border-[#b28a38]/25 pb-1 mb-1 bg-[#b28a38] text-white rounded-lg">
+                    CAFÉS
+                  </div>
+                  <div className="space-y-1 flex-1 overflow-hidden mt-1">
+                    {baldesAndCafes.filter(x => !x.name.toLowerCase().includes('balde') && x.category !== 'baldes').slice(0, 2).map(c => (
+                      <div key={c.id} className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700 truncate">
+                        <span className="truncate max-w-[85px] font-bold">{c.name}</span>
+                        <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-1 rounded">{getItemPriceText(c).replace('R$', '')}</span>
+                      </div>
                     ))}
+                    {baldesAndCafes.filter(x => !x.name.toLowerCase().includes('balde') && x.category !== 'baldes').length === 0 && (
+                      <>
+                        <div className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700">
+                          <span className="font-bold">Frappuccino</span>
+                          <span className="font-black text-[#7c0f14]">25,00</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700">
+                          <span className="font-bold">Affogatto</span>
+                          <span className="font-black text-[#7c0f14]">25,00</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
+              {/* Bottom Section: Socials & Contact */}
+              <div className="flex justify-between items-center border-t-2 border-[#b28a38]/30 pt-3 pb-1 mt-4 text-xs sm:text-sm font-black text-zinc-500 bg-[#f7f2ea]/40 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#7c0f14]/10 text-[#7c0f14] border border-[#7c0f14]/20 p-1 rounded-full text-sm w-7 h-7 flex items-center justify-center">📞</span>
+                  <span className="font-mono text-[#7c0f14] text-sm lg:text-base">{boardCustomNote} — {boardPhone}</span>
+                </div>
+
+                <div className="text-[10px] lg:text-xs font-black text-[#b28a38] tracking-[0.25em] uppercase">
+                  📺 MODO TV ATIVO • PRESSIONE ESC PARA SAIR
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#7c0f14]/10 text-[#7c0f14] border border-[#7c0f14]/20 p-1 rounded-full text-sm w-7 h-7 flex items-center justify-center">📷</span>
+                  <span className="text-[#7c0f14] text-sm lg:text-base">{boardInstagram}</span>
+                </div>
+              </div>
             </div>
-
-            {/* Bottom Section: Socials & Contact */}
-            <div className="flex justify-between items-center border-t border-zinc-800/80 pt-2 lg:pt-3 pb-1 mt-2 text-[10px] sm:text-xs font-black text-zinc-400 bg-zinc-950/40 flex-shrink-0">
-              <div className="flex items-center gap-1.5">
-                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-1 rounded-full text-xs w-6 h-6 flex items-center justify-center animate-pulse">📞</span>
-                <span className="font-mono text-zinc-200">{boardCustomNote} — {boardPhone}</span>
-              </div>
-              
-              <div className="text-[8.5px] lg:text-[10px] font-black text-zinc-600 tracking-widest uppercase">
-                📺 MODO TV ATIVO • PRESSIONE ESC PARA SAIR
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 p-1 rounded-full text-xs w-6 h-6 flex items-center justify-center">📷</span>
-                <span className="text-rose-400">{boardInstagram}</span>
-              </div>
-            </div>
-          </div>
-
           </motion.div>
         )}
       </AnimatePresence>
