@@ -431,6 +431,32 @@ export default function AdminPDV({
         {/* LEFT COMPONENT: Catalog Card Grid (COL 7) */}
         <div className="lg:col-span-7 xl:col-span-8 flex flex-col p-4 space-y-4 overflow-hidden border-r border-slate-200">
           
+          {/* Beautiful mini visual banner aligned with cardápio identity */}
+          <div className="relative bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-650 rounded-2xl h-24 overflow-hidden shadow-xs flex items-center p-4 text-white flex-shrink-0 border border-rose-100/10">
+            <div className="absolute inset-0 z-0">
+              <LazyImage 
+                src="/assets/images/supreme_banner_1780583592745.png" 
+                alt="Delicioso Açaí Gourmet e Sorvetes" 
+                className="w-full h-full object-cover opacity-25 hover:scale-102 transition-transform duration-1000" 
+                containerClassName="w-full h-full"
+                id="heroBannerPic"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-950/90 via-slate-900/70 to-transparent" />
+            </div>
+
+            <div className="relative z-10 space-y-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/20 backdrop-blur-md text-amber-300 text-[8.5px] font-black uppercase rounded-full tracking-wider shadow-inner">
+                <Sparkles className="w-2.5 h-2.5 text-amber-300" /> CARDÁPIO PREMIUM SINCRONIZADO
+              </span>
+              <h3 className="text-base font-black tracking-tight font-sans text-white uppercase">
+                PDV • Sorveteria Supreme
+              </h3>
+              <p className="text-[10px] text-zinc-300 leading-snug font-semibold max-w-lg">
+                Preços, adicionais e sabores integrados em tempo real com o cardápio principal de Monte Mor SP.
+              </p>
+            </div>
+          </div>
+
           {/* Filtering row */}
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between flex-shrink-0 bg-white p-3.5 rounded-2xl border border-slate-150 shadow-xs">
             <div className="relative flex-1">
@@ -483,36 +509,51 @@ export default function AdminPDV({
                 {filteredProducts.map((p) => (
                   <div 
                     key={p.id} 
-                    className="bg-white rounded-2xl border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all duration-200 overflow-hidden group hover:-translate-y-0.5"
+                    className="bg-white rounded-[24px] border border-rose-100/70 flex flex-col justify-between hover:shadow-md hover:border-rose-300 transition-all duration-300 overflow-hidden group hover:-translate-y-0.5 relative"
                   >
-                    {/* Visual Card image or price indicator */}
-                    <div className="relative h-28 bg-slate-100 overflow-hidden">
+                    {/* Visual Card image or price indicator with overlay badges */}
+                    <div className="relative h-32 bg-rose-50/40 overflow-hidden border-b border-rose-100/20">
                       <LazyImage
                         src={p.image || 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400'}
                         alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         containerClassName="w-full h-full"
                       />
-                      <span className="absolute top-2.5 right-2.5 bg-slate-900 text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg shadow-md">
+                      
+                      {/* Popular and Category Badges inside image frame */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                        {p.popular && (
+                          <span className="bg-rose-500 text-white font-black text-[8.5px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+                            🔥 Popular
+                          </span>
+                        )}
+                        {p.category && (
+                          <span className="bg-slate-900/90 text-rose-300 font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md">
+                            {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Shake Esp.' : p.category === 'baldes' ? '🪣 Balde' : p.category === 'linha_cafe' ? '☕ Café' : p.category === 'copos_especiais' ? '🍧 Copo Esp.' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="absolute top-2.5 right-2.5 bg-slate-950 text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg shadow-md border border-slate-800">
                         R$ {p.price.toFixed(2)}
                       </span>
                     </div>
 
-                    <div className="p-3 text-left space-y-1.5 flex-1 flex flex-col justify-between">
+                    <div className="p-3 text-left space-y-2 flex-1 flex flex-col justify-between">
                       <div className="space-y-1">
-                        <h4 className="font-black text-[13.5px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
+                        <h4 className="font-black text-[14px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
                           {p.name}
                         </h4>
-                        <p className="text-[11.5px] text-slate-500 leading-relaxed font-medium line-clamp-3">
+                        <p className="text-[12px] text-slate-500 font-semibold leading-relaxed line-clamp-3 mt-1">
                           {p.description}
                         </p>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
                         {p.customizable && p.sizeMode !== 'single' ? (
                           <button
                             onClick={() => handleStartCustomizing(p)}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow"
                           >
                             <span>⚙️ Customizar Taça</span>
                           </button>
@@ -520,15 +561,15 @@ export default function AdminPDV({
                           <div className="w-full flex gap-1">
                             <button
                               onClick={() => handleAddDirect(p)}
-                              className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-100"
+                              className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-100 hover:shadow-rose-200"
                             >
-                              <span>➕ Adicionar Direto</span>
+                              <span>➕ Adicionar</span>
                             </button>
                             {p.customizable && (
                               <button
                                 onClick={() => handleStartCustomizing(p)}
                                 title="Observações ou customizações rápidas"
-                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 px-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center font-bold"
                               >
                                 <span>⚙️</span>
                               </button>
