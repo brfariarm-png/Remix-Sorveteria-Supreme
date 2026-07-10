@@ -195,5 +195,6 @@ export interface StoreSettings {
   boardMsFlavorList?: string;
   boardCortesiasList?: string;
   boardAdicionaisList?: string;
+  useAiBoardBackground?: boolean;
 }
 

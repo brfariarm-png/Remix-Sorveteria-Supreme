@@ -493,23 +493,18 @@ export default function AdminPDV({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         containerClassName="w-full h-full"
                       />
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6">
-                        <span className="text-[9px] uppercase font-black tracking-wider text-amber-350 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-xs">
-                          {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Milkshake Especial' : p.category === 'baldes' ? '🪣 Balde' : p.category === 'linha_cafe' ? '☕ Café' : p.category === 'copos_especiais' ? '🍧 Copo Especial' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
-                        </span>
-                      </div>
                       <span className="absolute top-2.5 right-2.5 bg-slate-900 text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg shadow-md">
                         R$ {p.price.toFixed(2)}
                       </span>
                     </div>
 
-                    <div className="p-3 text-left space-y-1 flex-1 flex flex-col justify-between">
-                      <div className="space-y-0.5">
-                        <h4 className="font-extrabold text-xs text-slate-900 tracking-tight leading-tight group-hover:text-rose-600 transition-colors">
+                    <div className="p-3 text-left space-y-1.5 flex-1 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <h4 className="font-black text-[13.5px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
                           {p.name}
                         </h4>
-                        <p className="text-[10.5px] text-slate-400 leading-snug line-clamp-2">
-                          {p.sizeMode === 'single' ? cleanDescriptionForSingleSize(p.description) : p.description}
+                        <p className="text-[11.5px] text-slate-500 leading-relaxed font-medium line-clamp-3">
+                          {p.description}
                         </p>
                       </div>
 

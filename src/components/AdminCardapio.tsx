@@ -447,6 +447,7 @@ export default function AdminCardapio({
       setBoardMsFlavorList(storeSettings.boardMsFlavorList ?? 'Chocolate, Baunilha, Ninho Trufado, Morango, Morango com Nutella, Banana com Nutella, Iogurte com Frutas Vermelhas');
       setBoardCortesiasList(storeSettings.boardCortesiasList ?? 'Leite condensado, leite em pó, banana, morango e granola');
       setBoardAdicionaisList(storeSettings.boardAdicionaisList ?? 'Morango R$ 4, Banana R$ 2, Ovomaltine R$ 2, Paçoca R$ 2, Amendoim R$ 2, Nutella R$ 5, Copo trufado Nutella R$ 6, Cereja R$ 5');
+      setUseAiBoardBackground(storeSettings.useAiBoardBackground ?? false);
     }
   }, [
     storeSettings?.cupPrices, 
@@ -463,7 +464,8 @@ export default function AdminCardapio({
     storeSettings?.boardCustomNote,
     storeSettings?.boardMsFlavorList,
     storeSettings?.boardCortesiasList,
-    storeSettings?.boardAdicionaisList
+    storeSettings?.boardAdicionaisList,
+    storeSettings?.useAiBoardBackground
   ]);
 
   React.useEffect(() => {
@@ -477,6 +479,8 @@ export default function AdminCardapio({
   }, []);
 
   const [isFullscreenBoardOpen, setIsFullscreenBoardOpen] = useState(false);
+  const [selectedAiArt, setSelectedAiArt] = useState<'board' | 'banner'>('board');
+  const [useAiBoardBackground, setUseAiBoardBackground] = useState<boolean>(() => storeSettings?.useAiBoardBackground ?? false);
 
   // Helper to format custom and size-based prices on the digital board
   const getItemPriceText = (item: MenuItem) => {
@@ -1242,7 +1246,8 @@ export default function AdminCardapio({
         boardCustomNote,
         boardMsFlavorList,
         boardCortesiasList,
-        boardAdicionaisList
+        boardAdicionaisList,
+        useAiBoardBackground
       };
       await onUpdateSettings(updatedSettings);
       setSuccessMsg('✨ Painel Digital atualizado com sucesso no banco de dados!');
@@ -2028,35 +2033,56 @@ export default function AdminCardapio({
               
               {/* High-Res AI Generated Banner Card */}
               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-4">
-                <div className="border-b border-slate-50 pb-2 flex items-center justify-between">
+                <div className="border-b border-slate-50 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                      🖼️ Arte do Cardápio Gerada por IA
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1">
+                      🖼️ Artes Geradas por IA
                     </h4>
                     <p className="text-[10px] text-slate-400">Resolução Ultra-HD 16:9</p>
                   </div>
-                  <span className="bg-rose-100 text-rose-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
-                    Alta Resolução
-                  </span>
+                  <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAiArt('board')}
+                      className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase transition-all cursor-pointer ${
+                        selectedAiArt === 'board'
+                          ? 'bg-rose-500 text-white shadow-xs'
+                          : 'text-slate-550 hover:text-slate-800'
+                      }`}
+                    >
+                      Painel TV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAiArt('banner')}
+                      className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase transition-all cursor-pointer ${
+                        selectedAiArt === 'banner'
+                          ? 'bg-rose-500 text-white shadow-xs'
+                          : 'text-slate-550 hover:text-slate-800'
+                      }`}
+                    >
+                      Banner Promo
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="relative group overflow-hidden rounded-xl border border-slate-100">
                   <LazyImage
-                    src="/assets/images/digital_menu_banner_1783440971538.jpg"
-                    alt="Cardápio Digital Supremo"
+                    src={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
+                    alt={selectedAiArt === 'board' ? 'Painel de TV' : 'Banner de Promoção'}
                     className="w-full object-cover aspect-[16/9] hover:scale-102 transition-transform duration-300"
                     containerClassName="w-full aspect-[16/9]"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <a
-                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
-                      download="cardapio_supreme_16x9.jpg"
+                      href={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
+                      download={selectedAiArt === 'board' ? 'painel_tv_supreme.jpg' : 'banner_promo_supreme.jpg'}
                       className="bg-white hover:bg-rose-50 text-rose-600 p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
                     >
                       <Download className="w-4 h-4" /> Baixar
                     </a>
                     <a
-                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
+                      href={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full shadow-md transition-all cursor-pointer font-bold text-xs flex items-center gap-1"
@@ -2066,22 +2092,40 @@ export default function AdminCardapio({
                   </div>
                 </div>
 
+                {/* Option to toggle background of TV Board */}
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center justify-between text-left">
+                  <div className="space-y-0.5">
+                    <label className="text-[10.5px] font-black text-slate-800 uppercase tracking-wide block">
+                      Usar arte de fundo no Painel Digital
+                    </label>
+                    <span className="text-[9.5px] text-slate-400 block leading-tight">
+                      Ativa a arte de TV gerada por IA como fundo do simulador em tela cheia.
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={useAiBoardBackground}
+                    onChange={(e) => setUseAiBoardBackground(e.target.checked)}
+                    className="w-4.5 h-4.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                  />
+                </div>
+
                 <div className="flex flex-col gap-2">
                   <div className="flex gap-2">
                     <a
-                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
-                      download="cardapio_supreme_16x9.jpg"
+                      href={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
+                      download={selectedAiArt === 'board' ? 'painel_tv_supreme.jpg' : 'banner_promo_supreme.jpg'}
                       className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" /> Baixar Imagem
                     </a>
                     <a
-                      href="/assets/images/digital_menu_banner_1783440971538.jpg"
+                      href={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase text-center transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      🖼️ Poster Estático
+                      🖼️ Ver Alta Res.
                     </a>
                   </div>
                   <button
@@ -2593,8 +2637,8 @@ export default function AdminCardapio({
                   {/* Info Block */}
                   <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-1">
-                      <h4 className="font-extrabold text-slate-800 text-xs tracking-tight line-clamp-1">{item.name}</h4>
-                      <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{item.description}</p>
+                      <h4 className="font-black text-slate-800 text-sm tracking-tight line-clamp-1">{item.name}</h4>
+                      <p className="text-[12px] text-slate-500 line-clamp-3 leading-relaxed mt-1 font-semibold">{item.description}</p>
                     </div>
 
                     {/* Tags inside card item */}
@@ -3288,21 +3332,33 @@ export default function AdminCardapio({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             className="fixed inset-0 z-[10000] bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black p-6 sm:p-10 flex flex-col justify-between overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent font-sans select-none text-white h-full min-h-screen"
+            style={{ 
+              backgroundImage: useAiBoardBackground ? "url('/assets/images/digital_menu_board_1783442621544.jpg')" : undefined, 
+              backgroundSize: 'cover', 
+              backgroundPosition: 'center', 
+              backgroundRepeat: 'no-repeat' 
+            }}
           >
+            {/* Ambient Darkened Overlay for High-Contrast text reading when AI Background is active */}
+            {useAiBoardBackground && (
+              <div className="absolute inset-0 bg-zinc-950/75 backdrop-blur-[3px] pointer-events-none z-0" />
+            )}
+
             {/* Golden curves in corners */}
-            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-500/20 rounded-tl-3xl pointer-events-none" />
-            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-500/20 rounded-tr-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-500/20 rounded-bl-3xl pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-500/20 rounded-br-3xl pointer-events-none" />
+            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-500/20 rounded-tl-3xl pointer-events-none z-10" />
+            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-500/20 rounded-tr-3xl pointer-events-none z-10" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-500/20 rounded-bl-3xl pointer-events-none z-10" />
+            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-500/20 rounded-br-3xl pointer-events-none z-10" />
  
-            {/* Close Button */}
-            <button
-              onClick={() => setIsFullscreenBoardOpen(false)}
-              className="absolute top-6 right-6 p-2.5 bg-zinc-900/80 hover:bg-rose-950/80 text-rose-500 rounded-full shadow-lg border border-zinc-800 hover:border-rose-900 transition-all cursor-pointer z-[10010] group animate-pulse"
-              title="Pressione ESC para Sair"
-            >
-              <X className="w-6 h-6 stroke-[2.5]" />
-            </button>
+            <div className="relative z-10 flex flex-col justify-between flex-1 w-full h-full">
+              {/* Close Button */}
+              <button
+                onClick={() => setIsFullscreenBoardOpen(false)}
+                className="absolute top-6 right-6 p-2.5 bg-zinc-900/80 hover:bg-rose-950/80 text-rose-500 rounded-full shadow-lg border border-zinc-800 hover:border-rose-900 transition-all cursor-pointer z-[10010] group animate-pulse"
+                title="Pressione ESC para Sair"
+              >
+                <X className="w-6 h-6 stroke-[2.5]" />
+              </button>
  
             {/* Top Bar: Title & Brand slogan */}
             <div className="flex justify-between items-center border-b border-zinc-800/80 pb-4">
@@ -3588,7 +3644,8 @@ export default function AdminCardapio({
                 <span className="text-rose-400">{boardInstagram}</span>
               </div>
             </div>
- 
+          </div>
+
           </motion.div>
         )}
       </AnimatePresence>
