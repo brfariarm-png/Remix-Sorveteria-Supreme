@@ -482,11 +482,45 @@ export default function AdminCardapio({
   const [selectedAiArt, setSelectedAiArt] = useState<'board' | 'banner'>('board');
   const [useAiBoardBackground, setUseAiBoardBackground] = useState<boolean>(() => storeSettings?.useAiBoardBackground ?? false);
 
+  // Helper to get the correct display price of a menu item based on store configurations
+  const getMenuItemDisplayPrice = (item: MenuItem): number => {
+    const sizeMode = item.sizeMode || (item.customizable ? 'default' : 'single');
+
+    if (sizeMode === 'single') {
+      return Number(item.singleSizePrice ?? item.price ?? 0);
+    }
+
+    if (sizeMode === 'custom' && item.customSizes) {
+      const activeSizes = Object.values(item.customSizes).filter((s: any) => s.active);
+      if (activeSizes.length > 0) {
+        const prices = activeSizes.map((s: any) => Number(s.price));
+        return Math.min(...prices);
+      }
+      return Number(item.price ?? 0);
+    }
+
+    // Default sizeMode
+    const isLinhaBrownie = item.id === 'acai-sensacao' || item.name === 'Linha Brownie' || item.name?.toLowerCase().includes('brownie');
+    const isMilkshake = item.category === 'milkshake' || item.category === 'milkshake_especiais' || item.category?.includes('milkshake');
+
+    if (isLinhaBrownie) {
+      return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
+    }
+
+    if (isMilkshake) {
+      return Number(storeSettings?.milkshakePrices?.['300ml'] ?? 15.00);
+    }
+
+    // Default customizable cup
+    return Number(storeSettings?.cupPrices?.['300ml'] ?? 18.00);
+  };
+
   // Helper to format custom and size-based prices on the digital board
   const getItemPriceText = (item: MenuItem) => {
-    if (item.sizeMode === 'single') {
+    const sizeMode = item.sizeMode || (item.customizable ? 'default' : 'single');
+    if (sizeMode === 'single') {
       return `R$ ${Number(item.singleSizePrice ?? item.price ?? 0).toFixed(2)}`;
-    } else if (item.sizeMode === 'custom' && item.customSizes) {
+    } else if (sizeMode === 'custom' && item.customSizes) {
       const activeSizes = Object.values(item.customSizes).filter(s => s.active);
       if (activeSizes.length > 0) {
         const prices = activeSizes.map(s => Number(s.price));
@@ -498,7 +532,8 @@ export default function AdminCardapio({
         return `A partir de R$ ${minPrice.toFixed(2)}`;
       }
     }
-    return `R$ ${Number(item.price ?? 0).toFixed(2)}`;
+    const basePrice = getMenuItemDisplayPrice(item);
+    return `A partir de R$ ${basePrice.toFixed(2)}`;
   };
 
   // Dynamic products filtering for the Digital Board (so it stays 100% synced with Menu edits)
@@ -2615,7 +2650,7 @@ export default function AdminCardapio({
                       containerClassName="w-full h-full"
                     />
                     <div className="absolute top-2.5 right-2.5 bg-rose-600 text-white px-2.5 py-1 text-[11px] font-black tracking-widest uppercase rounded-lg shadow-sm">
-                      R$ {item.price.toFixed(2)}
+                      {item.sizeMode === 'single' || !item.sizeMode ? '' : 'A partir de '}R$ {getMenuItemDisplayPrice(item).toFixed(2)}
                     </div>
 
                     <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
