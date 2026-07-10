@@ -2092,6 +2092,16 @@ export default function AdminCardapio({
                   </div>
                 </div>
 
+                {/* Visual clarification banner */}
+                <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl text-left space-y-1">
+                  <span className="text-[9.5px] font-black text-amber-800 uppercase tracking-wide block">
+                    ⚠️ NOTA SOBRE PREÇOS NA ARTE DE EXEMPLO:
+                  </span>
+                  <p className="text-[10px] text-zinc-700 leading-relaxed font-semibold">
+                    As artes de fundo acima são modelos ilustrativos em alta definição (arquivos de imagem fixos). Os valores reais configurados no seu aplicativo (como <strong className="text-rose-600">300ml a R$ {price300}</strong> e <strong className="text-rose-600">400ml a R$ {price400}</strong>) são gerados em tempo real na tela clicando em <strong className="text-rose-600">📺 Exibir Painel de TV Interativo</strong> abaixo!
+                  </p>
+                </div>
+
                 {/* Option to toggle background of TV Board */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center justify-between text-left">
                   <div className="space-y-0.5">

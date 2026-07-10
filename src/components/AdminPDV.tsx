@@ -948,90 +948,87 @@ export default function AdminPDV({
               )}
 
               {/* Flavors Select */}
-              {customizingItem.sizeMode !== 'single' && (
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">3. Escolha os Sabores de Sorvete (Opcional)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                    {flavorOptions.filter((f) => 
-                      !customizingItem?.allowedFlavors || 
-                      customizingItem.allowedFlavors.includes(f.id)
-                    ).map((f) => {
-                      const isSel = selectedFlavors.includes(f.id);
-                      return (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => {
-                            if (isSel) {
-                              setSelectedFlavors(selectedFlavors.filter(x => x !== f.id));
-                            } else {
-                              setSelectedFlavors([...selectedFlavors, f.id]);
-                            }
-                          }}
-                          className={`p-2 rounded-xl border text-[10.5px] font-bold text-left transition-all cursor-pointer flex items-center gap-1.5 ${
-                            isSel 
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200' 
-                              : 'border-slate-200 bg-white text-slate-705 hover:bg-slate-55'
-                          }`}
-                        >
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: f.color }} />
-                          <span className="truncate">{f.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <span>3. Escolha os Sabores de Sorvete (Opcional)</span>
                 </div>
-              )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
+                  {flavorOptions.filter((f) => 
+                    !customizingItem?.allowedFlavors || 
+                    customizingItem.allowedFlavors.includes(f.id)
+                  ).map((f) => {
+                    const isSel = selectedFlavors.includes(f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSel) {
+                            setSelectedFlavors(selectedFlavors.filter(x => x !== f.id));
+                          } else {
+                            setSelectedFlavors([...selectedFlavors, f.id]);
+                          }
+                        }}
+                        className={`p-2 rounded-xl border text-[10.5px] font-bold text-left transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSel 
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200' 
+                            : 'border-slate-200 bg-white text-slate-705 hover:bg-slate-55'
+                        }`}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: f.color }} />
+                        <span className="truncate">{f.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* Toppings Select */}
-              {customizingItem.sizeMode !== 'single' && (
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                    <span>4. Adicionais & Coberturas</span>
-                    <span className="text-[9.5px] text-zinc-500 bg-zinc-200 px-1.5 py-0.5 rounded font-bold">Cobrança Automática</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                    {toppingOptions.filter((t) => 
-                      !customizingItem?.allowedToppings || 
-                      customizingItem.allowedToppings.includes(t.id)
-                    ).map((t) => {
-                      const isSel = selectedToppings.includes(t.id);
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            if (isSel) {
-                              setSelectedToppings(selectedToppings.filter(x => x !== t.id));
-                            } else {
-                              setSelectedToppings([...selectedToppings, t.id]);
-                            }
-                          }}
-                          className={`p-2 px-3 rounded-xl border text-[10.5px] text-left transition-all cursor-pointer flex items-center justify-between ${
-                            isSel 
-                              ? 'border-rose-500 bg-rose-50 text-rose-900 font-extrabold ring-1 ring-rose-200' 
-                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-55'
-                          }`}
-                        >
-                          <span className="truncate">{t.name}</span>
-                          <span className="font-mono text-[9px] bg-slate-100 px-1.5 py-0.5 rounded-sm text-slate-550 font-black">
-                            {t.price === 0 ? 'Cortesia' : `+ R$ ${t.price.toFixed(2)}`}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <span>4. Adicionais & Coberturas</span>
+                  <span className="text-[9.5px] text-zinc-500 bg-zinc-200 px-1.5 py-0.5 rounded font-bold">Cobrança Automática</span>
                 </div>
-              )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
+                  {toppingOptions.filter((t) => 
+                    !customizingItem?.allowedToppings || 
+                    customizingItem.allowedToppings.includes(t.id)
+                  ).map((t) => {
+                    const isSel = selectedToppings.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSel) {
+                            setSelectedToppings(selectedToppings.filter(x => x !== t.id));
+                          } else {
+                            setSelectedToppings([...selectedToppings, t.id]);
+                          }
+                        }}
+                        className={`p-2 px-3 rounded-xl border text-[10.5px] text-left transition-all cursor-pointer flex items-center justify-between ${
+                          isSel 
+                            ? 'border-rose-500 bg-rose-50 text-rose-900 font-extrabold ring-1 ring-rose-200' 
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-55'
+                        }`}
+                      >
+                        <span className="truncate">{t.name}</span>
+                        <span className="font-mono text-[9px] bg-slate-100 px-1.5 py-0.5 rounded-sm text-slate-550 font-black">
+                          {t.price === 0 ? 'Cortesia' : `+ R$ ${t.price.toFixed(2)}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {customizingItem.sizeMode === 'single' && (
-                <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3 flex gap-2 text-amber-950 font-bold">
+                <div className="bg-rose-50/40 border border-rose-150 rounded-xl p-3 flex gap-2 text-rose-950 font-bold">
                   <span className="text-base flex-shrink-0">✨</span>
                   <div>
-                    <h4 className="font-extrabold text-[10px] uppercase tracking-wide">Tamanho Único (Sem Sabores/Toppings)</h4>
-                    <p className="text-[10px] leading-relaxed mt-0.5 opacity-90 font-medium">
-                      Este item é tamanho único e seus componentes já vêm descritos de fábrica.
-                      Use o campo de observações abaixo para adicionar observações ou retirar ingredientes!
+                    <h4 className="font-extrabold text-[10px] uppercase tracking-wide text-rose-800">Tamanho Único Premium</h4>
+                    <p className="text-[10px] leading-relaxed mt-0.5 opacity-90 font-semibold">
+                      Este item possui tamanho único de fábrica, mas você pode selecionar os sabores de sorvete e coberturas desejadas acima para personalizar este copo!
                     </p>
                   </div>
                 </div>
