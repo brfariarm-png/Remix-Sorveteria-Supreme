@@ -21,6 +21,11 @@ export default function LazyImage({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
+  React.useEffect(() => {
+    setLoaded(false);
+    setError(false);
+  }, [src]);
+
   return (
     <div className={`relative overflow-hidden ${containerClassName}`} id={id ? `lazy-container-${id}` : undefined}>
       {/* Skeleton loader shown before image loaded */}

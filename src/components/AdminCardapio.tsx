@@ -2103,6 +2103,7 @@ export default function AdminCardapio({
                 
                 <div className="relative group overflow-hidden rounded-xl border border-slate-100">
                   <LazyImage
+                    key={selectedAiArt}
                     src={selectedAiArt === 'board' ? '/assets/images/digital_menu_board_1783442621544.jpg' : '/assets/images/digital_menu_banner_1783440971538.jpg'}
                     alt={selectedAiArt === 'board' ? 'Painel de TV' : 'Banner de Promoção'}
                     className="w-full object-cover aspect-[16/9] hover:scale-102 transition-transform duration-300"
@@ -3369,14 +3370,17 @@ export default function AdminCardapio({
         )}
       </AnimatePresence>
 
-      {/* Widescreen Interactive TV Menu Board Overlay */}
       <AnimatePresence>
         {isFullscreenBoardOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="fixed inset-0 z-[10000] bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black p-6 sm:p-10 flex flex-col justify-between overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent font-sans select-none text-white h-full min-h-screen"
+            className={`fixed inset-0 z-[10000] p-4 lg:p-5 flex flex-col justify-between overflow-hidden font-sans select-none text-white w-screen h-screen max-h-screen ${
+              useAiBoardBackground 
+                ? 'bg-zinc-950/20' 
+                : 'bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black'
+            }`}
             style={{ 
               backgroundImage: useAiBoardBackground ? "url('/assets/images/digital_menu_board_1783442621544.jpg')" : undefined, 
               backgroundSize: 'cover', 
@@ -3386,120 +3390,117 @@ export default function AdminCardapio({
           >
             {/* Ambient Darkened Overlay for High-Contrast text reading when AI Background is active */}
             {useAiBoardBackground && (
-              <div className="absolute inset-0 bg-zinc-950/75 backdrop-blur-[3px] pointer-events-none z-0" />
+              <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[1.5px] pointer-events-none z-0" />
             )}
 
             {/* Golden curves in corners */}
-            <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-amber-500/20 rounded-tl-3xl pointer-events-none z-10" />
-            <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-amber-500/20 rounded-tr-3xl pointer-events-none z-10" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-amber-500/20 rounded-bl-3xl pointer-events-none z-10" />
-            <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-amber-500/20 rounded-br-3xl pointer-events-none z-10" />
+            <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-500/25 rounded-tl-2xl pointer-events-none z-10" />
+            <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-500/25 rounded-tr-2xl pointer-events-none z-10" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-500/25 rounded-bl-2xl pointer-events-none z-10" />
+            <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-500/25 rounded-br-2xl pointer-events-none z-10" />
  
-            <div className="relative z-10 flex flex-col justify-between flex-1 w-full h-full">
+            <div className="relative z-10 flex flex-col justify-between flex-1 w-full h-full overflow-hidden min-h-0">
               {/* Close Button */}
               <button
                 onClick={() => setIsFullscreenBoardOpen(false)}
-                className="absolute top-6 right-6 p-2.5 bg-zinc-900/80 hover:bg-rose-950/80 text-rose-500 rounded-full shadow-lg border border-zinc-800 hover:border-rose-900 transition-all cursor-pointer z-[10010] group animate-pulse"
+                className="absolute top-2 right-2 p-1.5 bg-zinc-900/80 hover:bg-rose-950/80 text-rose-500 rounded-full shadow-lg border border-zinc-800 hover:border-rose-900 transition-all cursor-pointer z-[10010] group animate-pulse"
                 title="Pressione ESC para Sair"
               >
-                <X className="w-6 h-6 stroke-[2.5]" />
+                <X className="w-5 h-5 stroke-[2.5]" />
               </button>
  
             {/* Top Bar: Title & Brand slogan */}
-            <div className="flex justify-between items-center border-b border-zinc-800/80 pb-4">
-              <div className="flex items-center gap-4 text-left">
-                <div className="p-1 bg-zinc-900/90 rounded-2xl border border-zinc-800 shadow-[0_0_15px_rgba(239,68,68,0.15)] flex items-center justify-center">
-                  <SupremeLogo size={72} className="flex-shrink-0 animate-pulse" />
+            <div className="flex justify-between items-center border-b border-zinc-800/80 pb-2 flex-shrink-0">
+              <div className="flex items-center gap-3 text-left">
+                <div className="p-1 bg-zinc-900/90 rounded-xl border border-zinc-800 shadow-[0_0_10px_rgba(239,68,68,0.15)] flex items-center justify-center">
+                  <SupremeLogo size={44} className="flex-shrink-0 animate-pulse" />
                 </div>
                 <div className="leading-none">
-                  <h1 className="font-sans font-black text-white tracking-widest text-3xl sm:text-4xl lg:text-5xl uppercase drop-shadow-[0_2px_8px_rgba(239,68,68,0.2)]">
+                  <h1 className="font-sans font-black text-white tracking-widest text-xl sm:text-2xl lg:text-3xl uppercase drop-shadow-[0_2px_8px_rgba(239,68,68,0.2)]">
                     {boardTitle}
                   </h1>
-                  <span className="block text-xs sm:text-sm lg:text-base text-rose-500 font-black tracking-widest uppercase mt-1">
+                  <span className="block text-[10px] lg:text-xs text-rose-500 font-black tracking-widest uppercase mt-0.5">
                     — {boardSubtitle} —
                   </span>
                 </div>
               </div>
  
               <div className="text-right">
-                <p className="text-[10px] sm:text-xs font-bold text-zinc-500 tracking-widest uppercase">NÃO É SÓ SORVETE, É UMA</p>
-                <p className="text-base sm:text-lg lg:text-2xl font-black text-rose-500 uppercase tracking-widest leading-none mt-1 drop-shadow-[0_2px_6px_rgba(239,68,68,0.15)]">
+                <p className="text-[8px] lg:text-[9px] font-bold text-zinc-500 tracking-widest uppercase">NÃO É SÓ SORVETE, É UMA</p>
+                <p className="text-sm lg:text-lg font-black text-rose-500 uppercase tracking-widest leading-none mt-0.5 drop-shadow-[0_2px_6px_rgba(239,68,68,0.15)]">
                   {boardSlogan}
                 </p>
               </div>
             </div>
  
             {/* Main Menu Widescreen Columns Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 my-6 flex-1 items-stretch overflow-hidden">
+            <div className="grid grid-cols-3 gap-4 lg:gap-5 my-3 flex-1 items-stretch overflow-hidden min-h-0">
               
               {/* Left Column (Açaí & Copos Especiais) */}
-              <div className="bg-zinc-900/30 p-5 rounded-3xl border border-zinc-800/40 flex flex-col justify-between text-left shadow-2xl backdrop-blur-xs min-h-0">
+              <div className="bg-zinc-900/30 p-3.5 lg:p-4 rounded-2xl border border-zinc-800/40 flex flex-col text-left shadow-2xl backdrop-blur-xs min-h-0 overflow-hidden">
                 {/* Açaí Section */}
-                <div>
-                  <h3 className="font-black text-rose-500 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-3 flex items-center gap-1.5 border-b border-rose-950 pb-1.5">
-                    <span className="text-lg">💜</span> Copos de Açaí & Sorvete
+                <div className="flex-shrink-0">
+                  <h3 className="font-black text-rose-500 uppercase text-xs lg:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-950 pb-1">
+                    <span className="text-sm lg:text-base">💜</span> Copos de Açaí & Sorvete
                   </h3>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
                       { size: label300, price: price300, vol: '300ml' },
                       { size: label400, price: price400, vol: '400ml' },
                       { size: label500, price: price500, vol: '500ml' },
                       { size: label700, price: price700, vol: '700ml' }
                     ].map((sz, idx) => (
-                      <div key={idx} className="bg-zinc-900/80 p-2.5 rounded-2xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
-                        <div className="flex items-center gap-2">
-                          <GourmetCup type="acai" size={24} className="opacity-80 group-hover:opacity-100 transition-opacity" />
-                          <span className="font-bold text-zinc-200 text-xs sm:text-sm">{sz.size}</span>
+                      <div key={idx} className="bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <GourmetCup type="acai" size={16} className="opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                          <span className="font-bold text-zinc-200 text-[10px] lg:text-xs truncate">{sz.size}</span>
                         </div>
-                        <span className="font-black text-rose-500 text-xs sm:text-sm bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20">R$ {sz.price}</span>
+                        <span className="font-black text-rose-450 text-[10px] lg:text-xs bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20">R$ {sz.price}</span>
                       </div>
                     ))}
                   </div>
                 </div>
- 
+
                 {/* Cortesias Section */}
-                <div className="my-4 bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl text-left">
-                  <h4 className="font-black text-amber-400 uppercase text-[9.5px] sm:text-[10px] tracking-wider mb-1 flex items-center gap-1">
+                <div className="my-2.5 bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl text-left flex-shrink-0">
+                  <h4 className="font-black text-amber-400 uppercase text-[8px] lg:text-[9px] tracking-wider mb-0.5 flex items-center gap-1">
                     ✨ CORTESIAS INCLUSAS EM TODOS OS COPOS:
                   </h4>
-                  <p className="text-[11px] sm:text-xs font-medium leading-relaxed text-amber-200/90">
+                  <p className="text-[9.5px] lg:text-[10.5px] font-medium leading-tight text-amber-200/90">
                     {boardCortesiasList}
                   </p>
                 </div>
- 
+
                 {/* Copos Especiais Section */}
-                <div className="flex-1 flex flex-col min-h-0">
-                  <h3 className="font-black text-zinc-100 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-zinc-800 pb-1.5">
-                    <span className="text-lg">🍓</span> Copos Especiais & Taças
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <h3 className="font-black text-zinc-100 uppercase text-xs lg:text-sm tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-zinc-800 pb-1 flex-shrink-0">
+                    <span className="text-sm lg:text-base">🍓</span> Copos Especiais & Taças
                   </h3>
-                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                  <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 overflow-hidden align-content-start">
                     {specialCups.length > 0 ? (
                       specialCups.map((item) => {
                         const cupType = getGourmetCupType(item);
                         return (
-                          <div key={item.id} className="flex items-center justify-between gap-3 p-2 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/90 rounded-2xl transition-all duration-200 group">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-11 h-11 flex-shrink-0 bg-zinc-950/80 rounded-xl flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
+                          <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/95 rounded-xl transition-all duration-200 group">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7.5 h-7.5 flex-shrink-0 bg-zinc-950/80 rounded-lg flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
                                 {item.image ? (
                                   <LazyImage 
                                     src={item.image} 
                                     alt={item.name} 
-                                    className="w-full h-full object-cover rounded-xl"
-                                    containerClassName="w-full h-full rounded-xl"
+                                    className="w-full h-full object-cover rounded-lg"
+                                    containerClassName="w-full h-full rounded-lg"
                                   />
                                 ) : (
-                                  <GourmetCup type={cupType} size={36} className="opacity-90 group-hover:opacity-100 transition-opacity" />
+                                  <GourmetCup type={cupType} size={16} className="opacity-90 group-hover:opacity-100 transition-opacity" />
                                 )}
                               </div>
                               <div className="min-w-0 text-left">
-                                <span className="font-black text-zinc-100 text-xs sm:text-sm block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
-                                {item.description && (
-                                  <span className="block text-[10px] sm:text-[11px] text-zinc-400 truncate leading-tight mt-0.5 font-medium">{item.description}</span>
-                                )}
+                                <span className="font-black text-zinc-100 text-[10px] lg:text-[11.5px] block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
                               </div>
                             </div>
-                            <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/20">{getItemPriceText(item)}</span>
+                            <span className="font-black text-rose-500 text-[9.5px] lg:text-[11px] flex-shrink-0 bg-rose-500/10 px-1.5 py-0.5 rounded-lg border border-rose-500/20">{getItemPriceText(item)}</span>
                           </div>
                         );
                       })
@@ -3518,78 +3519,75 @@ export default function AdminCardapio({
                   </div>
                 </div>
               </div>
- 
+
               {/* Center Column (Milk Shakes) */}
-              <div className="bg-zinc-900/30 p-5 rounded-3xl border border-zinc-800/40 flex flex-col justify-between text-left shadow-2xl backdrop-blur-xs min-h-0">
+              <div className="bg-zinc-900/30 p-3.5 lg:p-4 rounded-2xl border border-zinc-800/40 flex flex-col text-left shadow-2xl backdrop-blur-xs min-h-0 overflow-hidden">
                 <div className="flex-1 flex flex-col min-h-0">
-                  <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white text-center py-1.5 px-4 rounded-2xl font-black uppercase text-xs sm:text-sm tracking-wider mb-3 flex-shrink-0 shadow-lg shadow-rose-950/20">
+                  <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white text-center py-1 px-3 rounded-xl font-black uppercase text-xs lg:text-sm tracking-wider mb-2 flex-shrink-0 shadow-lg shadow-rose-950/20">
                     🥤 MILK SHAKES GOURMET
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 flex-shrink-0">
+                  <div className="grid grid-cols-2 gap-1.5 flex-shrink-0">
                     {[
                       { size: msLabel300, price: msPrice300 },
                       { size: msLabel400, price: msPrice400 },
                       { size: msLabel500, price: msPrice500 },
                       { size: msLabel700, price: msPrice700 }
                     ].map((sz, idx) => (
-                      <div key={idx} className="bg-zinc-900/80 p-2.5 rounded-2xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
-                        <div className="flex items-center gap-2">
-                          <GourmetCup type="milkshake" size={24} className="opacity-80 group-hover:opacity-100 transition-opacity" />
-                          <span className="font-bold text-zinc-200 text-xs sm:text-sm">{sz.size}</span>
+                      <div key={idx} className="bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800/60 flex justify-between items-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <GourmetCup type="milkshake" size={16} className="opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                          <span className="font-bold text-zinc-200 text-[10px] lg:text-xs truncate">{sz.size}</span>
                         </div>
-                        <span className="font-black text-rose-500 text-xs sm:text-sm bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20">R$ {sz.price}</span>
+                        <span className="font-black text-rose-400 text-[10px] lg:text-xs bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20">R$ {sz.price}</span>
                       </div>
                     ))}
                   </div>
- 
+
                   {/* Sabores de Sorvete */}
-                  <div className="my-3 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-2xl text-left flex-shrink-0">
-                    <span className="text-[9px] sm:text-[10px] font-black text-rose-400 uppercase tracking-widest block mb-1.5">
+                  <div className="my-2.5 bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl text-left flex-shrink-0">
+                    <span className="text-[8px] lg:text-[9px] font-black text-rose-450 uppercase tracking-widest block mb-1">
                       🍨 SABORES DE SORVETE DISPONÍVEIS:
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1">
                       {boardMsFlavorList.split(',').map((flav, idx) => (
-                        <span key={idx} className="bg-zinc-950 px-2.5 py-1 rounded-xl text-[9px] sm:text-[10px] font-bold text-zinc-200 border border-zinc-800/65 shadow-sm">
+                        <span key={idx} className="bg-zinc-950 px-2 py-0.5 rounded-lg text-[8.5px] lg:text-[9.5px] font-bold text-zinc-200 border border-zinc-800/65 shadow-sm">
                           {flav.trim()}
                         </span>
                       ))}
                     </div>
                   </div>
- 
+
                   {/* Premium Shakes */}
-                  <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                     {premiumShakes.length > 0 && (
                       <>
-                        <h3 className="font-black text-rose-500 uppercase text-xs sm:text-sm tracking-wider mb-2 flex items-center gap-1.5 border-b border-rose-950 pb-1.5 flex-shrink-0">
-                          <span className="text-lg">✨</span> Shakes Especiais & Premium
+                        <h3 className="font-black text-rose-500 uppercase text-xs lg:text-sm tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-rose-950 pb-1 flex-shrink-0">
+                          <span className="text-sm lg:text-base">✨</span> Shakes Especiais & Premium
                         </h3>
-                        <div className="space-y-2 max-h-[140px] md:max-h-[180px] lg:max-h-[220px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                        <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 overflow-hidden align-content-start">
                           {premiumShakes.map((item) => {
                             const cupType = getGourmetCupType(item);
                             return (
-                              <div key={item.id} className="flex items-center justify-between gap-3 p-2 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/90 rounded-2xl transition-all duration-200 group">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-11 h-11 flex-shrink-0 bg-zinc-950/80 rounded-xl flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
+                              <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/95 rounded-xl transition-all duration-200 group">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-7.5 h-7.5 flex-shrink-0 bg-zinc-950/80 rounded-lg flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
                                     {item.image ? (
                                       <LazyImage 
                                         src={item.image} 
                                         alt={item.name} 
-                                        className="w-full h-full object-cover rounded-xl"
-                                        containerClassName="w-full h-full rounded-xl"
+                                        className="w-full h-full object-cover rounded-lg"
+                                        containerClassName="w-full h-full rounded-lg"
                                       />
                                     ) : (
-                                      <GourmetCup type={cupType} size={36} className="opacity-90 group-hover:opacity-100 transition-opacity" />
+                                      <GourmetCup type={cupType} size={16} className="opacity-90 group-hover:opacity-100 transition-opacity" />
                                     )}
                                   </div>
                                   <div className="min-w-0 text-left">
-                                    <span className="font-black text-zinc-100 text-xs sm:text-sm block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
-                                    {item.description && (
-                                      <span className="block text-[10px] sm:text-[11px] text-zinc-400 truncate leading-tight mt-0.5 font-medium">{item.description}</span>
-                                    )}
+                                    <span className="font-black text-zinc-100 text-[10px] lg:text-[11.5px] block truncate group-hover:text-rose-450 transition-colors">{item.name}</span>
                                   </div>
                                 </div>
-                                <span className="font-black text-rose-500 text-xs sm:text-sm flex-shrink-0 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/20">{getItemPriceText(item)}</span>
+                                <span className="font-black text-rose-500 text-[9.5px] lg:text-[11px] flex-shrink-0 bg-rose-500/10 px-1.5 py-0.5 rounded-lg border border-rose-500/20">{getItemPriceText(item)}</span>
                               </div>
                             );
                           })}
@@ -3599,41 +3597,38 @@ export default function AdminCardapio({
                   </div>
                 </div>
               </div>
- 
+
               {/* Right Column (Buckets, Coffee & Toppings) */}
-              <div className="bg-zinc-900/30 p-5 rounded-3xl border border-zinc-800/40 flex flex-col justify-between text-left shadow-2xl backdrop-blur-xs min-h-0">
-                <div className="flex-1 flex flex-col min-h-0">
-                  <h3 className="font-black text-amber-500 uppercase text-xs sm:text-sm lg:text-base tracking-wider mb-2 flex items-center gap-1.5 border-b border-amber-950 pb-1.5 flex-shrink-0">
-                    <span className="text-lg">🍨</span> Baldes & Linha Café
+              <div className="bg-zinc-900/30 p-3.5 lg:p-4 rounded-2xl border border-zinc-800/40 flex flex-col text-left shadow-2xl backdrop-blur-xs min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <h3 className="font-black text-amber-500 uppercase text-xs lg:text-sm tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-amber-950 pb-1 flex-shrink-0">
+                    <span className="text-sm lg:text-base">🍨</span> Baldes & Linha Café
                   </h3>
                   
-                  <div className="space-y-2 max-h-[220px] md:max-h-[280px] lg:max-h-[340px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                  <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 overflow-hidden align-content-start">
                     {baldesAndCafes.length > 0 ? (
                       baldesAndCafes.map((item) => {
                         const cupType = getGourmetCupType(item);
                         return (
-                          <div key={item.id} className="flex items-center justify-between gap-3 p-2 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/90 rounded-2xl transition-all duration-200 group">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-11 h-11 flex-shrink-0 bg-zinc-950/80 rounded-xl flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
+                          <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/95 rounded-xl transition-all duration-200 group">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7.5 h-7.5 flex-shrink-0 bg-zinc-950/80 rounded-lg flex items-center justify-center border border-zinc-800/60 relative overflow-hidden group-hover:scale-105 transition-transform">
                                 {item.image ? (
                                   <LazyImage 
                                     src={item.image} 
                                     alt={item.name} 
-                                    className="w-full h-full object-cover rounded-xl"
-                                    containerClassName="w-full h-full rounded-xl"
+                                    className="w-full h-full object-cover rounded-lg"
+                                    containerClassName="w-full h-full rounded-lg"
                                   />
                                 ) : (
-                                  <GourmetCup type={cupType} size={36} className="opacity-90 group-hover:opacity-100 transition-opacity" />
+                                  <GourmetCup type={cupType} size={16} className="opacity-90 group-hover:opacity-100 transition-opacity" />
                                 )}
                               </div>
                               <div className="min-w-0 text-left">
-                                <span className="font-black text-zinc-100 text-xs sm:text-sm block truncate group-hover:text-amber-450 transition-colors">{item.name}</span>
-                                {item.description && (
-                                  <span className="block text-[10px] sm:text-[11px] text-zinc-400 truncate leading-tight mt-0.5 font-medium">{item.description}</span>
-                                )}
+                                <span className="font-black text-zinc-100 text-[10px] lg:text-[11.5px] block truncate group-hover:text-amber-450 transition-colors">{item.name}</span>
                               </div>
                             </div>
-                            <span className="font-black text-amber-400 text-xs sm:text-sm flex-shrink-0 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">{getItemPriceText(item)}</span>
+                            <span className="font-black text-amber-400 text-[9.5px] lg:text-[11px] flex-shrink-0 bg-amber-500/10 px-1.5 py-0.5 rounded-lg border border-amber-500/20">{getItemPriceText(item)}</span>
                           </div>
                         );
                       })
@@ -3655,37 +3650,37 @@ export default function AdminCardapio({
                     )}
                   </div>
                 </div>
- 
+
                 {/* Additional Extras */}
-                <div className="mt-4 text-left flex-1 flex flex-col justify-end">
-                  <span className="text-[9.5px] sm:text-[10px] font-black text-amber-400 uppercase tracking-widest block mb-2 border-t border-zinc-800/80 pt-3">
+                <div className="mt-3 text-left flex-shrink-0">
+                  <span className="text-[8px] lg:text-[9px] font-black text-amber-400 uppercase tracking-widest block mb-1.5 border-t border-zinc-800/80 pt-2 flex items-center">
                     ➕ COMPLEMENTOS & ADICIONAIS EXTRA:
                   </span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1">
                     {boardAdicionaisList.split(',').map((item, idx) => (
-                      <span key={idx} className="bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-2xl text-[10px] font-bold text-zinc-300 hover:border-zinc-700 hover:text-white transition-all cursor-default">
+                      <span key={idx} className="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-lg text-[8.5px] lg:text-[9.5px] font-bold text-zinc-300 hover:border-zinc-700 hover:text-white transition-all cursor-default">
                         {item.trim()}
                       </span>
                     ))}
                   </div>
                 </div>
               </div>
- 
+
             </div>
- 
+
             {/* Bottom Section: Socials & Contact */}
-            <div className="flex justify-between items-center border-t border-zinc-800/80 pt-4 text-xs sm:text-sm lg:text-base font-black text-zinc-400 bg-zinc-950/40">
-              <div className="flex items-center gap-2">
-                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center animate-pulse">📞</span>
+            <div className="flex justify-between items-center border-t border-zinc-800/80 pt-2 lg:pt-3 pb-1 mt-2 text-[10px] sm:text-xs font-black text-zinc-400 bg-zinc-950/40 flex-shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-1 rounded-full text-xs w-6 h-6 flex items-center justify-center animate-pulse">📞</span>
                 <span className="font-mono text-zinc-200">{boardCustomNote} — {boardPhone}</span>
               </div>
               
-              <div className="text-[10px] sm:text-xs font-black text-zinc-600 tracking-widest uppercase">
+              <div className="text-[8.5px] lg:text-[10px] font-black text-zinc-600 tracking-widest uppercase">
                 📺 MODO TV ATIVO • PRESSIONE ESC PARA SAIR
               </div>
- 
-              <div className="flex items-center gap-2">
-                <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 p-1.5 rounded-full text-base w-8 h-8 flex items-center justify-center">📷</span>
+
+              <div className="flex items-center gap-1.5">
+                <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 p-1 rounded-full text-xs w-6 h-6 flex items-center justify-center">📷</span>
                 <span className="text-rose-400">{boardInstagram}</span>
               </div>
             </div>
