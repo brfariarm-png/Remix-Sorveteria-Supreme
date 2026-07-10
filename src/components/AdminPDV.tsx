@@ -509,9 +509,28 @@ export default function AdminPDV({
                 {filteredProducts.map((p) => (
                   <div 
                     key={p.id} 
-                    className="bg-white rounded-[24px] border border-rose-100/70 flex flex-col justify-between hover:shadow-md hover:border-rose-300 transition-all duration-300 overflow-hidden group hover:-translate-y-0.5 relative"
+                    onClick={() => {
+                      if (p.customizable) {
+                        handleStartCustomizing(p);
+                      } else {
+                        handleAddDirect(p);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (p.customizable) {
+                          handleStartCustomizing(p);
+                        } else {
+                          handleAddDirect(p);
+                        }
+                      }
+                    }}
+                    className="bg-white rounded-[24px] border border-rose-100/70 flex flex-col justify-between hover:shadow-lg hover:border-rose-300 hover:ring-2 hover:ring-rose-200/50 transition-all duration-300 overflow-hidden group hover:-translate-y-0.5 relative cursor-pointer select-none text-left"
                   >
-                    {/* Visual Card image or price indicator with overlay badges */}
+                    {/* Visual Card image with overlay badges */}
                     <div className="relative h-32 bg-rose-50/40 overflow-hidden border-b border-rose-100/20">
                       <LazyImage
                         src={p.image || 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400'}
@@ -533,49 +552,26 @@ export default function AdminPDV({
                           </span>
                         )}
                       </div>
-
-                      <span className="absolute top-2.5 right-2.5 bg-slate-950 text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg shadow-md border border-slate-800">
-                        R$ {p.price.toFixed(2)}
-                      </span>
                     </div>
 
-                    <div className="p-3 text-left space-y-2 flex-1 flex flex-col justify-between">
-                      <div className="space-y-1">
-                        <h4 className="font-black text-[14px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
-                          {p.name}
-                        </h4>
-                        <p className="text-[12px] text-slate-500 font-semibold leading-relaxed line-clamp-3 mt-1">
+                    <div className="p-3.5 text-left space-y-2 flex-1 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-black text-[14px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
+                            {p.name}
+                          </h4>
+                          <span className="font-mono font-black text-rose-600 text-xs bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100/60 flex-shrink-0">
+                            R$ {p.price.toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed line-clamp-3 mt-1">
                           {p.description}
                         </p>
                       </div>
 
-                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                        {p.customizable && p.sizeMode !== 'single' ? (
-                          <button
-                            onClick={() => handleStartCustomizing(p)}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow"
-                          >
-                            <span>⚙️ Customizar Taça</span>
-                          </button>
-                        ) : (
-                          <div className="w-full flex gap-1">
-                            <button
-                              onClick={() => handleAddDirect(p)}
-                              className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] uppercase py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-100 hover:shadow-rose-200"
-                            >
-                              <span>➕ Adicionar</span>
-                            </button>
-                            {p.customizable && (
-                              <button
-                                onClick={() => handleStartCustomizing(p)}
-                                title="Observações ou customizações rápidas"
-                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center font-bold"
-                              >
-                                <span>⚙️</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
+                      <div className="pt-2 border-t border-slate-100/70 flex items-center justify-between text-[9px] font-black uppercase text-rose-500/80 tracking-wider">
+                        <span>{p.customizable ? '✨ Toque para Personalizar' : '🛒 Toque para Adicionar'}</span>
+                        <span className="text-[11px]">⚡</span>
                       </div>
                     </div>
                   </div>
