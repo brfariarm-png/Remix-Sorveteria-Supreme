@@ -484,7 +484,7 @@ export default function Checkout({
         const finalTotal = totalAmount + deliveryFee;
         
         const itemsText = cartItems.map(item => {
-          const itemPrice = item.customCupPrice || item.menuItem.price;
+          const itemPrice = item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price);
           const itemInfo = `• *${item.quantity}x ${item.menuItem.name}* (R$ ${(itemPrice).toFixed(2)})`;
           const itemDesc = item.menuItem.description ? `\n   _${item.menuItem.description}_` : '';
           const notesStr = item.notes ? `\n   *Obs:* ${item.notes}` : '';

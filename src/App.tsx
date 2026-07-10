@@ -1840,6 +1840,18 @@ export default function App() {
     return Number(storeSettings?.cupPrices?.['300ml'] ?? 18.00);
   };
 
+  // Helper to get the actual price of a cart item based on custom size and store settings
+  const getCartItemPrice = (item: CartItem): number => {
+    if (item.isCustomCup) {
+      return Number(item.customCupPrice || 0);
+    }
+    const sizeMode = item.menuItem.sizeMode || (item.menuItem.customizable ? 'default' : 'single');
+    if (sizeMode === 'single') {
+      return Number(item.menuItem.singleSizePrice ?? item.menuItem.price ?? 0);
+    }
+    return Number(item.menuItem.price ?? 0);
+  };
+
   // Add standard product to cart
   const handleAddProductToCart = (item: MenuItem) => {
     if (item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae') {
@@ -1902,7 +1914,7 @@ export default function App() {
   // Get total cart price
   const cartSubtotal = useMemo(() => {
     return cart.reduce((acc, item) => {
-      const price = Number(item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price);
+      const price = getCartItemPrice(item);
       return acc + price * item.quantity;
     }, 0);
   }, [cart]);
@@ -3371,7 +3383,7 @@ export default function App() {
                             <div key={index} className="border-b border-dashed border-slate-200/50 py-1.5 last:border-0 flex flex-col gap-1">
                               <div className="flex justify-between text-slate-700 font-semibold">
                                 <span>{item.quantity}x {item.menuItem.name}</span>
-                                <span className="font-mono text-slate-500">R$ {((item.customCupPrice || item.menuItem.price) * item.quantity).toFixed(2)}</span>
+                                <span className="font-mono text-slate-500">R$ {((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity).toFixed(2)}</span>
                               </div>
                               {item.isCustomCup && item.customCupConfig && (
                                 <div className="text-[10px] text-indigo-650 font-semibold leading-normal space-y-0.5">
@@ -3674,7 +3686,7 @@ export default function App() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {cart.length > 0 ? (
                     cart.map((item) => {
-                      const price = item.isCustomCup ? (item.customCupPrice || 0) : item.menuItem.price;
+                      const price = getCartItemPrice(item);
                       return (
                         <div key={item.id} className="flex gap-3 border-b border-slate-100 pb-3">
                           {/* Mini visual frame */}

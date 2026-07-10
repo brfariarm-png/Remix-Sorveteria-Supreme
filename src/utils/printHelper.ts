@@ -116,7 +116,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
       <div style="margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 6px;">
         <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${fontSize}px;">
           <span>${item.quantity}x ${item.menuItem.name}</span>
-          <span>R$ ${((item.customCupPrice || item.menuItem.price) * item.quantity).toFixed(2)}</span>
+          <span>R$ ${((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity).toFixed(2)}</span>
         </div>
         ${customDetails}
         ${notesHtml}

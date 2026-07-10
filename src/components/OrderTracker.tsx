@@ -381,7 +381,7 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                     <div key={idx} className="space-y-0.5">
                       <div className="flex justify-between font-bold text-slate-900">
                         <span>{item.quantity}x {item.menuItem.name}</span>
-                        <span>R$ {((item.customCupPrice || item.menuItem.price) * item.quantity).toFixed(2)}</span>
+                        <span>R$ {((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity).toFixed(2)}</span>
                       </div>
                       {item.isCustomCup && item.customCupConfig && (
                         <div className="text-[8.5px] text-slate-500 pl-2 space-y-0.5">
@@ -558,7 +558,7 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                 })()}
               </div>
               <span className="font-mono text-slate-600 font-semibold flex-shrink-0">
-                R$ {((item.customCupPrice || item.menuItem.price) * item.quantity).toFixed(2)}
+                R$ {((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity).toFixed(2)}
               </span>
             </div>
           ))}
