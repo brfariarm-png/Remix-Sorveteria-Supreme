@@ -1784,11 +1784,11 @@ export default function App() {
     const customerName = order.details?.customerName || 'Cliente';
     const shopName = storeSettings.shortName;
     const rawDomain = storeSettings.customDomain ? storeSettings.customDomain.trim() : '';
-    const cleanDomain = rawDomain 
+    const cleanDomain = (rawDomain && rawDomain !== 'sorveteriasupreme.vercel.app')
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) 
-      : "https://sorveteriasupreme.vercel.app";
+      : window.location.origin;
     const trackingLink = `${cleanDomain}?track=${order.id}`;
-    const logoLink = "https://sorveteriasupreme.vercel.app";
+    const logoLink = window.location.origin;
 
     switch (status) {
       case 'waiting':
@@ -2768,7 +2768,7 @@ export default function App() {
                         <div className="shrink-0">
                           <button
                             onClick={() => {
-                              const sharedUrl = "https://sorveteriasupreme.vercel.app";
+                              const sharedUrl = window.location.origin;
                               navigator.clipboard.writeText(sharedUrl);
                               alert("🍦 Link oficial de clientes copiado com sucesso!\n\nEnvie este link para que seus clientes façam pedidos online:\n" + sharedUrl);
                             }}

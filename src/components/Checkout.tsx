@@ -509,7 +509,7 @@ export default function Checkout({
                        `💳 *Forma de Pagamento:* ${paymentText}\n\n` +
                        `${addressText}\n\n` +
                        `🤖 _Enviado via Cardápio Online Supreme_\n` +
-                       `🔗 https://sorveteriasupreme.vercel.app`;
+                       `🔗 ${window.location.origin}`;
 
         const cleanPhone = storePhone.replace(/\D/g, '');
         const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;

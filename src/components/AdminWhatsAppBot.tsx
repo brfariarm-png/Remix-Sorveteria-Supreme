@@ -453,9 +453,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                            : latestOrder.status === 'delivering' ? 'Em Rota com o Motoboy! 🛵'
                            : 'Deliciosamente Entregue! 🎉';
           
-          responseText = `🔍 *LOCALIZADOR DE PEDIDOS ATIVOS*\n\nEncontrei o seu pedido mais recente em nosso painel:\n\n📦 *Pedido:* #${shortId}\n👤 *Cliente:* ${latestOrder.details?.customerName || 'Cliente'}\n📅 *Status:* ${statusText}\n💰 *Valor:* R$ ${latestOrder.total.toFixed(2)}\n\nAcompanhe em tempo real pelo link interativo:\n👉 https://sorveteriasupreme.vercel.app?track=${latestOrder.id}\n\nPrecisa de alterações? Digite *4* para falar com o caixa.`;
+          responseText = `🔍 *LOCALIZADOR DE PEDIDOS ATIVOS*\n\nEncontrei o seu pedido mais recente em nosso painel:\n\n📦 *Pedido:* #${shortId}\n👤 *Cliente:* ${latestOrder.details?.customerName || 'Cliente'}\n📅 *Status:* ${statusText}\n💰 *Valor:* R$ ${latestOrder.total.toFixed(2)}\n\nAcompanhe em tempo real pelo link interativo:\n👉 ${window.location.origin}?track=${latestOrder.id}\n\nPrecisa de alterações? Digite *4* para falar com o caixa.`;
         } else {
-          responseText = `🔍 *RASTREADOR DE PEDIDO*\n\nVocê ainda não possui pedidos registrados neste navegador hoje.\n\nPara fazer seu primeiro pedido, acesse nosso site:\n👉 *https://sorveteriasupreme.vercel.app*\n\nCaso já tenha enviado, digite o código do pedido de 6 dígitos que retornaremos o status!`;
+          responseText = `🔍 *RASTREADOR DE PEDIDO*\n\nVocê ainda não possui pedidos registrados neste navegador hoje.\n\nPara fazer seu primeiro pedido, acesse nosso site:\n👉 *${window.location.origin}*\n\nCaso já tenha enviado, digite o código do pedido de 6 dígitos que retornaremos o status!`;
         }
       } 
       else if (cleanText === '3' || cleanText.includes('localizacao') || cleanText.includes('endereço') || cleanText.includes('horario')) {
@@ -478,7 +478,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                            : hasIdMatch.status === 'delivering' ? 'Em Rota com o Motoboy! 🛵'
                            : 'Deliciosamente Entregue! 🎉';
           
-          responseText = `✨ *STATUS DO PEDIDO #${shortId}* ✨\n\nEncontrei suas informações no banco de dados Firestore:\n\n👤 *Cliente:* ${hasIdMatch.details?.customerName}\n💰 *Total:* R$ ${hasIdMatch.total.toFixed(2)}\n🚚 *Método:* ${hasIdMatch.details?.deliveryType === 'delivery' ? 'Entrega em Casa' : 'Retirada no Balcão'}\n🚨 *Status:* ${statusText}\n\nLink do rastreador completo:\n👉 https://sorveteriasupreme.vercel.app?track=${hasIdMatch.id}`;
+          responseText = `✨ *STATUS DO PEDIDO #${shortId}* ✨\n\nEncontrei suas informações no banco de dados Firestore:\n\n👤 *Cliente:* ${hasIdMatch.details?.customerName}\n💰 *Total:* R$ ${hasIdMatch.total.toFixed(2)}\n🚚 *Método:* ${hasIdMatch.details?.deliveryType === 'delivery' ? 'Entrega em Casa' : 'Retirada no Balcão'}\n🚨 *Status:* ${statusText}\n\nLink do rastreador completo:\n👉 ${window.location.origin}?track=${hasIdMatch.id}`;
         } else {
           responseText = `💡 *Supreme Bot:* Não entendi esta mensagem.\n\nPor favor, digite uma das opções abaixo:\n\n*1* - Ver Cardápio & Fazer Pedido 🥣\n*2* - Rastrear Pedido Ativo 🛵\n*3* - Localização e Horários 📍\n*4* - Falar com Atendente Humano 💬`;
         }
