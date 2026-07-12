@@ -2471,8 +2471,8 @@ export default function App() {
         {activeTab === 'menu' && !activeTrackingOrder && (
           <div className="space-y-8">
             
-            {/* Elegant Hero Banner card */}
-            <div className="relative bg-gradient-to-r from-rose-500 to-indigo-650 rounded-3xl h-[260px] md:h-[340px] overflow-hidden shadow-xl flex items-center p-6 md:p-12 text-white">
+            {/* Elegant Hero Banner card with integrated Instagram follow banner */}
+            <div className="relative bg-gradient-to-r from-rose-500 to-indigo-650 rounded-3xl min-h-[260px] lg:h-[340px] overflow-hidden shadow-xl flex items-center p-6 md:p-12 text-white">
               <div className="absolute inset-0 z-0">
                 <LazyImage 
                   src={BannerImage} 
@@ -2484,16 +2484,53 @@ export default function App() {
                 <div className="absolute inset-0 bg-gradient-to-r from-pink-950 via-slate-900/80 to-transparent" />
               </div>
 
-              <div className="relative z-10 max-w-lg space-y-4">
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500/20 backdrop-blur-md text-amber-300 text-[10px] font-extrabold uppercase rounded-full shadow-inner tracking-wider" id="handmadeTag">
-                  <Sparkles className="w-3.5 h-3.5" /> 100% Artesanal & Natural
-                </span>
-                <h2 className="text-3xl md:text-5xl font-black leading-tight font-display tracking-tight" id="heroBannerTitle">
-                  Seu Açaí Próprio ou Sorvetes Premium
-                </h2>
-                <p className="text-xs md:text-sm text-neutral-200 font-medium leading-relaxed max-w-md" id="heroBannerDesc">
-                  Escolha as melhores opções na nossa vitrine do tamanho da sua fome com acompanhamentos selecionados. Entrega garantida, rápida e refrescante em Monte Mor!
-                </p>
+              <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                {/* Left Column: Welcome Message */}
+                <div className="lg:col-span-8 space-y-4 text-left">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500/20 backdrop-blur-md text-amber-300 text-[10px] font-extrabold uppercase rounded-full shadow-inner tracking-wider" id="handmadeTag">
+                    <Sparkles className="w-3.5 h-3.5 animate-pulse" /> 100% Artesanal & Natural
+                  </span>
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight font-display tracking-tight animate-fade-in" id="heroBannerTitle">
+                    Seu Açaí Próprio ou Sorvetes Premium
+                  </h2>
+                  <p className="text-xs md:text-sm text-neutral-200 font-medium leading-relaxed max-w-xl" id="heroBannerDesc">
+                    Escolha as melhores opções na nossa vitrine do tamanho da sua fome com acompanhamentos selecionados. Entrega garantida, rápida e refrescante em Monte Mor!
+                  </p>
+                </div>
+
+                {/* Right Column: Embedded Instagram Follow Card (Shares the same background image!) */}
+                <div className="lg:col-span-4 w-full max-w-xs lg:justify-self-end">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 shadow-lg relative overflow-hidden flex flex-col gap-2.5">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full blur-xl opacity-40" />
+                    
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-gradient-to-tr from-purple-600 via-pink-500 to-orange-400 rounded-lg shadow-md text-white flex items-center justify-center">
+                        <Instagram className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="bg-rose-500/20 text-rose-300 font-extrabold text-[8px] tracking-widest px-1.5 py-0.5 rounded uppercase">
+                          Instagram 📸
+                        </span>
+                        <h4 className="text-[11px] font-black uppercase tracking-tight text-white leading-none">
+                          Siga a Supreme
+                        </h4>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-neutral-200 font-medium leading-normal">
+                      Acompanhe novidades, descontos relâmpago e fotos deliciosas do nosso açaí e sorvetes premium!
+                    </p>
+
+                    <a
+                      href={`https://instagram.com/${storeSettings.instagram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:opacity-95 text-white active:scale-[0.98] font-black text-[9px] tracking-widest uppercase py-2.5 rounded-lg transition-all shadow-md text-center cursor-pointer flex items-center justify-center gap-1 hover:scale-[1.01]"
+                    >
+                      <Instagram className="w-3.5 h-3.5 text-white" /> Seguir {storeSettings.instagram}
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
                    {/* Layout Wrapper: Lateral Sidebar on Desktop / Header on Mobile */}
@@ -2530,39 +2567,6 @@ export default function App() {
                         </p>
                       </button>
                     ))}
-                  </div>
-                </div>
-
-
-
-                {/* Instagram Quick Follow Banner */}
-                <div className="bg-gradient-to-tr from-purple-600 via-pink-550 to-orange-500 text-white rounded-[24px] p-5 shadow-md flex flex-col gap-3.5 text-left mt-1.5 relative overflow-hidden">
-                  <div className="absolute top-[10px] right-[10px] w-20 h-20 bg-white/10 rounded-full blur-lg" />
-                  <div>
-                    <span className="bg-white/20 text-white font-black text-[8px] tracking-widest px-2.5 py-0.5 rounded-full uppercase">
-                      Instagram Oficial 📸
-                    </span>
-                    <h4 className="text-[13px] font-black uppercase tracking-tight mt-1.5 text-white leading-snug">
-                      SIGA A SUPREME!
-                    </h4>
-                    <p className="text-[10px] text-white/90 font-semibold leading-relaxed mt-1">
-                      Acompanhe novidades, descontos e fotos deliciosas em primeira mão de nosso açaí gourmet.
-                    </p>
-                  </div>
-
-                  <a
-                    href={`https://instagram.com/${storeSettings.instagram.replace('@', '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white hover:bg-slate-50 text-purple-700 active:scale-[0.98] font-black text-[9px] tracking-widest uppercase py-3 rounded-xl transition-all shadow-md text-center cursor-pointer flex items-center justify-center gap-1.5 border border-white hover:scale-[1.02]"
-                  >
-                    <Instagram className="w-4 h-4 text-pink-550 animate-[pulse_2s_infinite]" /> {storeSettings.instagram}
-                  </a>
-
-                  <div className="border-t border-white/20 pt-2.5 flex items-center justify-between text-[8px] text-white/80 font-bold uppercase">
-                    <span>🔥 Promoções semanais</span>
-                    <span>•</span>
-                    <span>Poste seu copo e marque-nos!</span>
                   </div>
                 </div>
 
