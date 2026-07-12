@@ -44,6 +44,22 @@
       "purpose": "any"
     }
   ],
+  "screenshots": [
+    {
+      "src": "/assets/images/screenshot_desktop.jpg",
+      "sizes": "1376x768",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Painel de Pedidos da Sorveteria Supreme no Desktop"
+    },
+    {
+      "src": "/assets/images/screenshot_mobile.jpg",
+      "sizes": "768x1376",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Cardápio Responsivo da Sorveteria Supreme no Celular"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Fazer Pedido",
