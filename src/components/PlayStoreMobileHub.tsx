@@ -258,6 +258,15 @@ export default function PlayStoreMobileHub({ customDomain }: PlayStoreMobileHubP
               </ul>
             )}
             
+            <div className="bg-rose-50 border border-rose-200/80 p-3.5 rounded-2xl flex items-start gap-2.5 shadow-inner">
+              <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5 animate-pulse" />
+              <div className="text-[10.5px] text-rose-950 font-semibold leading-relaxed">
+                <strong className="text-rose-700 block uppercase tracking-wider text-[11px] font-black mb-1">⚠️ ATENÇÃO: NÃO INSTALE PELO INSTAGRAM OU WHATSAPP!</strong>
+                Navegadores integrados de aplicativos como <span className="font-extrabold">Instagram, WhatsApp e Facebook</span> bloqueiam a instalação real de aplicativos e forçam a criação de atalhos simples sem ícone (gerando o logo "V" genérico do cache).<br />
+                <span className="text-slate-700 font-bold block mt-1">Como resolver:</span> Copie o link público do seu app e abra-o diretamente no navegador oficial do seu celular (<span className="text-indigo-600 font-black">Safari</span> no iPhone ou <span className="text-emerald-600 font-black">Chrome</span> no Android). Assim o app será instalado perfeitamente com o lindo ícone da Supreme!
+              </div>
+            </div>
+
             <div className="bg-indigo-50/40 p-3 rounded-2xl flex items-start gap-2.5 border border-indigo-100/30">
               <ShieldCheck className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
               <p className="text-[10px] text-indigo-900 font-medium leading-relaxed">

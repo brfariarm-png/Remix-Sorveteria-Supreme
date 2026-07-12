@@ -1,5 +1,5 @@
 // Service Worker for Sorveteria Supreme (PWA compliance & performance)
-const CACHE_NAME = 'supreme-cache-v15';
+const CACHE_NAME = 'supreme-cache-v22';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
