@@ -223,6 +223,22 @@ export default function AdminPDV({
     }
   };
 
+  const handleToppingToggle = (id: string) => {
+    if (selectedToppings.includes(id)) {
+      setSelectedToppings(selectedToppings.filter((t) => t !== id));
+    } else {
+      let nextToppings = [...selectedToppings, id];
+      if (isSplit) {
+        if (id === 'gratis-banana' || id === 'dobro-banana') {
+          nextToppings = nextToppings.filter((t) => t !== 'gratis-morango' && t !== 'dobro-morango');
+        } else if (id === 'gratis-morango' || id === 'dobro-morango') {
+          nextToppings = nextToppings.filter((t) => t !== 'gratis-banana' && t !== 'dobro-banana');
+        }
+      }
+      setSelectedToppings(nextToppings);
+    }
+  };
+
   // PDV Customizer current selected price
   const pdvCustomizerPrice = useMemo(() => {
     if (!customizingItem) return 0;
@@ -416,18 +432,6 @@ export default function AdminPDV({
   const handleExactCash = () => {
     setCashReceived(cartSubtotal.toFixed(2));
   };
-
-  // Quick prepopulated note tags for fast tapping
-  const fastNotes = [
-    'Mandar Separado 🥡',
-    'Sem Calda ❌',
-    'Sem Leite Condensado 🥛',
-    'Sem Leite em Pó 🍨',
-    'Adicional Morango 🍓',
-    'Adicional Nutella 🍫',
-    'Granola no Fundo 🌾',
-    'Talher Extra 🥄'
-  ];
 
   // Add standard product directly to PDV cart
   const handleAddDirect = (item: MenuItem) => {
@@ -1319,6 +1323,17 @@ export default function AdminPDV({
                   <span>4. Adicionais & Coberturas</span>
                   <span className="text-[9.5px] text-zinc-500 bg-zinc-200 px-1.5 py-0.5 rounded font-bold">Cobrança Automática</span>
                 </div>
+
+                {isSplit && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-2.5 text-[10px] font-bold leading-normal flex items-start gap-1.5">
+                    <span className="text-xs">⚠️</span>
+                    <div>
+                      <p className="font-extrabold text-amber-950">Aviso sobre o Split:</p>
+                      <p className="opacity-90">Por favor, selecione apenas uma fruta como adicional: ou <strong>Banana</strong> ou <strong>Morango</strong>. Ao escolher uma delas, a outra será desmarcada automaticamente.</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
                   {toppingOptions.filter((t) => 
                     !customizingItem?.allowedToppings || 
@@ -1329,13 +1344,7 @@ export default function AdminPDV({
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => {
-                          if (isSel) {
-                            setSelectedToppings(selectedToppings.filter(x => x !== t.id));
-                          } else {
-                            setSelectedToppings([...selectedToppings, t.id]);
-                          }
-                        }}
+                        onClick={() => handleToppingToggle(t.id)}
                         className={`p-2 px-3 rounded-xl border text-[10.5px] text-left transition-all cursor-pointer flex items-center justify-between ${
                           isSel 
                             ? 'border-rose-500 bg-rose-50 text-rose-900 font-extrabold ring-1 ring-rose-200' 
@@ -1364,11 +1373,10 @@ export default function AdminPDV({
                 </div>
               )}
 
-              {/* Item Specific Notes & Fast tags */}
+              {/* Item Specific Notes */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">5. Observações deste Copo</label>
-                  <span className="text-[9.5px] text-rose-500 font-bold">Toque para preencher rápido</span>
                 </div>
                 <input
                   type="text"
@@ -1377,20 +1385,6 @@ export default function AdminPDV({
                   onChange={(e) => setItemSpecificNotes(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-250 font-bold text-slate-750 focus:outline-none focus:ring-1 focus:ring-rose-500"
                 />
-                
-                {/* Clickable Quick tags */}
-                <div className="flex flex-wrap gap-1">
-                  {fastNotes.map((noteTag) => (
-                    <button
-                      key={noteTag}
-                      type="button"
-                      onClick={() => setItemSpecificNotes(noteTag)}
-                      className="text-[9.5px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-1 px-2.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                      🏷️ {noteTag}
-                    </button>
-                  ))}
-                </div>
               </div>
 
             </div>
