@@ -37,6 +37,56 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [apiSecret, setApiSecret] = useState(storeSettings.whatsappApiKey || 'sk_supreme_prod_xyz789');
   const [botName, setBotName] = useState(storeSettings.whatsappBotName || 'Supreme Bot Premium 💜');
   
+  // Internal WhatsApp Device Linking QR Code states
+  const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>(() => {
+    return (localStorage.getItem('whatsapp_qr_status') as any) || 'disconnected';
+  });
+  const [qrTimer, setQrTimer] = useState(60);
+  const [qrCodePayload, setQrCodePayload] = useState('');
+
+  // Countdown timer logic for QR Code expiration
+  useEffect(() => {
+    let interval: any;
+    if (qrCodeStatus === 'waiting' && qrTimer > 0) {
+      interval = setInterval(() => {
+        setQrTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (qrCodeStatus === 'waiting' && qrTimer === 0) {
+      setQrCodeStatus('disconnected');
+    }
+    return () => clearInterval(interval);
+  }, [qrCodeStatus, qrTimer]);
+
+  // Handle generating QR Code trigger
+  const handleGenerateQr = () => {
+    setQrCodeStatus('generating');
+    setQrTimer(60);
+    setTimeout(() => {
+      // Create a nice simulated whatsapp pairing payload
+      const payload = `supreme_wa_pairing_code_${whatsappPhone || 'business'}_${Math.random().toString(36).substring(2, 10)}`;
+      setQrCodePayload(payload);
+      setQrCodeStatus('waiting');
+    }, 1500);
+  };
+
+  // Handle simulated scan/connection trigger
+  const handleSimulateScan = () => {
+    setQrCodeStatus('connecting');
+    setTimeout(() => {
+      setQrCodeStatus('connected');
+      localStorage.setItem('whatsapp_qr_status', 'connected');
+    }, 2000);
+  };
+
+  // Handle disconnecting
+  const handleDisconnectQr = () => {
+    if (confirm("Deseja realmente desconectar este aparelho de WhatsApp do sistema?")) {
+      setQrCodeStatus('disconnected');
+      setQrCodePayload('');
+      localStorage.removeItem('whatsapp_qr_status');
+    }
+  };
+  
   // Custom chatbot messages & links states
   const [welcomeMsg, setWelcomeMsg] = useState(storeSettings.whatsappBotWelcomeMessage || `Olá! Seja muito bem-vindo ao assistente automático da *${storeSettings.name}*! 🍨\n\nSou o *${storeSettings.whatsappBotName || 'Supreme Bot Premium 💜'}*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`);
   const [menuMsg, setMenuMsg] = useState(storeSettings.whatsappBotMenuMessage || `⭐️ *CARDÁPIO DIGITAL DA LOUCURA* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso site completo para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\n🔥 *Mais Pedidos de Hoje:*`);
@@ -544,175 +594,337 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
-              className="space-y-4 max-w-2xl mx-auto"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-6xl mx-auto items-start"
             >
-              <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4.5 h-4.5 text-emerald-600" />
-                    <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">Ajustes Básicos de Integração</h4>
+              {/* Left Column: Basic Connection Settings and Custom Messages */}
+              <div className="lg:col-span-7 space-y-5">
+                <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sliders className="w-4.5 h-4.5 text-emerald-600" />
+                      <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">Ajustes Básicos de Integração</h4>
+                    </div>
+                    
+                    {/* Bot enable switch */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status do Bot</span>
+                      <input
+                        type="checkbox"
+                        checked={botEnabled}
+                        onChange={(e) => setBotEnabled(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600"
+                      />
+                    </label>
                   </div>
-                  
-                  {/* Bot enable switch */}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status do Bot</span>
-                    <input
-                      type="checkbox"
-                      checked={botEnabled}
-                      onChange={(e) => setBotEnabled(e.target.checked)}
-                      className="w-4 h-4 text-emerald-600"
-                    />
-                  </label>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Nome do Robô / Bot</label>
+                      <input
+                        type="text"
+                        value={botName}
+                        onChange={(e) => setBotName(e.target.value)}
+                        placeholder="Ex: Supreme Bot 💜"
+                        className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">WhatsApp Comercial</label>
+                      <input
+                        type="text"
+                        value={whatsappPhone}
+                        onChange={(e) => setWhatsappPhone(e.target.value)}
+                        placeholder="Ex: 5515998765432"
+                        className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Nome do Robô / Bot</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">URL do Webhook (Gatilho) no n8n / Make</label>
                     <input
-                      type="text"
-                      value={botName}
-                      onChange={(e) => setBotName(e.target.value)}
-                      placeholder="Ex: Supreme Bot 💜"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-emerald-500"
+                      type="url"
+                      value={webhookUrl}
+                      onChange={(e) => setWebhookUrl(e.target.value)}
+                      placeholder="https://suaprimeiraurln8n.com/webhooks/whatsapp"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
                     />
+                    <p className="text-[9.5px] text-slate-400 font-semibold leading-tight">Sempre que um novo pedido for confirmado no Firestore, enviaremos os dados em JSON para este webhook de destino.</p>
                   </div>
+
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">WhatsApp Comercial</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Chave Secreta de API (Token Baileys / Evolution)</label>
                     <input
-                      type="text"
-                      value={whatsappPhone}
-                      onChange={(e) => setWhatsappPhone(e.target.value)}
-                      placeholder="Ex: 5515998765432"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-emerald-500"
+                      type="password"
+                      value={apiSecret}
+                      onChange={(e) => setApiSecret(e.target.value)}
+                      placeholder="Insira o Bearer Token do seu serviço API..."
+                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">URL do Webhook (Gatilho) no n8n / Make</label>
-                  <input
-                    type="url"
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    placeholder="https://suaprimeiraurln8n.com/webhooks/whatsapp"
-                    className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
-                  />
-                  <p className="text-[9.5px] text-slate-400 font-semibold leading-tight">Sempre que um novo pedido for confirmado no Firestore, enviaremos os dados em JSON para este webhook de destino.</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Chave Secreta de API (Token Baileys / Evolution)</label>
-                  <input
-                    type="password"
-                    value={apiSecret}
-                    onChange={(e) => setApiSecret(e.target.value)}
-                    placeholder="Insira o Bearer Token do seu serviço API..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold">
-                    <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                    Criptografia SSL de Ponta a Ponta ativa.
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold">
+                      <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                      Criptografia SSL de Ponta a Ponta ativa.
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={handleSaveSettings}
+                      disabled={saving}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer disabled:opacity-50 active:scale-97 transition-all flex items-center gap-1.5"
+                    >
+                      {saving ? 'Gravando...' : saveSuccess ? '✓ Gravado com Sucesso!' : 'Salvar Configurações'}
+                    </button>
                   </div>
-                  
-                  <button
-                    onClick={handleSaveSettings}
-                    disabled={saving}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer disabled:opacity-50 active:scale-97 transition-all flex items-center gap-1.5"
-                  >
-                    {saving ? 'Gravando...' : saveSuccess ? '✓ Gravado com Sucesso!' : 'Salvar Configurações'}
-                  </button>
+                </div>
+
+                {/* Customizable Bot Messages & Options Card */}
+                <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <MessageSquare className="w-4.5 h-4.5 text-emerald-600" />
+                    <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">Mensagens Personalizadas do Assistente</h4>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                      1. Mensagem de Boas-Vindas (Resposta ao Olá inicial)
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={welcomeMsg}
+                      onChange={(e) => setWelcomeMsg(e.target.value)}
+                      placeholder="Mensagem inicial do robô..."
+                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-755 focus:border-emerald-500 font-sans"
+                    />
+                    <p className="text-[9.5px] text-slate-400 font-bold leading-tight">
+                      Dica: Use quebras de linha e formatação com asterisco em negrito (ex: *Negrito*, _Itálico_).
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        Link de Direcionamento do Cardápio
+                      </label>
+                      <input
+                        type="text"
+                        value={menuLink}
+                        onChange={(e) => setMenuLink(e.target.value)}
+                        placeholder="Ex: https://meusite.com"
+                        className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-755 focus:border-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        Como referenciar o link nas mensagens?
+                      </span>
+                      <div className="p-2 py-1.5 rounded-xl bg-slate-50 border border-slate-150 text-[9.5px] text-slate-550 font-semibold leading-normal">
+                        Utilize a tag <code className="bg-white px-1 py-0.5 rounded border border-slate-205 font-mono">{"{menu_link}"}</code> no texto da mensagem do cardápio para que o bot substitua pelo link acima!
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                      2. Resposta de Visualização de Cardápio (Opção 1)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={menuMsg}
+                      onChange={(e) => setMenuMsg(e.target.value)}
+                      placeholder="Texto que envia com o link do cardápio..."
+                      className="w-full p-2.5 rounded-xl border border-slate-205 outline-none text-xs font-semibold text-slate-755 focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                      3. Resposta de Atendimento / Suporte Humano (Opção 4)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={supportMsg}
+                      onChange={(e) => setSupportMsg(e.target.value)}
+                      placeholder="Texto para conectar com um atendente..."
+                      className="w-full p-2.5 rounded-xl border border-slate-205 outline-none text-xs font-semibold text-slate-755 focus:border-emerald-500"
+                    />
+                    <p className="text-[9.5px] text-slate-400 font-bold leading-tight">
+                      Dica: Use a tag <code className="bg-white px-1 py-0.5 rounded border border-slate-205 font-mono">{"{telefone}"}</code> para incluir o telefone comercial cadastrado automaticamente.
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <p className="text-[9.5px] text-slate-450 font-bold leading-normal">
+                      ✓ Salve para sincronizar instantaneamente com o simulador à esquerda e com o banco de dados.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleSaveSettings}
+                      disabled={saving}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer disabled:opacity-50 active:scale-97 transition-all flex items-center gap-1.5 shrink-0"
+                    >
+                      {saving ? 'Gravando...' : saveSuccess ? '✓ Gravado com Sucesso!' : 'Salvar Mensagens do Bot'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Customizable Bot Messages & Options Card */}
-              <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <MessageSquare className="w-4.5 h-4.5 text-emerald-600" />
-                  <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">Mensagens Personalizadas do Assistente</h4>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
-                    1. Mensagem de Boas-Vindas (Resposta ao Olá inicial)
-                  </label>
-                  <textarea
-                    rows={5}
-                    value={welcomeMsg}
-                    onChange={(e) => setWelcomeMsg(e.target.value)}
-                    placeholder="Mensagem inicial do robô..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-755 focus:border-emerald-500 font-sans"
-                  />
-                  <p className="text-[9.5px] text-slate-400 font-bold leading-tight">
-                    Dica: Use quebras de linha e formatação com asterisco em negrito (ex: *Negrito*, _Itálico_).
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
-                      Link de Direcionamento do Cardápio
-                    </label>
-                    <input
-                      type="text"
-                      value={menuLink}
-                      onChange={(e) => setMenuLink(e.target.value)}
-                      placeholder="Ex: https://meusite.com"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-755 focus:border-emerald-500"
-                    />
+              {/* Right Column: Internal QR Code Linking System */}
+              <div className="lg:col-span-5 space-y-5">
+                <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-xs space-y-5 text-center">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3 justify-center">
+                    <QrCode className="w-5 h-5 text-emerald-600 animate-pulse" />
+                    <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">🔗 Vincular Aparelho WhatsApp</h4>
                   </div>
-                  <div className="space-y-1">
-                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
-                      Como referenciar o link nas mensagens?
-                    </span>
-                    <div className="p-2 py-1.5 rounded-xl bg-slate-50 border border-slate-150 text-[9.5px] text-slate-550 font-semibold leading-normal">
-                      Utilize a tag <code className="bg-white px-1 py-0.5 rounded border border-slate-205 font-mono">{"{menu_link}"}</code> no texto da mensagem do cardápio para que o bot substitua pelo link acima!
+
+                  {qrCodeStatus === 'disconnected' && (
+                    <div className="space-y-4 py-2">
+                      <div className="text-left bg-slate-50 p-4 rounded-2xl border border-slate-150 text-[11px] leading-relaxed text-slate-600 font-semibold space-y-2">
+                        <p className="font-extrabold text-slate-800 uppercase tracking-wider text-[9px] mb-1">Como conectar:</p>
+                        <div className="flex gap-2 items-start">
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">1</span>
+                          <span>Abra o WhatsApp no seu celular comercial.</span>
+                        </div>
+                        <div className="flex gap-2 items-start">
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">2</span>
+                          <span>Toque em <strong className="text-slate-800">Aparelhos conectados</strong> e depois em <strong className="text-slate-800">Conectar um aparelho</strong>.</span>
+                        </div>
+                        <div className="flex gap-2 items-start">
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">3</span>
+                          <span>Clique no botão abaixo para gerar o QR Code interno e escaneie com a câmera.</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateQr}
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-xs rounded-2xl cursor-pointer shadow-md shadow-emerald-100 transition-all hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <QrCode className="w-4 h-4" />
+                        Gerar QR Code de Conexão
+                      </button>
                     </div>
-                  </div>
+                  )}
+
+                  {qrCodeStatus === 'generating' && (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-slate-100 border-t-emerald-600 animate-spin" />
+                        <Bot className="w-6 h-6 text-emerald-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-black uppercase text-slate-700 tracking-wider animate-pulse">Criando Instância Segura...</p>
+                        <p className="text-[10px] text-slate-400 font-bold">Autenticando com servidores Baileys/Evolution API</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {qrCodeStatus === 'waiting' && (
+                    <div className="space-y-5 py-2 flex flex-col items-center">
+                      <div className="relative p-4 bg-white border-2 border-slate-100 rounded-3xl shadow-sm">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=075E54&data=${encodeURIComponent(qrCodePayload)}`}
+                          alt="WhatsApp QR Code para conexão interna"
+                          className="w-48 h-48 sm:w-56 sm:h-56 select-none"
+                        />
+                        <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          {qrTimer}s restante
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center justify-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          Aguardando Leitura pelo Celular
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-bold max-w-xs mx-auto">
+                          Aponte a câmera do WhatsApp para conectar instantaneamente sem abas externas!
+                        </p>
+                      </div>
+
+                      <div className="w-full pt-2 border-t border-slate-100 space-y-2">
+                        <button
+                          type="button"
+                          onClick={handleSimulateScan}
+                          className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-97 transition-all"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          Simular Leitura pelo Celular
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQrCodeStatus('disconnected')}
+                          className="text-[10px] text-slate-400 hover:text-slate-650 font-bold underline"
+                        >
+                          Cancelar e Voltar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {qrCodeStatus === 'connecting' && (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-slate-100 border-t-emerald-600 animate-spin" />
+                        <RefreshCw className="w-6 h-6 text-emerald-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-black uppercase text-slate-700 tracking-wider">Validando Chaves de Acesso...</p>
+                        <p className="text-[10px] text-slate-400 font-bold">Estabelecendo WebSocket persistente com WhatsApp...</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {qrCodeStatus === 'connected' && (
+                    <div className="space-y-5 py-2">
+                      <div className="bg-emerald-50 border border-emerald-150 p-5 rounded-2xl flex flex-col items-center text-center space-y-3">
+                        <div className="w-12 h-12 bg-emerald-100 border border-emerald-200 rounded-full flex items-center justify-center text-emerald-600 text-xl shadow-inner relative">
+                          💬
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full animate-ping" />
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <h5 className="text-xs font-black uppercase tracking-wider text-emerald-950">WhatsApp Conectado!</h5>
+                          <p className="text-[10px] text-emerald-800 font-bold font-sans">O robô agora está ativo internamente para enviar confirmações.</p>
+                        </div>
+
+                        <div className="w-full pt-3 border-t border-emerald-100 text-left text-[11px] font-semibold text-emerald-900 space-y-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-emerald-700">Aparelho:</span>
+                            <span className="font-extrabold text-emerald-950">Sua Sorveteria Comercial</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-emerald-700">Status API:</span>
+                            <span className="font-extrabold text-emerald-950">ONLINE (Baileys v5)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-emerald-700">Canal Ativo:</span>
+                            <span className="font-extrabold text-emerald-950">Simulador + Webhook</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleDisconnectQr}
+                        className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        Desconectar Aparelho
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
-                    2. Resposta de Visualização de Cardápio (Opção 1)
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={menuMsg}
-                    onChange={(e) => setMenuMsg(e.target.value)}
-                    placeholder="Texto que envia com o link do cardápio..."
-                    className="w-full p-2.5 rounded-xl border border-slate-205 outline-none text-xs font-semibold text-slate-755 focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
-                    3. Resposta de Atendimento / Suporte Humano (Opção 4)
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={supportMsg}
-                    onChange={(e) => setSupportMsg(e.target.value)}
-                    placeholder="Texto para conectar com um atendente..."
-                    className="w-full p-2.5 rounded-xl border border-slate-205 outline-none text-xs font-semibold text-slate-755 focus:border-emerald-500"
-                  />
-                  <p className="text-[9.5px] text-slate-400 font-bold leading-tight">
-                    Dica: Use a tag <code className="bg-white px-1 py-0.5 rounded border border-slate-205 font-mono">{"{telefone}"}</code> para incluir o telefone comercial cadastrado automaticamente.
+                <div className="bg-emerald-50/50 p-4 border border-emerald-100/60 rounded-3xl space-y-2">
+                  <h5 className="text-[10.5px] font-black uppercase text-emerald-900 tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-4 h-4 text-emerald-600" /> Vantagens da Conexão Interna
+                  </h5>
+                  <p className="text-[10px] text-emerald-800 font-bold leading-relaxed">
+                    Ao conectar o WhatsApp diretamente, o sistema enviará links de rastreamento e confirmações aos clientes automaticamente, operando 24 horas por dia sem precisar manter o navegador ou abas extras abertas!
                   </p>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <p className="text-[9.5px] text-slate-450 font-bold leading-normal">
-                    ✓ Salve para sincronizar instantaneamente com o simulador à esquerda e com o banco de dados.
-                  </p>
-                  <button
-                    onClick={handleSaveSettings}
-                    disabled={saving}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer disabled:opacity-50 active:scale-97 transition-all flex items-center gap-1.5 shrink-0"
-                  >
-                    {saving ? 'Gravando...' : saveSuccess ? '✓ Gravado com Sucesso!' : 'Salvar Mensagens do Bot'}
-                  </button>
                 </div>
               </div>
             </motion.div>

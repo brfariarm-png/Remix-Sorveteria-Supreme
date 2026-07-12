@@ -4048,8 +4048,8 @@ export default function AdminCardapio({
                     <h3 className="font-serif font-black text-[#7c0f14] uppercase text-sm lg:text-base tracking-wider mb-2 pb-1 border-b border-[#7c0f14]/20 flex items-center gap-1.5">
                       🍨 Copos Especiais
                     </h3>
-                    <div className="space-y-2 flex-1 overflow-hidden">
-                      {specialCups.slice(0, 4).map((item) => (
+                    <div className="space-y-2 flex-1 overflow-y-auto max-h-[160px] lg:max-h-[220px] scrollbar-none pr-1">
+                      {specialCups.map((item) => (
                         <div key={item.id} className="flex justify-between items-center text-xs lg:text-sm border-b border-[#b28a38]/10 pb-1 truncate">
                           <span className="font-bold text-zinc-700 truncate max-w-[130px]">{item.name}</span>
                           <span className="font-black text-[#7c0f14] flex-shrink-0 bg-white px-1.5 py-0.2 rounded border border-[#b28a38]/20">{getItemPriceText(item)}</span>
@@ -4131,8 +4131,8 @@ export default function AdminCardapio({
                   <div className="text-[11px] font-black uppercase text-[#b28a38] leading-tight text-center truncate border-b border-[#b28a38]/25 pb-1 mb-1 bg-[#7c0f14] text-white rounded-lg">
                     BALDES
                   </div>
-                  <div className="space-y-1 flex-1 overflow-hidden mt-1">
-                    {baldesAndCafes.filter(x => x.name.toLowerCase().includes('balde') || x.category === 'baldes').slice(0, 2).map(b => (
+                  <div className="space-y-1 flex-1 overflow-y-auto max-h-[75px] lg:max-h-[100px] scrollbar-none mt-1">
+                    {baldesAndCafes.filter(x => x.name.toLowerCase().includes('balde') || x.category === 'baldes').map(b => (
                       <div key={b.id} className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700 truncate">
                         <span className="truncate max-w-[85px] font-bold">{b.name}</span>
                         <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-1 rounded">{getItemPriceText(b).replace('R$', '')}</span>
@@ -4158,8 +4158,8 @@ export default function AdminCardapio({
                   <div className="text-[11px] font-black uppercase text-[#b28a38] leading-tight text-center truncate border-b border-[#b28a38]/25 pb-1 mb-1 bg-[#b28a38] text-white rounded-lg">
                     CAFÉS
                   </div>
-                  <div className="space-y-1 flex-1 overflow-hidden mt-1">
-                    {baldesAndCafes.filter(x => !x.name.toLowerCase().includes('balde') && x.category !== 'baldes').slice(0, 2).map(c => (
+                  <div className="space-y-1 flex-1 overflow-y-auto max-h-[75px] lg:max-h-[100px] scrollbar-none mt-1">
+                    {baldesAndCafes.filter(x => !x.name.toLowerCase().includes('balde') && x.category !== 'baldes').map(c => (
                       <div key={c.id} className="flex justify-between items-center text-[10.5px] leading-tight text-zinc-700 truncate">
                         <span className="truncate max-w-[85px] font-bold">{c.name}</span>
                         <span className="font-black text-[#7c0f14] bg-[#7c0f14]/5 px-1 rounded">{getItemPriceText(c).replace('R$', '')}</span>
