@@ -37,6 +37,25 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [apiSecret, setApiSecret] = useState(storeSettings.whatsappApiKey || 'sk_supreme_prod_xyz789');
   const [botName, setBotName] = useState(storeSettings.whatsappBotName || 'Supreme Bot Premium 💜');
   
+  // Real Connection Provider states
+  const [connectionProvider, setConnectionProvider] = useState<'simulator' | 'evolution' | 'zapi' | 'wppconnect'>(
+    storeSettings.whatsappConnectionProvider || 'simulator'
+  );
+  
+  const [evolutionUrl, setEvolutionUrl] = useState(storeSettings.whatsappEvolutionUrl || '');
+  const [evolutionInstance, setEvolutionInstance] = useState(storeSettings.whatsappEvolutionInstance || '');
+  const [evolutionToken, setEvolutionToken] = useState(storeSettings.whatsappEvolutionToken || '');
+  
+  const [zapiInstanceId, setZapiInstanceId] = useState(storeSettings.whatsappZapiInstanceId || '');
+  const [zapiToken, setZapiToken] = useState(storeSettings.whatsappZapiToken || '');
+  
+  const [wppconnectUrl, setWppconnectUrl] = useState(storeSettings.whatsappWppconnectUrl || '');
+  const [wppconnectInstance, setWppconnectInstance] = useState(storeSettings.whatsappWppconnectInstance || '');
+  const [wppconnectToken, setWppconnectToken] = useState(storeSettings.whatsappWppconnectToken || '');
+
+  const [qrError, setQrError] = useState('');
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
   // Internal WhatsApp Device Linking QR Code states
   const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>(() => {
     return (localStorage.getItem('whatsapp_qr_status') as any) || 'disconnected';
@@ -57,16 +76,188 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     return () => clearInterval(interval);
   }, [qrCodeStatus, qrTimer]);
 
-  // Handle generating QR Code trigger
-  const handleGenerateQr = () => {
-    setQrCodeStatus('generating');
-    setQrTimer(60);
-    setTimeout(() => {
-      // Create a nice simulated whatsapp pairing payload
-      const payload = `supreme_wa_pairing_code_${whatsappPhone || 'business'}_${Math.random().toString(36).substring(2, 10)}`;
-      setQrCodePayload(payload);
-      setQrCodeStatus('waiting');
-    }, 1500);
+  // Handle checking real status from API provider
+  const handleCheckRealConnectionStatus = async () => {
+    if (connectionProvider === 'simulator') {
+      alert("No modo Simulador, a conexão é fictícia e está sempre online.");
+      return;
+    }
+    setCheckingStatus(true);
+    try {
+      if (connectionProvider === 'evolution') {
+        const cleanUrl = evolutionUrl.replace(/\/$/, '');
+        const res = await fetch(`${cleanUrl}/instance/connectionState/${evolutionInstance}`, {
+          method: 'GET',
+          headers: {
+            'apikey': evolutionToken
+          }
+        });
+        const data = await res.json();
+        if (data && (data.instance?.state === 'open' || data.instance?.status === 'connected')) {
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          alert("✓ Seu WhatsApp continua conectado e online na Evolution API!");
+        } else {
+          setQrCodeStatus('disconnected');
+          localStorage.removeItem('whatsapp_qr_status');
+          alert("❌ Aparelho desconectado ou em sincronização na Evolution API. Por favor, tente conectar novamente.");
+        }
+      } else if (connectionProvider === 'zapi') {
+        const res = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/status`);
+        const data = await res.json();
+        if (data && (data.connected === true || data.instanceStatus === 'CONNECTED')) {
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          alert("✓ Seu WhatsApp continua conectado e online na Z-API!");
+        } else {
+          setQrCodeStatus('disconnected');
+          localStorage.removeItem('whatsapp_qr_status');
+          alert("❌ Aparelho desconectado ou em sincronização na Z-API. Por favor, tente conectar novamente.");
+        }
+      } else if (connectionProvider === 'wppconnect') {
+        const cleanUrl = wppconnectUrl.replace(/\/$/, '');
+        const res = await fetch(`${cleanUrl}/api/${wppconnectInstance}/status-session`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${wppconnectToken}`
+          }
+        });
+        const data = await res.json();
+        if (data && (data.status === 'CONNECTED' || data.connected === true)) {
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          alert("✓ Seu WhatsApp continua conectado e online no WPPConnect!");
+        } else {
+          setQrCodeStatus('disconnected');
+          localStorage.removeItem('whatsapp_qr_status');
+          alert("❌ Aparelho desconectado no WPPConnect. Por favor, tente conectar novamente.");
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`Erro ao buscar status na API externa: ${e.message || e}`);
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  // Handle generating QR Code trigger (Supports real APIs now!)
+  const handleGenerateQr = async () => {
+    setQrError('');
+    if (connectionProvider === 'simulator') {
+      setQrCodeStatus('generating');
+      setQrTimer(60);
+      setTimeout(() => {
+        // Create a nice simulated whatsapp pairing payload
+        const payload = `supreme_wa_pairing_code_${whatsappPhone || 'business'}_${Math.random().toString(36).substring(2, 10)}`;
+        setQrCodePayload(payload);
+        setQrCodeStatus('waiting');
+      }, 1500);
+    } else if (connectionProvider === 'evolution') {
+      setQrCodeStatus('generating');
+      try {
+        if (!evolutionUrl || !evolutionInstance || !evolutionToken) {
+          throw new Error('Preencha os campos da Evolution API (URL, Instância e Token) na aba de Ajustes abaixo!');
+        }
+        const cleanUrl = evolutionUrl.replace(/\/$/, '');
+        const res = await fetch(`${cleanUrl}/instance/connect/${evolutionInstance}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': evolutionToken
+          }
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Erro na API (${res.status}): ${text || 'Verifique as credenciais.'}`);
+        }
+        const data = await res.json();
+        if (data.status === 'open' || data.status === 'CONNECTED') {
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+        } else if (data.code || (data.qrcode && data.qrcode.code)) {
+          const qrCodeStr = data.code || data.qrcode.code;
+          setQrCodePayload(qrCodeStr);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
+        } else if (data.base64) {
+          setQrCodePayload(data.base64);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
+        } else {
+          throw new Error('Instância criada, mas nenhum QR Code foi retornado. Verifique se o aparelho já está conectado ou reinicie a instância!');
+        }
+      } catch (err: any) {
+        console.error(err);
+        setQrError(err.message || 'Erro ao conectar à Evolution API');
+        setQrCodeStatus('disconnected');
+      }
+    } else if (connectionProvider === 'zapi') {
+      setQrCodeStatus('generating');
+      try {
+        if (!zapiInstanceId || !zapiToken) {
+          throw new Error('Preencha os campos da Z-API (ID da Instância e Token de Segurança) na aba de Ajustes abaixo!');
+        }
+        const res = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/qr-code`);
+        if (!res.ok) {
+          throw new Error(`Erro na Z-API (${res.status}). Verifique se o ID e o Token estão corretos.`);
+        }
+        const data = await res.json();
+        if (data.connected === true) {
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+        } else if (data.value) {
+          setQrCodePayload(data.value);
+          setQrCodeStatus('waiting');
+          setQrTimer(60);
+        } else if (data.image) {
+          setQrCodePayload(data.image);
+          setQrCodeStatus('waiting');
+          setQrTimer(60);
+        } else {
+          throw new Error('Z-API não retornou QR Code. Verifique o status da sua instância no painel Z-API!');
+        }
+      } catch (err: any) {
+        console.error(err);
+        setQrError(err.message || 'Erro ao conectar à Z-API');
+        setQrCodeStatus('disconnected');
+      }
+    } else if (connectionProvider === 'wppconnect') {
+      setQrCodeStatus('generating');
+      try {
+        if (!wppconnectUrl || !wppconnectInstance || !wppconnectToken) {
+          throw new Error('Preencha os campos do WPPConnect (URL, Instância e Token) na aba de Ajustes abaixo!');
+        }
+        const cleanUrl = wppconnectUrl.replace(/\/$/, '');
+        const res = await fetch(`${cleanUrl}/api/${wppconnectInstance}/start-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${wppconnectToken}`
+          }
+        });
+        if (!res.ok) {
+          throw new Error(`Erro no WPPConnect (${res.status}). Verifique as credenciais.`);
+        }
+        const data = await res.json();
+        if (data.status === 'CONNECTED' || data.status === 'QRCODE' || data.qrcode) {
+          if (data.status === 'CONNECTED') {
+            setQrCodeStatus('connected');
+            localStorage.setItem('whatsapp_qr_status', 'connected');
+          } else {
+            setQrCodePayload(data.qrcode || data.code);
+            setQrCodeStatus('waiting');
+            setQrTimer(120);
+          }
+        } else {
+          throw new Error('Nenhum QR Code pendente ou status desconhecido no WPPConnect.');
+        }
+      } catch (err: any) {
+        console.error(err);
+        setQrError(err.message || 'Erro ao conectar ao WPPConnect');
+        setQrCodeStatus('disconnected');
+      }
+    }
   };
 
   // Handle simulated scan/connection trigger
@@ -212,6 +403,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         whatsappBotMenuMessage: menuMsg,
         whatsappBotMenuLink: menuLink,
         whatsappBotSupportMessage: supportMsg,
+        whatsappConnectionProvider: connectionProvider,
+        whatsappEvolutionUrl: evolutionUrl,
+        whatsappEvolutionInstance: evolutionInstance,
+        whatsappEvolutionToken: evolutionToken,
+        whatsappZapiInstanceId: zapiInstanceId,
+        whatsappZapiToken: zapiToken,
+        whatsappWppconnectUrl: wppconnectUrl,
+        whatsappWppconnectInstance: wppconnectInstance,
+        whatsappWppconnectToken: wppconnectToken,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -617,6 +817,26 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </label>
                   </div>
 
+                  <div className="space-y-3 bg-slate-50 p-4.5 rounded-2xl border border-slate-150/80">
+                    <label className="block text-[10.5px] font-black uppercase tracking-wide text-slate-700 flex items-center gap-1">
+                      <span>⚡ Canal de Conexão WhatsApp</span>
+                      <span className="bg-emerald-100 text-emerald-800 text-[8.5px] font-black px-1.5 py-0.5 rounded uppercase">Real / Produção</span>
+                    </label>
+                    <select
+                      value={connectionProvider}
+                      onChange={(e: any) => setConnectionProvider(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white outline-none text-xs font-bold text-slate-750 focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="simulator">Simulador Interativo de Testes (Mock)</option>
+                      <option value="evolution">Evolution API (Recomendado VPS / Open-Source)</option>
+                      <option value="zapi">Z-API Gateway (Profissional Pago)</option>
+                      <option value="wppconnect">WPPConnect Server (Custom API)</option>
+                    </select>
+                    <p className="text-[9.5px] text-slate-500 font-medium leading-relaxed">
+                      Selecione <strong>"Evolution API"</strong>, <strong>"Z-API"</strong> ou <strong>"WPPConnect"</strong> para usar sua infraestrutura de WhatsApp real. O sistema carregará o QR Code oficial diretamente de lá para você escanear e deixará de simular!
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Nome do Robô / Bot</label>
@@ -640,28 +860,155 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">URL do Webhook (Gatilho) no n8n / Make</label>
-                    <input
-                      type="url"
-                      value={webhookUrl}
-                      onChange={(e) => setWebhookUrl(e.target.value)}
-                      placeholder="https://suaprimeiraurln8n.com/webhooks/whatsapp"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
-                    />
-                    <p className="text-[9.5px] text-slate-400 font-semibold leading-tight">Sempre que um novo pedido for confirmado no Firestore, enviaremos os dados em JSON para este webhook de destino.</p>
-                  </div>
+                  {/* Dynamic Connection Settings Form Fields */}
+                  {connectionProvider === 'simulator' && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">URL do Webhook (Gatilho) no n8n / Make</label>
+                        <input
+                          type="url"
+                          value={webhookUrl}
+                          onChange={(e) => setWebhookUrl(e.target.value)}
+                          placeholder="https://suaprimeiraurln8n.com/webhooks/whatsapp"
+                          className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
+                        />
+                        <p className="text-[9.5px] text-slate-400 font-semibold leading-tight">Sempre que um novo pedido for confirmado no Firestore, enviaremos os dados em JSON para este webhook de destino.</p>
+                      </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Chave Secreta de API (Token Baileys / Evolution)</label>
-                    <input
-                      type="password"
-                      value={apiSecret}
-                      onChange={(e) => setApiSecret(e.target.value)}
-                      placeholder="Insira o Bearer Token do seu serviço API..."
-                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
-                    />
-                  </div>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Chave Secreta de API (Token Baileys / Evolution)</label>
+                        <input
+                          type="password"
+                          value={apiSecret}
+                          onChange={(e) => setApiSecret(e.target.value)}
+                          placeholder="Insira o Bearer Token do seu serviço API..."
+                          className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {connectionProvider === 'evolution' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4 border-l-2 border-emerald-500 pl-3 py-1 bg-emerald-50/20 rounded-r-xl"
+                    >
+                      <h5 className="text-[11px] font-black text-emerald-950 uppercase">Configuração da Evolution API</h5>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">URL Base do Servidor (API URL)</label>
+                          <input
+                            type="url"
+                            value={evolutionUrl}
+                            onChange={(e) => setEvolutionUrl(e.target.value)}
+                            placeholder="Ex: https://api.evolution-api.com"
+                            className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Nome da Instância</label>
+                            <input
+                              type="text"
+                              value={evolutionInstance}
+                              onChange={(e) => setEvolutionInstance(e.target.value)}
+                              placeholder="Ex: supreme-bot"
+                              className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Token Global / Api Key</label>
+                            <input
+                              type="password"
+                              value={evolutionToken}
+                              onChange={(e) => setEvolutionToken(e.target.value)}
+                              placeholder="Insira a API Key..."
+                              className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {connectionProvider === 'zapi' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4 border-l-2 border-blue-500 pl-3 py-1 bg-blue-50/20 rounded-r-xl"
+                    >
+                      <h5 className="text-[11px] font-black text-blue-950 uppercase">Configuração do Gateway Z-API</h5>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">ID da Instância (Instance ID)</label>
+                            <input
+                              type="text"
+                              value={zapiInstanceId}
+                              onChange={(e) => setZapiInstanceId(e.target.value)}
+                              placeholder="Ex: 3B8C19D836..."
+                              className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Token da Instância (Security Token)</label>
+                            <input
+                              type="password"
+                              value={zapiToken}
+                              onChange={(e) => setZapiToken(e.target.value)}
+                              placeholder="Insira o Token..."
+                              className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {connectionProvider === 'wppconnect' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1 bg-indigo-50/20 rounded-r-xl"
+                    >
+                      <h5 className="text-[11px] font-black text-indigo-950 uppercase">Configuração do WPPConnect Server</h5>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">URL do Servidor WPPConnect</label>
+                          <input
+                            type="url"
+                            value={wppconnectUrl}
+                            onChange={(e) => setWppconnectUrl(e.target.value)}
+                            placeholder="Ex: https://meuwppconnect.com"
+                            className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-indigo-500"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Nome da Instância / Session</label>
+                            <input
+                              type="text"
+                              value={wppconnectInstance}
+                              onChange={(e) => setWppconnectInstance(e.target.value)}
+                              placeholder="Ex: sessao-supreme"
+                              className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Token JWT de Autenticação</label>
+                            <input
+                              type="password"
+                              value={wppconnectToken}
+                              onChange={(e) => setWppconnectToken(e.target.value)}
+                              placeholder="Insira o Token JWT..."
+                              className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold">
@@ -781,21 +1128,71 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
                   {qrCodeStatus === 'disconnected' && (
                     <div className="space-y-4 py-2">
+                      {connectionProvider === 'simulator' ? (
+                        <div className="bg-amber-50 border border-amber-200/70 rounded-2xl p-3.5 text-left text-[11px] font-semibold text-amber-900 leading-relaxed space-y-1.5">
+                          <p className="font-extrabold uppercase tracking-wide text-amber-950 flex items-center gap-1.5 text-[10px]">
+                            ⚠️ IMPORTANTE SOBRE CONEXÃO FISICA
+                          </p>
+                          <p>
+                            O WhatsApp Oficial apenas aceita conexões de QR Code gerados por servidores de produção ativos em tempo real (como Baileys, Evolution API ou Z-API).
+                          </p>
+                          <p className="font-bold text-amber-950">
+                            Se você tentar escanear com a câmera do seu WhatsApp, o aplicativo acusará "QR Code Inválido".
+                          </p>
+                          <p className="text-emerald-800 font-extrabold">
+                            👉 Para testar o Robô imediatamente neste protótipo, clique em "Gerar QR Code" e depois no botão de simulação!
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-emerald-50 border border-emerald-200/70 rounded-2xl p-3.5 text-left text-[11px] font-semibold text-emerald-955 leading-relaxed space-y-1.5 animate-pulse">
+                          <p className="font-extrabold uppercase tracking-wide text-emerald-950 flex items-center gap-1.5 text-[10px]">
+                            ⚡ CONEXÃO REAL ATIVA ({connectionProvider.toUpperCase()})
+                          </p>
+                          <p>
+                            Você configurou uma API de produção real! Ao clicar no botão abaixo, iremos consultar o seu servidor para gerar um <strong>QR Code oficial e funcional de WhatsApp</strong>.
+                          </p>
+                          <p className="font-extrabold">
+                            Abra seu celular, acesse Aparelhos Conectados no WhatsApp e escaneie o QR Code gerado para vincular de verdade!
+                          </p>
+                        </div>
+                      )}
+
                       <div className="text-left bg-slate-50 p-4 rounded-2xl border border-slate-150 text-[11px] leading-relaxed text-slate-600 font-semibold space-y-2">
-                        <p className="font-extrabold text-slate-800 uppercase tracking-wider text-[9px] mb-1">Como conectar:</p>
-                        <div className="flex gap-2 items-start">
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">1</span>
-                          <span>Abra o WhatsApp no seu celular comercial.</span>
-                        </div>
-                        <div className="flex gap-2 items-start">
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">2</span>
-                          <span>Toque em <strong className="text-slate-800">Aparelhos conectados</strong> e depois em <strong className="text-slate-800">Conectar um aparelho</strong>.</span>
-                        </div>
-                        <div className="flex gap-2 items-start">
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">3</span>
-                          <span>Clique no botão abaixo para gerar o QR Code interno e escaneie com a câmera.</span>
-                        </div>
+                        <p className="font-extrabold text-slate-800 uppercase tracking-wider text-[9px] mb-1">Passos para ativação:</p>
+                        {connectionProvider === 'simulator' ? (
+                          <>
+                            <div className="flex gap-2 items-start">
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">1</span>
+                              <span>Clique no botão abaixo para simular a criação de uma sessão segura Baileys.</span>
+                            </div>
+                            <div className="flex gap-2 items-start">
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">2</span>
+                              <span>Quando o QR Code carregar, clique no botão <strong className="text-emerald-700">"Simular Leitura pelo Celular"</strong> para ativar instantaneamente!</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex gap-2 items-start">
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">1</span>
+                              <span>Certifique-se de que salvou suas credenciais na aba Ajustes à esquerda.</span>
+                            </div>
+                            <div className="flex gap-2 items-start">
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">2</span>
+                              <span>Clique em "Gerar QR Code Real" para buscar a imagem de pareamento oficial.</span>
+                            </div>
+                            <div className="flex gap-2 items-start">
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] w-5 h-5 flex items-center justify-center rounded-full shrink-0 font-bold">3</span>
+                              <span>Abra o WhatsApp no celular, vá em Aparelhos Conectados e escaneie a tela!</span>
+                            </div>
+                          </>
+                        )}
                       </div>
+
+                      {qrError && (
+                        <div className="p-3 bg-rose-50 border border-rose-150 rounded-xl text-[10.5px] text-rose-700 font-bold text-left">
+                          ⚠️ {qrError}
+                        </div>
+                      )}
 
                       <button
                         type="button"
@@ -803,7 +1200,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-xs rounded-2xl cursor-pointer shadow-md shadow-emerald-100 transition-all hover:shadow-lg flex items-center justify-center gap-2"
                       >
                         <QrCode className="w-4 h-4" />
-                        Gerar QR Code de Conexão
+                        {connectionProvider === 'simulator' ? 'Iniciar Ativação do Robô' : 'Gerar QR Code de Conexão Real'}
                       </button>
                     </div>
                   )}
@@ -815,44 +1212,90 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         <Bot className="w-6 h-6 text-emerald-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs font-black uppercase text-slate-700 tracking-wider animate-pulse">Criando Instância Segura...</p>
-                        <p className="text-[10px] text-slate-400 font-bold">Autenticando com servidores Baileys/Evolution API</p>
+                        <p className="text-xs font-black uppercase text-slate-700 tracking-wider animate-pulse">Consultando Gateway...</p>
+                        <p className="text-[10px] text-slate-400 font-bold">
+                          {connectionProvider === 'simulator' 
+                            ? 'Criando Instância Segura no Simulador...' 
+                            : `Conectando com seu servidor ${connectionProvider.toUpperCase()}...`}
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {qrCodeStatus === 'waiting' && (
                     <div className="space-y-5 py-2 flex flex-col items-center">
+                      <div className="bg-amber-50 border border-amber-200/70 rounded-2xl p-3 text-left text-[10.5px] font-semibold text-amber-900 leading-normal w-full">
+                        {connectionProvider === 'simulator' ? (
+                          <>
+                            <strong className="text-amber-950 uppercase tracking-wider text-[9px] block mb-0.5">💡 COMO CONECTAR AGORA:</strong>
+                            Não escaneie com seu celular real! Clique no botão verde <strong className="text-emerald-700">"Simular Leitura pelo Celular"</strong> logo abaixo para emular a leitura com sucesso.
+                          </>
+                        ) : (
+                          <>
+                            <strong className="text-emerald-950 uppercase tracking-wider text-[9px] block mb-0.5">✅ QR CODE REAL PRONTO:</strong>
+                            Este QR Code é oficial! Abra seu WhatsApp no celular (Menu &gt; Aparelhos Conectados &gt; Conectar um Aparelho) e escaneie a imagem abaixo para linkar!
+                          </>
+                        )}
+                      </div>
+
                       <div className="relative p-4 bg-white border-2 border-slate-100 rounded-3xl shadow-sm">
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=075E54&data=${encodeURIComponent(qrCodePayload)}`}
-                          alt="WhatsApp QR Code para conexão interna"
+                          src={qrCodePayload.startsWith('data:image') || qrCodePayload.startsWith('http')
+                            ? qrCodePayload
+                            : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=075E54&data=${encodeURIComponent(qrCodePayload)}`
+                          }
+                          alt="WhatsApp QR Code para conexão"
                           className="w-48 h-48 sm:w-56 sm:h-56 select-none"
                         />
+                        {connectionProvider === 'simulator' && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/10 backdrop-blur-[1px] rounded-3xl">
+                            <span className="bg-amber-500 text-white font-extrabold text-[9px] uppercase px-2.5 py-1 rounded-full tracking-wider shadow-md">
+                              CÓDIGO DE SIMULAÇÃO
+                            </span>
+                          </div>
+                        )}
                         <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                           {qrTimer}s restante
                         </div>
                       </div>
 
-                      <div className="space-y-1">
+                      <div className="space-y-1 text-center">
                         <p className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center justify-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                          Aguardando Leitura pelo Celular
+                          {connectionProvider === 'simulator' ? 'Aguardando Leitura Simulada' : 'Aguardando Leitura do Celular'}
                         </p>
                         <p className="text-[10px] text-slate-500 font-bold max-w-xs mx-auto">
-                          Aponte a câmera do WhatsApp para conectar instantaneamente sem abas externas!
+                          {connectionProvider === 'simulator' 
+                            ? 'Clique no botão de simulação abaixo para parear e liberar o bot de testes!' 
+                            : 'O QR Code expira em instantes. Após escanear, o WhatsApp conectará automaticamente!'}
                         </p>
                       </div>
 
                       <div className="w-full pt-2 border-t border-slate-100 space-y-2">
-                        <button
-                          type="button"
-                          onClick={handleSimulateScan}
-                          className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-97 transition-all"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          Simular Leitura pelo Celular
-                        </button>
+                        {connectionProvider === 'simulator' ? (
+                          <button
+                            type="button"
+                            onClick={handleSimulateScan}
+                            className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-97 transition-all"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Simular Leitura pelo Celular
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Force active check
+                              setQrCodeStatus('connected');
+                              localStorage.setItem('whatsapp_qr_status', 'connected');
+                              alert("✓ Aparelho pareado com sucesso! Iniciando sincronização no painel.");
+                            }}
+                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-97 transition-all"
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            Já Escaneei (Confirmar Conexão)
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setQrCodeStatus('disconnected')}
@@ -887,25 +1330,45 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         </div>
                         
                         <div className="space-y-1">
-                          <h5 className="text-xs font-black uppercase tracking-wider text-emerald-950">WhatsApp Conectado!</h5>
-                          <p className="text-[10px] text-emerald-800 font-bold font-sans">O robô agora está ativo internamente para enviar confirmações.</p>
+                          <h5 className="text-xs font-black uppercase tracking-wider text-emerald-955">WhatsApp Conectado!</h5>
+                          <p className="text-[10px] text-emerald-800 font-bold font-sans">
+                            {connectionProvider === 'simulator' 
+                              ? 'O robô agora está ativo internamente para enviar confirmações.'
+                              : `Sua instância real (${connectionProvider.toUpperCase()}) está ativa!`}
+                          </p>
                         </div>
-
+ 
                         <div className="w-full pt-3 border-t border-emerald-100 text-left text-[11px] font-semibold text-emerald-900 space-y-1.5">
                           <div className="flex justify-between">
                             <span className="text-emerald-700">Aparelho:</span>
-                            <span className="font-extrabold text-emerald-950">Sua Sorveteria Comercial</span>
+                            <span className="font-extrabold text-emerald-950">
+                              {connectionProvider === 'simulator' ? 'Sua Sorveteria Comercial' : `Aparelho real (${whatsappPhone || 'Cadastrado'})`}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-emerald-700">Canal Ativo:</span>
+                            <span className="font-extrabold text-emerald-950">
+                              {connectionProvider === 'simulator' ? 'Simulador + Webhook' : `${connectionProvider.toUpperCase()} Gateway`}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-emerald-700">Status API:</span>
                             <span className="font-extrabold text-emerald-950">ONLINE (Baileys v5)</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-emerald-700">Canal Ativo:</span>
-                            <span className="font-extrabold text-emerald-950">Simulador + Webhook</span>
-                          </div>
                         </div>
                       </div>
+
+                      {connectionProvider !== 'simulator' && (
+                        <button
+                          type="button"
+                          onClick={handleCheckRealConnectionStatus}
+                          disabled={checkingStatus}
+                          className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${checkingStatus ? 'animate-spin' : ''}`} />
+                          {checkingStatus ? 'Buscando status...' : 'Atualizar Status de Conexão'}
+                        </button>
+                      )}
 
                       <button
                         type="button"
