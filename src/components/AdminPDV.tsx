@@ -38,7 +38,7 @@ export default function AdminPDV({
 
   // Helper to get the correct display price of a menu item based on store configurations
   const getMenuItemDisplayPrice = (item: MenuItem): number => {
-    const sizeMode = item.sizeMode || (item.customizable ? 'default' : 'single');
+    const sizeMode = item.sizeMode || (item.customizable || item.category === 'sorvete' || item.category === 'copos_especiais' || item.category === 'sundae' ? 'default' : 'single');
 
     if (sizeMode === 'single') {
       return Number(item.singleSizePrice ?? item.price ?? 0);
@@ -84,8 +84,8 @@ export default function AdminPDV({
 
   // Customizable Cup Modal state
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
-  const [customSize, setCustomSize] = useState<'300ml' | '400ml' | '500ml' | '700ml'>('300ml');
-  const [customBase, setCustomBase] = useState<'acai' | 'sorvete' | 'casadinho'>('acai');
+  const [customSize, setCustomSize] = useState<string>('400ml');
+  const [customBase, setCustomBase] = useState<'acai' | 'sorvete' | 'casadinho'>('casadinho');
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [itemSpecificNotes, setItemSpecificNotes] = useState('');
@@ -98,21 +98,141 @@ export default function AdminPDV({
     onConfirm: () => void;
   } | null>(null);
 
+  // Helpers to align with CupCustomizer logic
+  const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
+    if (!customizingItem) return 'default';
+    if (customizingItem.sizeMode) {
+      return customizingItem.sizeMode;
+    }
+    if (customizingItem.category === 'sorvete') {
+      return 'single';
+    }
+    return 'default';
+  }, [customizingItem]);
+
+  const isLinhaBrownie = customizingItem ? (customizingItem.id === 'acai-sensacao' || customizingItem.name === 'Linha Brownie' || customizingItem.name?.toLowerCase().includes('brownie')) : false;
+  const isMilkshake = customizingItem ? (customizingItem.category === 'milkshake' || customizingItem.category === 'milkshake_especiais' || customizingItem.category?.includes('milkshake')) : false;
+  const isSplit = customizingItem ? (customizingItem.name?.toLowerCase()?.includes('banana split') || customizingItem.name?.toLowerCase()?.includes('morango split') || customizingItem.id?.toLowerCase()?.includes('banana-split') || customizingItem.id?.toLowerCase()?.includes('morango-split')) : false;
+  const isCopoTrufado = customizingItem ? (customizingItem.name?.toLowerCase()?.includes('trufado') || customizingItem.id?.toLowerCase()?.includes('trufado')) : false;
+
+  const maxFlavors = useMemo(() => {
+    if (isMilkshake) return 1;
+    if (isSplit) return 2;
+    if (isCopoTrufado) return 2;
+    if (customizingItem?.id === 'gelato-supreme' || customizingItem?.name?.toLowerCase()?.includes('triplo') || customizingItem?.name?.toLowerCase()?.includes('premium')) {
+      return 3;
+    }
+    return 2;
+  }, [isMilkshake, customizingItem, isSplit, isCopoTrufado]);
+
+  const sizeOptions = useMemo(() => {
+    if (!customizingItem) return [];
+    if (resolvedSizeMode === 'single') {
+      return [{ id: 'single', label: customizingItem.singleSizeLabel || 'Tamanho Único' }];
+    }
+    if (resolvedSizeMode === 'custom' && customizingItem.customSizes) {
+      return Object.entries(customizingItem.customSizes)
+        .filter(([_, data]) => data.active)
+        .map(([id, data]) => ({ id, label: data.label }));
+    }
+    if (isLinhaBrownie) {
+      return [
+        { id: '400ml', label: storeSettings?.brownieLabels?.['400ml'] || '400ml' },
+        { id: '500ml', label: storeSettings?.brownieLabels?.['500ml'] || '500ml' },
+        { id: '700ml', label: storeSettings?.brownieLabels?.['700ml'] || '700ml' },
+      ];
+    }
+    if (isMilkshake) {
+      return [
+        { id: '300ml', label: storeSettings?.milkshakeLabels?.['300ml'] || '300ml' },
+        { id: '400ml', label: storeSettings?.milkshakeLabels?.['400ml'] || '400ml' },
+        { id: '500ml', label: storeSettings?.milkshakeLabels?.['500ml'] || '500ml' },
+        { id: '700ml', label: storeSettings?.milkshakeLabels?.['700ml'] || '700ml' },
+      ];
+    }
+    return [
+      { id: '300ml', label: storeSettings?.cupLabels?.['300ml'] || '300ml' },
+      { id: '400ml', label: storeSettings?.cupLabels?.['400ml'] || '400ml' },
+      { id: '500ml', label: storeSettings?.cupLabels?.['500ml'] || '500ml' },
+      { id: '700ml', label: storeSettings?.cupLabels?.['700ml'] || '700ml' },
+    ];
+  }, [customizingItem, resolvedSizeMode, isLinhaBrownie, isMilkshake, storeSettings]);
+
+  const getSizeOptionPrice = (sizeId: string): number => {
+    if (!customizingItem) return 0;
+    if (resolvedSizeMode === 'single') {
+      return customizingItem.singleSizePrice || customizingItem.price || 0;
+    }
+    if (resolvedSizeMode === 'custom' && customizingItem.customSizes) {
+      return customizingItem.customSizes[sizeId]?.price ?? 15;
+    }
+    if (isLinhaBrownie) {
+      if (sizeId === '300ml') return Number(storeSettings?.browniePrices?.['300ml'] ?? 16.90);
+      if (sizeId === '400ml') return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
+      if (sizeId === '500ml') return Number(storeSettings?.browniePrices?.['500ml'] ?? 28.90);
+      if (sizeId === '700ml') return Number(storeSettings?.browniePrices?.['700ml'] ?? 34.90);
+      return Number(storeSettings?.browniePrices?.['400ml'] ?? 22.90);
+    }
+    if (isMilkshake) {
+      if (sizeId === '300ml') return Number(storeSettings?.milkshakePrices?.['300ml'] ?? 15.00);
+      if (sizeId === '400ml') return Number(storeSettings?.milkshakePrices?.['400ml'] ?? 18.00);
+      if (sizeId === '500ml') return Number(storeSettings?.milkshakePrices?.['500ml'] ?? 21.00);
+      return Number(storeSettings?.milkshakePrices?.['700ml'] ?? 25.00);
+    }
+    const visualSize = (sizeId === 'single' || !['300ml', '400ml', '500ml', '700ml'].includes(sizeId)) ? '400ml' : sizeId as '300ml' | '400ml' | '500ml' | '700ml';
+    return getCustomCupBasePrice(visualSize, storeSettings?.cupPrices);
+  };
+
+  const availableFlavors = useMemo(() => {
+    if (!customizingItem) return [];
+    let list = flavorOptions;
+    if (customBase === 'acai') {
+      list = flavorOptions.filter((f) => f.id === 'acai-puro-organico');
+    } else if (customBase === 'sorvete') {
+      list = flavorOptions.filter((f) => f.category === 'sorvete');
+    } else if (customBase === 'casadinho') {
+      list = flavorOptions.filter((f) => f.id === 'acai-puro-organico' || f.category === 'sorvete');
+    }
+
+    if (customizingItem.allowedFlavors !== undefined && customizingItem.allowedFlavors !== null) {
+      list = list.filter((f) => customizingItem.allowedFlavors?.includes(f.id));
+    }
+    return list;
+  }, [customBase, customizingItem, flavorOptions]);
+
+  const handleFlavorToggle = (id: string) => {
+    if (id === 'acai-puro-organico' && (customBase === 'acai' || customBase === 'casadinho')) {
+      return; // Fixed açaí flavor cannot be deselected
+    }
+    const isSel = selectedFlavors.includes(id);
+    if (isSel) {
+      setSelectedFlavors(selectedFlavors.filter((x) => x !== id));
+    } else {
+      if (selectedFlavors.length >= maxFlavors) {
+        const fixedIds = (customBase === 'acai' || customBase === 'casadinho') ? ['acai-puro-organico'] : [];
+        const nonFixed = selectedFlavors.filter(x => !fixedIds.includes(x));
+        if (nonFixed.length > 0) {
+          const toRemove = nonFixed[0];
+          setSelectedFlavors([...selectedFlavors.filter(x => x !== toRemove), id]);
+        } else if (selectedFlavors.length > 0) {
+          setSelectedFlavors([id]);
+        }
+      } else {
+        setSelectedFlavors([...selectedFlavors, id]);
+      }
+    }
+  };
+
   // PDV Customizer current selected price
   const pdvCustomizerPrice = useMemo(() => {
     if (!customizingItem) return 0;
-    let basePrice = 15;
-    if (customizingItem.sizeMode === 'single') {
-      basePrice = customizingItem.singleSizePrice || customizingItem.price || 15;
-    } else {
-      basePrice = getCustomCupBasePrice(customSize, storeSettings?.cupPrices);
-    }
+    const basePrice = getSizeOptionPrice(customSize);
     const toppingsCost = selectedToppings.reduce((acc, tid) => {
       const top = toppingOptions.find((t) => t.id === tid);
       return acc + (top?.price || 0);
     }, 0);
     return basePrice + toppingsCost;
-  }, [customizingItem, customSize, selectedToppings, storeSettings?.cupPrices, toppingOptions]);
+  }, [customizingItem, customSize, selectedToppings, storeSettings, toppingOptions]);
 
   // Custom Quick / Manual item insertion (for custom items sold over counter)
   const [isQuickItemOpen, setIsQuickItemOpen] = useState(false);
@@ -335,9 +455,43 @@ export default function AdminPDV({
   // Open modal config for customizable cup
   const handleStartCustomizing = (item: MenuItem) => {
     setCustomizingItem(item);
-    setCustomSize('300ml');
-    setCustomBase(item.category === 'acai' ? 'acai' : 'sorvete');
-    setSelectedFlavors([]);
+    
+    // Determine resolved size mode
+    const resSizeMode = item.sizeMode || (item.category === 'sorvete' ? 'single' : 'default');
+    
+    // Determine initial size
+    let initialSize = '400ml';
+    if (resSizeMode === 'single') {
+      initialSize = 'single';
+    } else if (resSizeMode === 'custom' && item.customSizes) {
+      const activeKeys = Object.keys(item.customSizes).filter(k => item.customSizes?.[k]?.active);
+      initialSize = activeKeys[0] || '400ml';
+    }
+    setCustomSize(initialSize);
+
+    // Determine conditions
+    const itemIsMilkshake = item.category === 'milkshake' || item.category === 'milkshake_especiais' || item.category?.includes('milkshake');
+    const itemIsSplit = item.name?.toLowerCase()?.includes('banana split') || item.name?.toLowerCase()?.includes('morango split') || item.id?.toLowerCase()?.includes('banana-split') || item.id?.toLowerCase()?.includes('morango-split');
+    const itemIsCopoTrufado = item.name?.toLowerCase()?.includes('trufado') || item.id?.toLowerCase()?.includes('trufado');
+
+    // Determine initial base
+    let initialBase: 'acai' | 'sorvete' | 'casadinho' = 'casadinho';
+    if (itemIsMilkshake || itemIsSplit || itemIsCopoTrufado || item.category === 'sorvete') {
+      initialBase = 'sorvete';
+    } else if (item.category === 'acai') {
+      initialBase = 'acai';
+    }
+    setCustomBase(initialBase);
+
+    // Determine initial flavors
+    let initialFlavors: string[] = ['acai-puro-organico'];
+    if (itemIsMilkshake) {
+      initialFlavors = ['baunilha'];
+    } else if (itemIsSplit || itemIsCopoTrufado || item.category === 'sorvete') {
+      initialFlavors = [];
+    }
+    setSelectedFlavors(initialFlavors);
+    
     setSelectedToppings([]);
     setItemSpecificNotes('');
   };
@@ -349,7 +503,7 @@ export default function AdminPDV({
     const calculatedPrice = pdvCustomizerPrice;
 
     const customizationObj: CustomCupConfig = {
-      size: customizingItem.sizeMode === 'single' ? '300ml' : customSize,
+      size: resolvedSizeMode === 'single' ? 'single' : customSize,
       base: customBase,
       flavors: selectedFlavors,
       toppings: selectedToppings
@@ -366,7 +520,7 @@ export default function AdminPDV({
       .join(', ');
 
     let finalDesc = customizingItem.description || '';
-    if (customizingItem.sizeMode === 'single') {
+    if (resolvedSizeMode === 'single') {
       if (flavorsStr && selectedFlavors.length > 0) {
         finalDesc += ` (Sabores: ${flavorsStr})`;
       }
@@ -377,15 +531,17 @@ export default function AdminPDV({
       finalDesc += ` Sabores: ${flavorsStr || 'Nenhum'}. Adicionais: ${toppingsStr || 'Nenhum'}.`;
     }
 
+    const currentSizeLabel = sizeOptions.find(o => o.id === customSize)?.label || customSize;
+
     setPdvCart((prev) => [
       ...prev,
       {
         id: `pdv-custom-${Date.now()}`,
         menuItem: {
           ...customizingItem,
-          name: customizingItem.sizeMode === 'single'
+          name: resolvedSizeMode === 'single'
             ? customizingItem.name
-            : `${customizingItem.name} (${customSize})`,
+            : `${customizingItem.name} (${currentSizeLabel})`,
           description: finalDesc,
           price: calculatedPrice
         },
@@ -679,76 +835,79 @@ export default function AdminPDV({
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {filteredProducts.map((p) => (
-                  <div 
-                    key={p.id} 
-                    onClick={() => {
-                      if (p.customizable) {
-                        handleStartCustomizing(p);
-                      } else {
-                        handleAddDirect(p);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        if (p.customizable) {
+                {filteredProducts.map((p) => {
+                  const isCustomizableItem = !!(p.customizable || p.category === 'sorvete' || p.category === 'copos_especiais' || p.category === 'sundae');
+                  return (
+                    <div 
+                      key={p.id} 
+                      onClick={() => {
+                        if (isCustomizableItem) {
                           handleStartCustomizing(p);
                         } else {
                           handleAddDirect(p);
                         }
-                      }
-                    }}
-                    className="bg-white rounded-[24px] border border-rose-100/70 flex flex-col justify-between hover:shadow-lg hover:border-rose-300 hover:ring-2 hover:ring-rose-200/50 transition-all duration-300 overflow-hidden group hover:-translate-y-0.5 relative cursor-pointer select-none text-left"
-                  >
-                    {/* Visual Card image with overlay badges */}
-                    <div className="relative h-32 bg-rose-50/40 overflow-hidden border-b border-rose-100/20">
-                      <LazyImage
-                        src={p.image || 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400'}
-                        alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        containerClassName="w-full h-full"
-                      />
-                      
-                      {/* Popular and Category Badges inside image frame */}
-                      <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
-                        {p.popular && (
-                          <span className="bg-rose-500 text-white font-black text-[8.5px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
-                            🔥 Popular
-                          </span>
-                        )}
-                        {p.category && (
-                          <span className="bg-slate-900/90 text-rose-300 font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md">
-                            {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Shake Esp.' : p.category === 'baldes' ? '🪣 Balde' : p.category === 'linha_cafe' ? '☕ Café' : p.category === 'copos_especiais' ? '🍧 Copo Esp.' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 text-left space-y-2 flex-1 flex flex-col justify-between">
-                      <div className="space-y-1.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-black text-[14px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
-                            {p.name}
-                          </h4>
-                          <span className="font-mono font-black text-rose-600 text-xs bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100/60 flex-shrink-0">
-                            {p.sizeMode === 'single' || !p.sizeMode ? '' : 'A partir de '}R$ {getMenuItemDisplayPrice(p).toFixed(2)}
-                          </span>
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (isCustomizableItem) {
+                            handleStartCustomizing(p);
+                          } else {
+                            handleAddDirect(p);
+                          }
+                        }
+                      }}
+                      className="bg-white rounded-[24px] border border-rose-100/70 flex flex-col justify-between hover:shadow-lg hover:border-rose-300 hover:ring-2 hover:ring-rose-200/50 transition-all duration-300 overflow-hidden group hover:-translate-y-0.5 relative cursor-pointer select-none text-left"
+                    >
+                      {/* Visual Card image with overlay badges */}
+                      <div className="relative h-32 bg-rose-50/40 overflow-hidden border-b border-rose-100/20">
+                        <LazyImage
+                          src={p.image || 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400'}
+                          alt={p.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          containerClassName="w-full h-full"
+                        />
+                        
+                        {/* Popular and Category Badges inside image frame */}
+                        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                          {p.popular && (
+                            <span className="bg-rose-500 text-white font-black text-[8.5px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+                              🔥 Popular
+                            </span>
+                          )}
+                          {p.category && (
+                            <span className="bg-slate-900/90 text-rose-300 font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md">
+                              {p.category === 'acai' ? '🍇 Açaí' : p.category === 'milkshake' ? '🥤 Milkshake' : p.category === 'milkshake_especiais' ? '🥤 Shake Esp.' : p.category === 'baldes' ? '🪣 Balde' : p.category === 'linha_cafe' ? '☕ Café' : p.category === 'copos_especiais' ? '🍧 Copo Esp.' : p.category === 'sorvete' ? '🍦 Sorvete' : p.category === 'sundae' ? '🍧 Taça' : '🍧 Outros'}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed line-clamp-3 mt-1">
-                          {p.description}
-                        </p>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100/70 flex items-center justify-between text-[9px] font-black uppercase text-rose-500/80 tracking-wider">
-                        <span>{p.customizable ? '✨ Toque para Personalizar' : '🛒 Toque para Adicionar'}</span>
-                        <span className="text-[11px]">⚡</span>
+                      <div className="p-3.5 text-left space-y-2 flex-1 flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-black text-[14px] text-slate-900 tracking-tight leading-snug group-hover:text-rose-600 transition-colors">
+                              {p.name}
+                            </h4>
+                            <span className="font-mono font-black text-rose-600 text-xs bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100/60 flex-shrink-0">
+                              {p.sizeMode === 'single' || !p.sizeMode ? '' : 'A partir de '}R$ {getMenuItemDisplayPrice(p).toFixed(2)}
+                            </span>
+                          </div>
+                          <p className="text-[11.5px] text-slate-500 font-semibold leading-relaxed line-clamp-3 mt-1">
+                            {p.description}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100/70 flex items-center justify-between text-[9px] font-black uppercase text-rose-500/80 tracking-wider">
+                          <span>{isCustomizableItem ? '✨ Toque para Personalizar' : '🛒 Toque para Adicionar'}</span>
+                          <span className="text-[11px]">⚡</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1070,23 +1229,23 @@ export default function AdminPDV({
             <div className="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
               
               {/* Sizes */}
-              {customizingItem.sizeMode !== 'single' && (
+              {resolvedSizeMode !== 'single' && (
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">1. Escolha o Tamanho</label>
                   <div className="grid grid-cols-4 gap-2">
-                    {(['300ml', '400ml', '500ml', '700ml'] as const).map((sz) => (
+                    {sizeOptions.map((opt) => (
                       <button
-                        key={sz}
+                        key={opt.id}
                         type="button"
-                        onClick={() => setCustomSize(sz)}
+                        onClick={() => setCustomSize(opt.id)}
                         className={`py-2 px-1.5 rounded-xl border flex flex-col items-center justify-center font-bold tracking-wide transition-all cursor-pointer ${
-                          customSize === sz 
+                          customSize === opt.id 
                             ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-200' 
                             : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
                         }`}
                       >
-                        <span>{storeSettings?.cupLabels?.[sz] || sz}</span>
-                        <span className="text-[9px] font-black opacity-60">R$ {getCustomCupBasePrice(sz, storeSettings?.cupPrices).toFixed(2)}</span>
+                        <span>{opt.label}</span>
+                        <span className="text-[9px] font-black opacity-60">R$ {getSizeOptionPrice(opt.id).toFixed(2)}</span>
                       </button>
                     ))}
                   </div>
@@ -1094,22 +1253,33 @@ export default function AdminPDV({
               )}
 
               {/* Base */}
-              {customizingItem.sizeMode !== 'single' && (
+              {!isMilkshake && resolvedSizeMode !== 'single' && (
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">2. Base Principal</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {(['acai', 'sorvete', 'casadinho'] as const).map((b) => (
+                    {[
+                      { id: 'acai', name: 'Açaí Puro', desc: 'Apenas polpa açaí' },
+                      { id: 'sorvete', name: 'Sorvetes', desc: 'Apenas sorvete' },
+                      { id: 'casadinho', name: 'Casadinho', desc: 'Açaí + Sorvete' },
+                    ].map((b) => (
                       <button
-                        key={b}
+                        key={b.id}
                         type="button"
-                        onClick={() => setCustomBase(b)}
+                        onClick={() => {
+                          setCustomBase(b.id as any);
+                          if (b.id === 'acai' || b.id === 'casadinho') {
+                            setSelectedFlavors(['acai-puro-organico']);
+                          } else {
+                            setSelectedFlavors([]);
+                          }
+                        }}
                         className={`py-2 px-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer ${
-                          customBase === b 
+                          customBase === b.id 
                             ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-200' 
                             : 'border-slate-200 hover:bg-slate-50 text-slate-600 bg-white'
                         }`}
                       >
-                        {b === 'acai' ? '🍇 Açaí Puro' : b === 'sorvete' ? '🍦 Sorvete Creme' : '☯️ Casadinho'}
+                        {b.id === 'acai' ? '🍇 Açaí Puro' : b.id === 'sorvete' ? '🍦 Sorvetes' : '☯️ Casadinho'}
                       </button>
                     ))}
                   </div>
@@ -1119,25 +1289,16 @@ export default function AdminPDV({
               {/* Flavors Select */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <span>3. Escolha os Sabores de Sorvete (Opcional)</span>
+                  <span>3. Sabores de Sorvete (Máx {maxFlavors})</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {flavorOptions.filter((f) => 
-                    !customizingItem?.allowedFlavors || 
-                    customizingItem.allowedFlavors.includes(f.id)
-                  ).map((f) => {
+                  {availableFlavors.map((f) => {
                     const isSel = selectedFlavors.includes(f.id);
                     return (
                       <button
                         key={f.id}
                         type="button"
-                        onClick={() => {
-                          if (isSel) {
-                            setSelectedFlavors(selectedFlavors.filter(x => x !== f.id));
-                          } else {
-                            setSelectedFlavors([...selectedFlavors, f.id]);
-                          }
-                        }}
+                        onClick={() => handleFlavorToggle(f.id)}
                         className={`p-2 rounded-xl border text-[10.5px] font-bold text-left transition-all cursor-pointer flex items-center gap-1.5 ${
                           isSel 
                             ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200' 
@@ -1191,7 +1352,7 @@ export default function AdminPDV({
                 </div>
               </div>
 
-              {customizingItem.sizeMode === 'single' && (
+              {resolvedSizeMode === 'single' && (
                 <div className="bg-rose-50/40 border border-rose-150 rounded-xl p-3 flex gap-2 text-rose-950 font-bold">
                   <span className="text-base flex-shrink-0">✨</span>
                   <div>
