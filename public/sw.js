@@ -1,13 +1,13 @@
 // Service Worker for Sorveteria Supreme (PWA compliance & performance)
-const CACHE_NAME = 'supreme-cache-v7';
+const CACHE_NAME = 'supreme-cache-v12';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/logo.png',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/apple-touch-icon.png'
+  '/manifest.json?v=12',
+  '/logo.png?v=12',
+  '/icon-192.png?v=12',
+  '/icon-512.png?v=12',
+  '/apple-touch-icon.png?v=12'
 ];
 
 self.addEventListener('install', (e) => {

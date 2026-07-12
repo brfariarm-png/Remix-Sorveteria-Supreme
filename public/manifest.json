@@ -11,90 +11,34 @@
   "background_color": "#ffffff",
   "theme_color": "#ED2024",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
   "orientation": "portrait",
-  "iarc_rating_id": "00000000-0000-0000-0000-000000000000",
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "scope_extensions": [
-    {
-      "origin": "sorveteriasupreme.vercel.app"
-    },
-    {
-      "origin": "*.vercel.app"
-    },
-    {
-      "origin": "*.run.app"
-    },
-    {
-      "origin": "*.us-west2.run.app"
-    }
-  ],
-  "launch_handler": {
-    "client_mode": "navigate-existing"
-  },
-  "edge_side_panel": {
-    "preferred_width": 480
-  },
-  "file_handlers": [
-    {
-      "action": "/?file",
-      "accept": {
-        "image/*": [".png", ".jpg", ".jpeg"]
-      }
-    }
-  ],
-  "protocol_handlers": [
-    {
-      "protocol": "web+supreme",
-      "url": "/?protocol=%s"
-    }
-  ],
-  "widgets": [
-    {
-      "name": "Sorveteria Supreme",
-      "description": "Veja o status do seu pedido na Sorveteria Supreme",
-      "tag": "order-status",
-      "ms_ac_template": "widgets/status.json",
-      "icons": [
-        {
-          "src": "/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    }
-  ],
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icon-192.png?v=12",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
+      "src": "/icon-192.png?v=12",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512.png?v=12",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512.png?v=12",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "/apple-touch-icon.png",
+      "src": "/apple-touch-icon.png?v=12",
       "type": "image/png",
       "sizes": "180x180",
       "purpose": "any"
@@ -108,7 +52,7 @@
       "url": "/?shortcut=order",
       "icons": [
         {
-          "src": "/icon-192.png",
+          "src": "/icon-192.png?v=12",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -121,36 +65,11 @@
       "url": "/?shortcut=orders",
       "icons": [
         {
-          "src": "/icon-192.png",
+          "src": "/icon-192.png?v=12",
           "sizes": "192x192",
           "type": "image/png"
         }
       ]
-    }
-  ],
-  "share_target": {
-    "action": "/?share",
-    "method": "GET",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
-    }
-  },
-  "screenshots": [
-    {
-      "src": "/assets/images/screenshot_mobile.jpg",
-      "sizes": "768x1376",
-      "type": "image/jpeg",
-      "form_factor": "narrow",
-      "label": "Cardápio Interativo no Celular"
-    },
-    {
-      "src": "/assets/images/screenshot_desktop.jpg",
-      "sizes": "1376x768",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "Acompanhamento e Finalização do Pedido no Computador"
     }
   ]
 }
