@@ -119,6 +119,139 @@ export default function AdminPDV({
   const [quickItemName, setQuickItemName] = useState('');
   const [quickItemPrice, setQuickItemPrice] = useState('');
 
+  // Integrated Weighing Scale (Balança) States
+  const [isScaleOpen, setIsScaleOpen] = useState(false);
+  const [scaleWeight, setScaleWeight] = useState(0); // in grams
+  const [scaleTare, setScaleTare] = useState(15); // in grams (default container tare)
+  const [scalePricePerKg, setScalePricePerKg] = useState('69.90');
+  const [scaleReadingMode, setScaleReadingMode] = useState<'manual' | 'serial'>('manual');
+  const [serialPort, setSerialPort] = useState<any | null>(null);
+  const [serialReader, setSerialReader] = useState<any | null>(null);
+  const [isSerialReading, setIsSerialReading] = useState(false);
+  const [serialError, setSerialError] = useState('');
+  const [scaleSelectedBrand, setScaleSelectedBrand] = useState<'toledo' | 'urano' | 'filizola' | 'generic'>('toledo');
+
+  // Web Serial API Scale Reader
+  const handleConnectScale = async () => {
+    if (typeof navigator === 'undefined' || !('serial' in navigator)) {
+      setSerialError("API Web Serial não suportada neste navegador. Use o Google Chrome ou Microsoft Edge.");
+      return;
+    }
+    setSerialError('');
+    try {
+      const port = await (navigator as any).serial.requestPort();
+      // Toledo, Urano, Filizola and most serial scales standard: 9600 bps, 8 bits, 1 stop bit, no parity
+      await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' });
+      setSerialPort(port);
+      setIsSerialReading(true);
+
+      const reader = port.readable.getReader();
+      setSerialReader(reader);
+
+      let buffer = '';
+      (async () => {
+        try {
+          while (port.readable) {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
+            if (value) {
+              const chunk = new TextDecoder().decode(value);
+              buffer += chunk;
+              
+              if (buffer.length > 50) {
+                buffer = buffer.slice(-50);
+              }
+              
+              // Try to find weight formatted like "0.350", "1.240" (in kilograms)
+              const matches = buffer.match(/([0-9]{1,2}[.,][0-9]{3})/g);
+              if (matches && matches.length > 0) {
+                const latestMatch = matches[matches.length - 1];
+                const cleanNum = parseFloat(latestMatch.replace(',', '.'));
+                if (!isNaN(cleanNum)) {
+                  setScaleWeight(Math.round(cleanNum * 1000));
+                }
+              } else {
+                // Check if it sends direct integers representing grams (e.g., 350)
+                const matchesGrams = buffer.match(/(?:\D|^)([0-9]{3,4})(?:\s|\r|\n|$)/);
+                if (matchesGrams) {
+                  const cleanGrams = parseInt(matchesGrams[1], 10);
+                  if (!isNaN(cleanGrams) && cleanGrams < 10000) {
+                    setScaleWeight(cleanGrams);
+                  }
+                }
+              }
+            }
+          }
+        } catch (err: any) {
+          console.warn("Erro na leitura serial da balança:", err);
+          setSerialError(`Erro de conexão: ${err.message || err}`);
+        } finally {
+          setIsSerialReading(false);
+        }
+      })();
+    } catch (err: any) {
+      console.warn("Erro ao abrir porta serial:", err);
+      setSerialError(`Não foi possível abrir a porta serial: ${err.message || err}`);
+    }
+  };
+
+  const handleDisconnectScale = async () => {
+    try {
+      if (serialReader) {
+        await serialReader.cancel();
+        serialReader.releaseLock();
+        setSerialReader(null);
+      }
+      if (serialPort) {
+        await serialPort.close();
+        setSerialPort(null);
+      }
+    } catch (err) {
+      console.warn("Erro ao desconectar balança:", err);
+    }
+    setIsSerialReading(false);
+  };
+
+  const handleAddWeighedItem = () => {
+    const netWeight = Math.max(0, scaleWeight - scaleTare);
+    if (netWeight <= 0) {
+      alert("O peso líquido deve ser maior que zero (verifique o peso bruto e a tara).");
+      return;
+    }
+    
+    const priceKg = parseFloat(scalePricePerKg);
+    if (isNaN(priceKg) || priceKg <= 0) {
+      alert("Por favor, insira um preço por kg válido.");
+      return;
+    }
+
+    const calculatedPrice = (netWeight / 1000) * priceKg;
+    const roundedPrice = Math.round(calculatedPrice * 100) / 100;
+
+    const mockMenuItem: MenuItem = {
+      id: `balanca-${Date.now()}`,
+      name: `Self-Service [Balança]`,
+      description: `Gelato por Quilo (${netWeight}g líquidos • R$ ${priceKg.toFixed(2)}/Kg)`,
+      price: roundedPrice,
+      category: 'combo',
+      image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400'
+    };
+
+    setPdvCart((prev) => [
+      ...prev,
+      {
+        id: `pdv-balanca-${Date.now()}`,
+        menuItem: mockMenuItem,
+        quantity: 1,
+        notes: `Bruto: ${scaleWeight}g | Tara: ${scaleTare}g | Líquido: ${netWeight}g`
+      }
+    ]);
+
+    setIsScaleOpen(false);
+  };
+
   // Real-time Clock inside Header
   const [liveTime, setLiveTime] = useState(new Date().toLocaleTimeString('pt-BR'));
   useEffect(() => {
@@ -436,6 +569,13 @@ export default function AdminPDV({
             className="bg-indigo-650 hover:bg-indigo-700 transition-all font-black text-[10px] uppercase tracking-wider py-1.5 px-3.5 rounded-xl flex items-center gap-1 cursor-pointer hover:scale-102 hover:shadow-md"
           >
             ➕ Item Manual
+          </button>
+
+          <button
+            onClick={() => setIsScaleOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 transition-all font-black text-[10px] uppercase tracking-wider py-1.5 px-3.5 rounded-xl flex items-center gap-1 cursor-pointer hover:scale-102 hover:shadow-md text-white shadow-sm"
+          >
+            ⚖️ Ler Balança
           </button>
 
           {/* Toggle Fullscreen mode button */}
@@ -1173,6 +1313,358 @@ export default function AdminPDV({
                 className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black uppercase hover:bg-indigo-700 cursor-pointer text-center"
               >
                 Inserir Venda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WEIGHING SCALE (BALANÇA) INTEGRATION MODAL */}
+      {isScaleOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4 text-slate-800 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-150 overflow-hidden text-left flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="p-4 bg-emerald-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-emerald-500/20 text-emerald-450 rounded-xl">
+                  <Plus className="w-4 h-4 rotate-45" /> {/* scale icon representation */}
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-xs uppercase tracking-wider">Balança Eletrônica Integrada</h3>
+                  <p className="text-[9px] text-emerald-350 font-bold uppercase">Toledo, Urano, Filizola &amp; Simulador</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  handleDisconnectScale();
+                  setIsScaleOpen(false);
+                }}
+                className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              
+              {/* Retro LCD Display Block */}
+              <div className="bg-slate-950 border-4 border-slate-800 p-4.5 rounded-2xl flex flex-col items-center justify-center text-center select-none shadow-inner relative overflow-hidden">
+                <div className="absolute top-2 left-3 flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isSerialReading ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'} border border-black`} />
+                  <span className="text-[8px] font-black tracking-widest text-slate-500 uppercase">
+                    {isSerialReading ? `${scaleSelectedBrand.toUpperCase()} ONLINE` : 'MODO SIMULADO'}
+                  </span>
+                </div>
+
+                <div className="absolute top-2 right-3 flex items-center gap-1 text-[8px] font-bold text-slate-600">
+                  <span>TARA ATIVA:</span>
+                  <span className="font-mono text-slate-400 font-extrabold">{scaleTare}g</span>
+                </div>
+
+                {/* Main Glowing Weight */}
+                <div className="py-2 flex items-baseline gap-1">
+                  <span className="font-mono text-5xl font-black text-emerald-400 tracking-wider drop-shadow-[0_0_10px_rgba(52,211,153,0.75)]">
+                    {((scaleWeight) / 1000).toFixed(3)}
+                  </span>
+                  <span className="font-sans text-xs font-black text-emerald-500 uppercase tracking-widest">kg</span>
+                </div>
+
+                {/* Sub Weights Panel */}
+                <div className="w-full grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-slate-900 text-center">
+                  <div>
+                    <span className="block text-[8px] font-bold text-slate-500 uppercase">Bruto</span>
+                    <span className="font-mono text-[11px] text-slate-300 font-bold">{scaleWeight}g</span>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-bold text-slate-500 uppercase">Recipiente (Tara)</span>
+                    <span className="font-mono text-[11px] text-rose-450 font-bold">-{scaleTare}g</span>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-bold text-slate-500 uppercase">Peso Líquido</span>
+                    <span className="font-mono text-xs text-emerald-400 font-black">
+                      {Math.max(0, scaleWeight - scaleTare)}g
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mode Tabs */}
+              <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDisconnectScale();
+                    setScaleReadingMode('manual');
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all ${
+                    scaleReadingMode === 'manual'
+                      ? 'bg-white text-slate-800 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  💻 Testar / Simular Peso
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScaleReadingMode('serial')}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all ${
+                    scaleReadingMode === 'serial'
+                      ? 'bg-white text-emerald-700 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  🔌 Balança Real (Web Serial)
+                </button>
+              </div>
+
+              {/* Mode Specific Settings */}
+              {scaleReadingMode === 'manual' ? (
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150 space-y-3">
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider mb-1 text-center">Simulador de Prato de Balança</p>
+                  
+                  {/* Preset Weight Buttons */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setScaleWeight(320)}
+                      className="py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer text-center"
+                    >
+                      Copo Pequeno (320g)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScaleWeight(480)}
+                      className="py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer text-center"
+                    >
+                      Copo Médio (480g)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScaleWeight(650)}
+                      className="py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer text-center"
+                    >
+                      Barca/Copo G (650g)
+                    </button>
+                  </div>
+
+                  {/* Manual Increments */}
+                  <div className="flex items-center justify-between gap-2.5 pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setScaleWeight(Math.max(0, scaleWeight - 50))}
+                      className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold text-[10.5px] cursor-pointer"
+                    >
+                      -50g
+                    </button>
+                    <div className="flex-1 flex items-center justify-center gap-1">
+                      <input
+                        type="number"
+                        value={scaleWeight === 0 ? '' : scaleWeight}
+                        onChange={(e) => setScaleWeight(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-20 text-center font-mono font-bold text-xs p-1.5 border border-slate-250 rounded-lg text-slate-850"
+                        placeholder="0"
+                      />
+                      <span className="text-[10px] font-black text-slate-400 uppercase">gramas</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setScaleWeight(scaleWeight + 50)}
+                      className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold text-[10.5px] cursor-pointer"
+                    >
+                      +50g
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setScaleWeight(0)}
+                    className="w-full py-1 bg-rose-50 text-rose-650 hover:bg-rose-100 rounded-lg font-extrabold text-[9px] uppercase tracking-wider text-center cursor-pointer"
+                  >
+                    Zerar Peso Bruto
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100 space-y-3 text-xs leading-normal">
+                  <div className="flex justify-between items-center pb-2 border-b border-emerald-100">
+                    <span className="font-extrabold text-[10px] text-emerald-950 uppercase tracking-wider">Configurar Conexão Física</span>
+                    <span className="font-mono text-[9px] text-emerald-850 font-bold bg-emerald-100 px-2 py-0.5 rounded-full uppercase">Toledo / Urano / Filizola</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Fabricante/Modelo</label>
+                      <select
+                        value={scaleSelectedBrand}
+                        onChange={(e: any) => setScaleSelectedBrand(e.target.value)}
+                        className="w-full text-[11px] p-2 bg-white border border-emerald-200 rounded-xl font-bold text-slate-750 outline-none"
+                      >
+                        <option value="toledo">Toledo Prix 3 / Toledo 9091</option>
+                        <option value="urano">Urano Pop / UR 10000</option>
+                        <option value="filizola">Filizola Platina / CS-15</option>
+                        <option value="generic">Genérica (Leitura Contínua)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Ação de Conexão</label>
+                      {isSerialReading ? (
+                        <button
+                          type="button"
+                          onClick={handleDisconnectScale}
+                          className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center"
+                        >
+                          🔌 Desconectar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleConnectScale}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center"
+                        >
+                          🔌 Selecionar Porta
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {serialError ? (
+                    <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl text-[10px] text-rose-700 font-bold text-left leading-normal">
+                      ⚠️ {serialError}
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-slate-500 leading-normal space-y-1">
+                      <p>💡 <strong>Como funciona:</strong> Conecte sua balança oficial na saída USB/RS232 do computador, clique em "Selecionar Porta" e escolha a porta serial correspondente. O peso será sincronizado em tempo real na tela.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Price and Tare Setup Inputs */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tara Recipiente (g)</label>
+                    <span className="text-[9px] text-indigo-500 font-black uppercase tracking-wide cursor-pointer" onClick={() => setScaleTare(0)}>Limpar</span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="number"
+                      value={scaleTare === 0 ? '' : scaleTare}
+                      onChange={(e) => setScaleTare(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-205 focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-slate-750 font-mono"
+                      placeholder="Ex: 15"
+                    />
+                  </div>
+                  {/* Tare Presets */}
+                  <div className="flex gap-1 pt-1 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setScaleTare(15)}
+                      className={`px-2 py-0.5 border text-[9px] rounded-md font-bold whitespace-nowrap cursor-pointer ${
+                        scaleTare === 15 ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      Copo (15g)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScaleTare(25)}
+                      className={`px-2 py-0.5 border text-[9px] rounded-md font-bold whitespace-nowrap cursor-pointer ${
+                        scaleTare === 25 ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      Barca (25g)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScaleTare(48)}
+                      className={`px-2 py-0.5 border text-[9px] rounded-md font-bold whitespace-nowrap cursor-pointer ${
+                        scaleTare === 48 ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      Prato (48g)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Preço por Kg (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={scalePricePerKg}
+                    onChange={(e) => setScalePricePerKg(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-205 focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-slate-750 font-mono"
+                    placeholder="69.90"
+                  />
+                  {/* Price Presets */}
+                  <div className="flex gap-1 pt-1 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setScalePricePerKg('69.90')}
+                      className={`px-2 py-0.5 border text-[9px] rounded-md font-bold whitespace-nowrap cursor-pointer ${
+                        scalePricePerKg === '69.90' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      69.90
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScalePricePerKg('79.90')}
+                      className={`px-2 py-0.5 border text-[9px] rounded-md font-bold whitespace-nowrap cursor-pointer ${
+                        scalePricePerKg === '79.90' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      79.90
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScalePricePerKg('89.90')}
+                      className={`px-2 py-0.5 border text-[9px] rounded-md font-bold whitespace-nowrap cursor-pointer ${
+                        scalePricePerKg === '89.90' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      89.90
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Calculation Display */}
+              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between text-left shadow-xs">
+                <div>
+                  <span className="block text-[9px] font-black uppercase tracking-wider text-emerald-900">Total a Pagar (R$)</span>
+                  <span className="text-[10px] text-emerald-850 font-bold font-sans">
+                    {Math.max(0, scaleWeight - scaleTare)}g líquido • R$ {parseFloat(scalePricePerKg || '0').toFixed(2)} / kg
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono text-2xl font-black text-emerald-950">
+                    R$ {((Math.max(0, scaleWeight - scaleTare) / 1000) * parseFloat(scalePricePerKg || '0')).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-slate-50 flex gap-2.5">
+              <button
+                onClick={() => {
+                  handleDisconnectScale();
+                  setIsScaleOpen(false);
+                }}
+                className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-650 rounded-xl text-xs font-bold hover:bg-slate-100 cursor-pointer text-center transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddWeighedItem}
+                className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase hover:bg-emerald-700 cursor-pointer text-center transition-all shadow-md shadow-emerald-100"
+              >
+                Adicionar ao Pedido
               </button>
             </div>
           </div>

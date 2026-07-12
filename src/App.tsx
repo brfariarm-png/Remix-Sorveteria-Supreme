@@ -79,6 +79,7 @@ import AdminFechamento from './components/AdminFechamento';
 import AdminImpressora from './components/AdminImpressora';
 import AdminCardapio from './components/AdminCardapio';
 import AdminWhatsAppBot from './components/AdminWhatsAppBot';
+import AdminPainelTV from './components/AdminPainelTV';
 
 const BannerImage = "/assets/images/supreme_banner_1780583592745.png";
 const LogoImage = "/assets/images/supreme_logo_1780583608054.png";
@@ -95,6 +96,7 @@ interface VisualNotification {
 export default function App() {
   // State for authenticated firebase user
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isTvMode, setIsTvMode] = useState<boolean>(false);
   const [adminBypass, setAdminBypass] = useState<boolean>(() => {
     return localStorage.getItem('supreme_admin_bypass') === 'true';
   });
@@ -726,7 +728,7 @@ export default function App() {
   const [selectedRing, setSelectedRing] = useState(() => {
     return localStorage.getItem('selected_ring') || 'ifood';
   });
-  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp'>('orders');
+  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp' | 'painel'>('orders');
   const [isRingingLoop, setIsRingingLoop] = useState(false);
   const [visualNotifications, setVisualNotifications] = useState<VisualNotification[]>([]);
   const [autoPrintOnNew, setAutoPrintOnNew] = useState(() => {
@@ -1397,6 +1399,9 @@ export default function App() {
     }
 
     const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'tv') {
+      setIsTvMode(true);
+    }
     if (params.get('privacy') === 'true' || params.get('politica') === 'true') {
       setIsPrivacyOpen(true);
     }
@@ -2108,6 +2113,14 @@ export default function App() {
       }
     }
   };
+
+  if (isTvMode) {
+    return (
+      <div className="min-h-screen bg-slate-950 p-4 sm:p-8 flex flex-col justify-center text-slate-200">
+        <AdminPainelTV orders={orders} storeSettings={storeSettings} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen text-slate-800 flex flex-col font-sans selection:bg-rose-100 selection:text-rose-900 overflow-x-hidden">
@@ -2891,6 +2904,16 @@ export default function App() {
                           💬 WhatsApp Bot
                         </button>
                         <button
+                          onClick={() => setAdminSubTab('painel')}
+                          className={`flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                            adminSubTab === 'painel'
+                              ? 'bg-white text-rose-650 shadow-sm'
+                              : 'text-slate-500 hover:text-slate-850'
+                          }`}
+                        >
+                          📺 Painel de TV
+                        </button>
+                        <button
                           onClick={() => setAdminSubTab('playstore')}
                           className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer relative overflow-hidden group select-none ${
                             adminSubTab === 'playstore'
@@ -2963,6 +2986,8 @@ export default function App() {
                         menuItems={menuItems} 
                         orders={orders} 
                       />
+                    ) : adminSubTab === 'painel' ? (
+                      <AdminPainelTV orders={orders} storeSettings={storeSettings} />
                     ) : adminSubTab === 'playstore' ? (
                       <PlayStoreMobileHub customDomain={storeSettings.customDomain} />
                     ) : (
