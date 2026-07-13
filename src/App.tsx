@@ -278,7 +278,7 @@ export default function App() {
   const [showInstallBannerLocal, setShowInstallBannerLocal] = useState(() => {
     return localStorage.getItem('supreme_install_dismissed') !== 'true';
   });
-  const [settingsTab, setSettingsTab] = useState<'share' | 'general' | 'payments' | 'timing' | 'delivery' | 'printer' | 'advanced'>('share');
+  const [settingsTab, setSettingsTab] = useState<'share' | 'general' | 'payments' | 'timing' | 'delivery' | 'printer' | 'advanced' | 'totem'>('share');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showAdminSection, setShowAdminSection] = useState(false);
 
@@ -2235,17 +2235,30 @@ export default function App() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 font-extrabold text-[10px] uppercase tracking-widest px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-2"
-                  title="Painel de Controle Unificado (Impressora, Horários, Taxas, QR Code)"
-                >
-                  <Settings className="w-4 h-4 text-rose-500 animate-[spin_10s_linear_infinite]" />
-                  <span className="hidden xs:inline">Configurações</span>
-                  <span className="xs:hidden">Painel</span>
-                  <span className="bg-rose-500 text-white rounded-full text-[8px] px-1.5 py-0.5 font-bold animate-pulse">Admin</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsTotemActive(true)}
+                    className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-extrabold text-[10px] uppercase tracking-widest px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 animate-pulse"
+                    title="Iniciar Totem de Autoatendimento (Quiosque) para Clientes"
+                  >
+                    <span>🔋</span>
+                    <span className="hidden xs:inline">Ativar Totem</span>
+                    <span className="xs:hidden">Totem</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 font-extrabold text-[10px] uppercase tracking-widest px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-2"
+                    title="Painel de Controle Unificado (Impressora, Horários, Taxas, QR Code)"
+                  >
+                    <Settings className="w-4 h-4 text-rose-500 animate-[spin_10s_linear_infinite]" />
+                    <span className="hidden xs:inline">Configurações</span>
+                    <span className="xs:hidden">Painel</span>
+                    <span className="bg-rose-500 text-white rounded-full text-[8px] px-1.5 py-0.5 font-bold animate-pulse">Admin</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="select-none p-1.5 rounded-2xl flex items-center gap-2.5">
@@ -4446,6 +4459,7 @@ E-mail: ${storeSettings.email}`;
                   { id: 'delivery', label: '🛵 Taxas' },
                   { id: 'printer', label: '🖨️ Impressora' },
                   { id: 'advanced', label: '⚙️ Avançado' },
+                  { id: 'totem', label: '🔋 Totem Autoatendimento' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -4473,6 +4487,7 @@ E-mail: ${storeSettings.email}`;
                     { id: 'delivery', icon: <MapPin className="w-4 h-4" />, label: 'Taxas de Entrega' },
                     { id: 'printer', icon: <Printer className="w-4 h-4" />, label: 'Impressora' },
                     { id: 'advanced', icon: <ShieldAlert className="w-4 h-4" />, label: 'Avançado' },
+                    { id: 'totem', icon: <Zap className="w-4 h-4 text-amber-500" />, label: 'Totem Autoatendimento' },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -5365,6 +5380,64 @@ E-mail: ${storeSettings.email}`;
                         >
                           Redefinir Configurações para Valor Padrão
                         </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {settingsTab === 'totem' && (
+                    <div className="space-y-5 animate-fadeIn text-left">
+                      <h4 className="text-[11px] font-black text-rose-550 uppercase tracking-widest flex items-center gap-1.5 border-b border-rose-50/50 pb-2">
+                        🔋 Quiosque Totem de Autoatendimento
+                      </h4>
+
+                      <div className="bg-gradient-to-br from-amber-500/10 to-rose-500/10 border border-rose-200/50 p-5 rounded-3xl space-y-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🔋</span>
+                          <div>
+                            <h5 className="font-extrabold text-sm text-slate-800">Modo Totem em Tela Cheia</h5>
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                              Transforme este dispositivo em um terminal de autoatendimento interativo para seus clientes realizarem pedidos diretamente no balcão de sua sorveteria!
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSettingsOpen(false);
+                            setIsTotemActive(true);
+                          }}
+                          className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-black uppercase text-xs tracking-wider rounded-xl transition-all shadow-md hover:scale-101 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                        >
+                          ⚡ INICIAR QUIOSQUE TOTEM (TELA CHEIA)
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-slate-50/65 border border-slate-150 p-4 rounded-2xl space-y-2">
+                          <h6 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                            💳 Pagamentos do Totem
+                          </h6>
+                          <p className="text-[10.5px] text-slate-500 leading-relaxed">
+                            O totem suporta pagamentos automáticos via <strong>Pix</strong> e pagamentos manuais via <strong>Cartão</strong> (onde o cliente faz o pedido no totem e passa o cartão na maquininha física com o atendente).
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50/65 border border-slate-150 p-4 rounded-2xl space-y-2">
+                          <h6 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                            🖨️ Auto-Impressão de Cupom
+                          </h6>
+                          <p className="text-[10.5px] text-slate-500 leading-relaxed">
+                            Recomendamos manter a <strong>Auto-impressão habilitada</strong> na aba "Impressora". Assim, assim que o cliente finaliza o pedido no Totem, o cupom sai imediatamente na sua impressora térmica do balcão!
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-2xl space-y-1.5 text-left">
+                        <h5 className="text-[10px] font-black text-blue-700 uppercase tracking-wider">💡 Como sair do Modo Totem?</h5>
+                        <p className="text-[10.5px] text-slate-500 leading-relaxed font-semibold">
+                          Para retornar ao painel de pedidos e sair do modo quiosque, clique no botão de saída (ícone de desligar) localizado no canto superior direito do Totem e digite sua senha de administrador (<strong>supreme</strong>).
+                        </p>
                       </div>
                     </div>
                   )}
