@@ -1501,8 +1501,6 @@ export default function AdminTotem({
                   <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Senha de Operador</label>
                   <input
                     type="password"
-                    pattern="[0-9]*"
-                    inputMode="numeric"
                     placeholder="Digite a senha..."
                     value={exitPasscode}
                     onChange={(e) => {
