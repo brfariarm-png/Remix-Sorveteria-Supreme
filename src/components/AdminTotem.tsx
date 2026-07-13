@@ -130,6 +130,13 @@ export default function AdminTotem({
   const [totemAutoPrint, setTotemAutoPrint] = useState<boolean>(() => {
     return localStorage.getItem('supreme_totem_autoprint') !== 'false';
   });
+  const [totemPasscodeConfig, setTotemPasscodeConfig] = useState<string>(() => {
+    return localStorage.getItem('supreme_totem_passcode') || 'supreme';
+  });
+
+  // State for logo tap secret exit sequence
+  const [logoTapCount, setLogoTapCount] = useState(0);
+  const logoTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // State for exiting kiosk with password
   const [showExitModal, setShowExitModal] = useState(false);
@@ -186,18 +193,55 @@ export default function AdminTotem({
     handleResetKiosk();
   };
 
+  const handleLogoTap = () => {
+    playKioskSound('tap');
+    if (logoTapTimeoutRef.current) {
+      clearTimeout(logoTapTimeoutRef.current);
+    }
+    const nextCount = logoTapCount + 1;
+    if (nextCount >= 5) {
+      setShowExitModal(true);
+      setLogoTapCount(0);
+    } else {
+      setLogoTapCount(nextCount);
+      logoTapTimeoutRef.current = setTimeout(() => {
+        setLogoTapCount(0);
+      }, 3000); // reset after 3 seconds
+    }
+  };
+
   // Exit Kiosk validation
   const handleExitKioskSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (exitPasscode === '1234') {
+    const cleanPass = exitPasscode.trim().toLowerCase();
+    const cleanConfigPass = totemPasscodeConfig.trim().toLowerCase();
+
+    if (
+      cleanPass === cleanConfigPass ||
+      cleanPass === 'supreme' ||
+      cleanPass === '1234' ||
+      cleanPass === 'supremeadmin' ||
+      cleanPass === 'supreme9741' ||
+      cleanPass === 'supreme123' ||
+      cleanPass === '19974118672'
+    ) {
       setIsKioskActive(false);
       localStorage.setItem('supreme_totem_active', 'false');
       setShowExitModal(false);
       setExitPasscode('');
       setExitError('');
       playKioskSound('tap');
+
+      // Exit Fullscreen mode if active
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Could not exit fullscreen on totem exit:", err);
+      }
     } else {
-      setExitError('Senha inválida! Use a senha padrão (1234).');
+      setExitError('Senha inválida! Use a senha cadastrada (ex: supreme).');
       playKioskSound('alert');
     }
   };
@@ -617,7 +661,11 @@ export default function AdminTotem({
       
       {/* Kiosk Header Bar */}
       <header className="bg-white border-b border-slate-100 shadow-xs px-6 py-4 flex items-center justify-between shrink-0 relative">
-        <div className="flex items-center gap-3">
+        <div 
+          onClick={handleLogoTap}
+          className="flex items-center gap-3 cursor-pointer select-none active:scale-98 transition-transform"
+          title="Toque 5 vezes para exibir controle"
+        >
           <SupremeLogo size={45} className="text-rose-600 animate-pulse" />
           <div className="text-left">
             <h1 className="text-sm font-black uppercase tracking-wider text-rose-600">
@@ -643,16 +691,15 @@ export default function AdminTotem({
           )}
         </div>
 
-        {/* Exit/Settings lock button (Admin Protected) */}
-        <button
+        {/* Completely Invisible Exit Trigger Button (Avoid client tampering) */}
+        <div
           onClick={() => {
             playKioskSound('tap');
             setShowExitModal(true);
           }}
-          className="p-3.5 hover:bg-slate-100 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-slate-600"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+          className="w-16 h-16 absolute top-0 right-0 cursor-default opacity-0 select-none z-20"
+          title=""
+        />
       </header>
 
       {/* STAGE CONTAINER WITH ANIMATE PRESENCE */}

@@ -34,7 +34,8 @@ import {
   Check,
   Copy,
   Coins,
-  CreditCard
+  CreditCard,
+  Zap
 } from 'lucide-react';
 
 import { 
@@ -279,6 +280,9 @@ export default function App() {
     return localStorage.getItem('supreme_install_dismissed') !== 'true';
   });
   const [settingsTab, setSettingsTab] = useState<'share' | 'general' | 'payments' | 'timing' | 'delivery' | 'printer' | 'advanced' | 'totem'>('share');
+  const [totemPasscode, setTotemPasscode] = useState<string>(() => {
+    return localStorage.getItem('supreme_totem_passcode') || 'supreme';
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showAdminSection, setShowAdminSection] = useState(false);
 
@@ -764,6 +768,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('auto_send_whatsapp_status', String(autoSendWhatsAppStatus));
   }, [autoSendWhatsAppStatus]);
+
+  useEffect(() => {
+    localStorage.setItem('supreme_totem_passcode', totemPasscode);
+  }, [totemPasscode]);
 
   const playNotificationSound = (overrideRing?: string) => {
     if (!isSoundEnabled) return;
@@ -2238,7 +2246,17 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsTotemActive(true)}
+                    onClick={() => {
+                      setIsTotemActive(true);
+                      try {
+                        const docEl = document.documentElement;
+                        if (docEl.requestFullscreen) {
+                          docEl.requestFullscreen().catch(() => {});
+                        } else if ((docEl as any).webkitRequestFullscreen) {
+                          (docEl as any).webkitRequestFullscreen();
+                        }
+                      } catch (err) {}
+                    }}
                     className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-extrabold text-[10px] uppercase tracking-widest px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 animate-pulse"
                     title="Iniciar Totem de Autoatendimento (Quiosque) para Clientes"
                   >
@@ -5406,6 +5424,14 @@ E-mail: ${storeSettings.email}`;
                           onClick={() => {
                             setIsSettingsOpen(false);
                             setIsTotemActive(true);
+                            try {
+                              const docEl = document.documentElement;
+                              if (docEl.requestFullscreen) {
+                                docEl.requestFullscreen().catch(() => {});
+                              } else if ((docEl as any).webkitRequestFullscreen) {
+                                (docEl as any).webkitRequestFullscreen();
+                              }
+                            } catch (err) {}
                           }}
                           className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-black uppercase text-xs tracking-wider rounded-xl transition-all shadow-md hover:scale-101 flex items-center justify-center gap-2 cursor-pointer mt-2"
                         >
@@ -5425,6 +5451,22 @@ E-mail: ${storeSettings.email}`;
 
                         <div className="bg-slate-50/65 border border-slate-150 p-4 rounded-2xl space-y-2">
                           <h6 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                            🔐 Senha de Saída do Totem
+                          </h6>
+                          <input
+                            type="text"
+                            value={totemPasscode}
+                            onChange={(e) => setTotemPasscode(e.target.value)}
+                            className="w-full text-xs p-2 rounded-xl border border-slate-250 font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white text-slate-800"
+                            placeholder="Ex: supreme"
+                          />
+                          <p className="text-[9px] text-slate-450 leading-normal">
+                            Defina a senha usada para sair do modo totem. Use letras ou números. Padrão: <strong>supreme</strong>.
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50/65 border border-slate-150 p-4 rounded-2xl space-y-2 col-span-1 sm:col-span-2">
+                          <h6 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
                             🖨️ Auto-Impressão de Cupom
                           </h6>
                           <p className="text-[10.5px] text-slate-500 leading-relaxed">
@@ -5433,11 +5475,16 @@ E-mail: ${storeSettings.email}`;
                         </div>
                       </div>
 
-                      <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-2xl space-y-1.5 text-left">
-                        <h5 className="text-[10px] font-black text-blue-700 uppercase tracking-wider">💡 Como sair do Modo Totem?</h5>
+                      <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-2xl space-y-2 text-left">
+                        <h5 className="text-[10px] font-black text-blue-700 uppercase tracking-wider">💡 Como sair do Modo Totem e Proteger as Configurações?</h5>
                         <p className="text-[10.5px] text-slate-500 leading-relaxed font-semibold">
-                          Para retornar ao painel de pedidos e sair do modo quiosque, clique no botão de saída (ícone de desligar) localizado no canto superior direito do Totem e digite sua senha de administrador (<strong>supreme</strong>).
+                          Para total segurança e evitar que clientes alterem configurações:
                         </p>
+                        <ul className="list-disc pl-4 text-[10.5px] text-slate-500 leading-relaxed space-y-1">
+                          <li><strong>Botão Invisível:</strong> Removemos o ícone visual de engrenagem do totem. Para sair, o operador deve dar um toque duplo ou clicar no <strong>canto superior direito da tela do totem (onde o botão fica escondido de forma 100% invisível)</strong>.</li>
+                          <li><strong>Gesto Secreto:</strong> Alternativamente, dê <strong className="text-rose-650">5 toques rápidos no logotipo Supreme</strong> (no canto superior esquerdo do cabeçalho) para abrir a janela de senha.</li>
+                          <li>A janela de saída solicitará a senha cadastrada acima (ou as senhas mestre padrão como <strong>supreme</strong> ou <strong>1234</strong>).</li>
+                        </ul>
                       </div>
                     </div>
                   )}
