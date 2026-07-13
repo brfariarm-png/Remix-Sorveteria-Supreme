@@ -80,6 +80,7 @@ import AdminImpressora from './components/AdminImpressora';
 import AdminCardapio from './components/AdminCardapio';
 import AdminWhatsAppBot from './components/AdminWhatsAppBot';
 import AdminPainelTV from './components/AdminPainelTV';
+import AdminTotem from './components/AdminTotem';
 
 const BannerImage = "/assets/images/supreme_banner_1780583592745.png";
 const LogoImage = "/assets/images/supreme_logo_1780583608054.png";
@@ -728,7 +729,10 @@ export default function App() {
   const [selectedRing, setSelectedRing] = useState(() => {
     return localStorage.getItem('selected_ring') || 'ifood';
   });
-  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp' | 'painel'>('orders');
+  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp' | 'painel' | 'totem'>('orders');
+  const [isTotemActive, setIsTotemActive] = useState<boolean>(() => {
+    return localStorage.getItem('supreme_totem_active') === 'true';
+  });
   const [isRingingLoop, setIsRingingLoop] = useState(false);
   const [visualNotifications, setVisualNotifications] = useState<VisualNotification[]>([]);
   const [autoPrintOnNew, setAutoPrintOnNew] = useState(() => {
@@ -2122,6 +2126,23 @@ export default function App() {
     );
   }
 
+  if (isTotemActive) {
+    return (
+      <AdminTotem 
+        menuItems={menuItems}
+        storeSettings={storeSettings}
+        flavorOptions={flavorOptions}
+        toppingOptions={toppingOptions}
+        onPlaceTotemOrder={(newOrder) => {
+          setOrders((prev) => [newOrder, ...prev]);
+        }}
+        onKioskActiveChange={(active) => {
+          setIsTotemActive(active);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen text-slate-800 flex flex-col font-sans selection:bg-rose-100 selection:text-rose-900 overflow-x-hidden">
       
@@ -2918,6 +2939,16 @@ export default function App() {
                           📺 Painel de TV
                         </button>
                         <button
+                          onClick={() => setAdminSubTab('totem')}
+                          className={`flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                            adminSubTab === 'totem'
+                              ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-100 scale-102 border-none font-black'
+                              : 'text-slate-500 hover:text-slate-850'
+                          }`}
+                        >
+                          🔋 Totem Kiosk
+                        </button>
+                        <button
                           onClick={() => setAdminSubTab('playstore')}
                           className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer relative overflow-hidden group select-none ${
                             adminSubTab === 'playstore'
@@ -2992,6 +3023,19 @@ export default function App() {
                       />
                     ) : adminSubTab === 'painel' ? (
                       <AdminPainelTV orders={orders} storeSettings={storeSettings} />
+                    ) : adminSubTab === 'totem' ? (
+                      <AdminTotem 
+                        menuItems={menuItems}
+                        storeSettings={storeSettings}
+                        flavorOptions={flavorOptions}
+                        toppingOptions={toppingOptions}
+                        onPlaceTotemOrder={(newOrder) => {
+                          setOrders((prev) => [newOrder, ...prev]);
+                        }}
+                        onKioskActiveChange={(active) => {
+                          setIsTotemActive(active);
+                        }}
+                      />
                     ) : adminSubTab === 'playstore' ? (
                       <PlayStoreMobileHub customDomain={storeSettings.customDomain} />
                     ) : (
