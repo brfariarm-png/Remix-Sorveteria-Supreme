@@ -57,6 +57,12 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [testingServer, setTestingServer] = useState(false);
   const [creatingInstanceManual, setCreatingInstanceManual] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<{ success: boolean; message: string; details?: string } | null>(null);
+  const [qrProgressMsg, setQrProgressMsg] = useState('');
+  const [activatingWebhook, setActivatingWebhook] = useState(false);
+  const [webhookActiveResult, setWebhookActiveResult] = useState<{ success: boolean; message: string; url?: string } | null>(null);
+  const [simulatingCustomerMsg, setSimulatingCustomerMsg] = useState(false);
+  const [testCustomerText, setTestCustomerText] = useState('Olá! Gostaria de fazer um pedido');
+  const [simulatedReply, setSimulatedReply] = useState<string | null>(null);
 
   // Internal WhatsApp Device Linking QR Code states
   const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>(() => {
@@ -202,12 +208,100 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         whatsappWppconnectToken: wppconnectToken,
       };
       await onUpdateSettings(payload);
+      
+      // Sync to backend bot server
+      fetch('/api/bot/sync-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botName,
+          storeName: storeSettings.name || 'Sorveteria Supreme',
+          phone: whatsappPhone,
+          evolutionUrl,
+          evolutionInstance,
+          evolutionToken,
+          welcomeMsg,
+          menuLink,
+          menuMsg,
+          supportMsg,
+          address: storeSettings.address || '',
+          openHours: `${storeSettings.openTime || '11:00'} às ${storeSettings.closeTime || '23:59'}`
+        })
+      }).catch(() => {});
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
       console.error(e);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Activate 24/7 Webhook on Evolution API with 1-click
+  const handleActivateWebhookAutoBot = async () => {
+    setActivatingWebhook(true);
+    setWebhookActiveResult(null);
+    try {
+      if (!evolutionUrl) {
+        throw new Error('Preencha a URL da Evolution API na aba "Conexão & QR Code".');
+      }
+      const res = await fetch('/api/bot/setup-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evolutionUrl,
+          evolutionInstance: evolutionInstance || 'supreme-bot',
+          evolutionToken: evolutionToken || '429683C4C977415CAAFCCE10F7D57E11',
+          publicAppUrl: window.location.origin
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao configurar webhook');
+      }
+      setWebhookActiveResult({
+        success: true,
+        message: 'Robô Automático 24/7 Ativado com Sucesso no WhatsApp!',
+        url: data.webhookUrl
+      });
+      alert('✓ Robô Automático Ativado no WhatsApp!\n\nAgora, sempre que um cliente mandar mensagem para o seu número, ele receberá imediatamente as Boas-Vindas e o Menu com as Opções (1, 2, 3 e 4)!');
+    } catch (e: any) {
+      setWebhookActiveResult({
+        success: false,
+        message: e.message || 'Erro ao ativar'
+      });
+      alert(`Falha: ${e.message}`);
+    } finally {
+      setActivatingWebhook(false);
+    }
+  };
+
+  // Simulate customer sending message to bot
+  const handleSimulateCustomerMessage = async (textToSimulate?: string) => {
+    const text = textToSimulate || testCustomerText;
+    if (!text.trim()) return;
+    setSimulatingCustomerMsg(true);
+    setSimulatedReply(null);
+    try {
+      const res = await fetch('/api/bot/simulate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          pushName: 'Cliente Teste',
+          phone: testPhone
+        })
+      });
+      const data = await res.json();
+      if (data.replyText) {
+        setSimulatedReply(data.replyText);
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert('Erro na simulação: ' + e.message);
+    } finally {
+      setSimulatingCustomerMsg(false);
     }
   };
 
@@ -650,7 +744,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           setQrTimer(120);
           alert(`✓ Instância "${cleanInstance}" criada com sucesso e QR Code pronto para escanear!`);
         } else {
-          alert(`✓ Instância "${cleanInstance}" criada/confirmada com sucesso no servidor! Agora clique em "Gerar QR Code Oficial".`);
+          // Immediately generate QR code with polling
+          await handleGenerateQr();
         }
       } else {
         const detail = Array.isArray(createData?.response?.message) ? createData.response.message.join(', ') : (createData?.message || createText);
@@ -765,37 +860,81 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           throw new Error(lastCreateError);
         }
 
-        // 2. Busca o QR Code da instância conectando nela via GET
-        const res = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
-          method: 'GET',
-          headers: { 'apikey': cleanToken }
-        });
+        // 2. Busca o QR Code da instância conectando nela via GET com retentativas automáticas
+        let qrPayloadFound: string | null = null;
+        let isInstanceConnected = false;
+        let lastConnectError = '';
 
-        if (!res.ok) {
-          const text = await res.text();
-          let parsed: any = null;
-          try { parsed = JSON.parse(text); } catch (_) {}
-          const errorMsg = Array.isArray(parsed?.response?.message) 
-            ? parsed.response.message.join(', ')
-            : (parsed?.message || text);
-          throw new Error(`Erro na conexão (${res.status}): ${errorMsg || 'A instância ainda não está pronta.'}`);
+        for (let attempt = 1; attempt <= 7; attempt++) {
+          setQrProgressMsg(`Aguardando o WhatsApp carregar o QR Code (${attempt}/7)...`);
+          try {
+            const res = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
+              method: 'GET',
+              headers: { 'apikey': cleanToken }
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              let parsed: any = null;
+              try { parsed = JSON.parse(text); } catch (_) {}
+              lastConnectError = Array.isArray(parsed?.response?.message) 
+                ? parsed.response.message.join(', ')
+                : (parsed?.message || text);
+              if (attempt < 7) {
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+              }
+              break;
+            }
+
+            const data = await res.json();
+            if (data.status === 'open' || data.status === 'CONNECTED' || data.instance?.state === 'open' || data.state === 'open') {
+              isInstanceConnected = true;
+              break;
+            }
+
+            const qrCode = data.base64 || (data.qrcode && data.qrcode.base64) || data.code || (data.qrcode && data.qrcode.code);
+            if (qrCode) {
+              qrPayloadFound = qrCode;
+              break;
+            }
+
+            if (data.pairingCode) {
+              qrPayloadFound = data.pairingCode;
+              break;
+            }
+
+            // Socket WhatsApp ainda está conectando na Meta/WhatsApp Web. Aguarda 2s e tenta de novo.
+            if (attempt < 7) {
+              await new Promise(r => setTimeout(r, 2000));
+            }
+          } catch (connErr: any) {
+            lastConnectError = connErr.message || String(connErr);
+            if (attempt < 7) {
+              await new Promise(r => setTimeout(r, 2000));
+            }
+          }
         }
 
-        const data = await res.json();
-        if (data.status === 'open' || data.status === 'CONNECTED' || data.instance?.state === 'open') {
+        if (isInstanceConnected) {
           setQrCodeStatus('connected');
           localStorage.setItem('whatsapp_qr_status', 'connected');
-        } else if (data.base64 || (data.qrcode && data.qrcode.base64)) {
-          setQrCodePayload(data.base64 || data.qrcode.base64);
-          setQrCodeStatus('waiting');
-          setQrTimer(120);
-        } else if (data.code || (data.qrcode && data.qrcode.code)) {
-          setQrCodePayload(data.code || data.qrcode.code);
-          setQrCodeStatus('waiting');
-          setQrTimer(120);
-        } else {
-          throw new Error('Instância criada com sucesso! O QR Code está sendo gerado. Aguarde 5 segundos e clique novamente.');
+          alert('✓ Seu WhatsApp já está conectado e online no servidor!');
+          return;
         }
+
+        if (qrPayloadFound) {
+          setQrCodePayload(qrPayloadFound);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
+          return;
+        }
+
+        throw new Error(
+          lastConnectError
+            ? `O WhatsApp ainda não concluiu a conexão: ${lastConnectError}`
+            : 'O WhatsApp Baileys ainda está inicializando no servidor. Aguarde 5 segundos e clique novamente em "Gerar QR Code Oficial".'
+        );
       } catch (err: any) {
         setQrError(err.message || 'Erro ao conectar à Evolution API');
         setQrCodeStatus('disconnected');
@@ -1173,6 +1312,147 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         <Settings className="w-3.5 h-3.5" />
                         Conectar Aparelho Real
                       </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Automatic Customer Welcome & Menu Auto-Reply Card */}
+              <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white p-6 rounded-3xl border border-emerald-700/60 shadow-md space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
+                      <Bot className="w-5 h-5 text-emerald-300" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-white">
+                        🤖 Resposta Automática 24h: Boas-Vindas & Menu
+                      </h4>
+                      <p className="text-[11px] text-emerald-200/90 font-medium">
+                        Quando o cliente manda qualquer mensagem no WhatsApp, ele recebe as boas-vindas e as opções instantaneamente!
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleActivateWebhookAutoBot}
+                    disabled={activatingWebhook}
+                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
+                  >
+                    <Zap className={`w-4 h-4 fill-current ${activatingWebhook ? 'animate-spin' : ''}`} />
+                    {activatingWebhook ? 'Ativando Webhook...' : '⚡ Ativar Robô no WhatsApp'}
+                  </button>
+                </div>
+
+                {webhookActiveResult && (
+                  <div className={`p-3.5 rounded-2xl text-xs border ${
+                    webhookActiveResult.success
+                      ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+                      : 'bg-rose-500/20 border-rose-400/40 text-rose-150'
+                  }`}>
+                    <div className="font-extrabold flex items-center gap-1.5 mb-0.5">
+                      {webhookActiveResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : <AlertCircle className="w-4 h-4 text-rose-300" />}
+                      {webhookActiveResult.message}
+                    </div>
+                    {webhookActiveResult.url && (
+                      <p className="text-[10px] text-emerald-200/80 font-mono mt-1">
+                        Endpoint ativo: {webhookActiveResult.url}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Explanatory Flow */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 text-xs">
+                  <div className="bg-white/5 border border-white/10 p-3 rounded-2xl">
+                    <span className="text-[9.5px] font-black uppercase text-emerald-400 block mb-1">Passo 1: Cliente Escreve</span>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      O cliente envia "Oi", "Boa tarde" ou qualquer dúvida para o seu WhatsApp.
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 p-3 rounded-2xl">
+                    <span className="text-[9.5px] font-black uppercase text-teal-300 block mb-1">Passo 2: Boas-Vindas</span>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      O robô envia a saudação oficial + as 4 opções numeradas na hora.
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 p-3 rounded-2xl">
+                    <span className="text-[9.5px] font-black uppercase text-cyan-300 block mb-1">Passo 3: Cliente Escolhe</span>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      O cliente responde 1 (Cardápio), 2 (Rastrear), 3 (Horários) ou 4 (Atendente).
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 p-3 rounded-2xl">
+                    <span className="text-[9.5px] font-black uppercase text-amber-300 block mb-1">Passo 4: Execução</span>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      O link do cardápio ou rastreio é entregue, ou toca a campainha física!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Simulation Tester Box */}
+                <div className="bg-black/30 p-4 rounded-2xl border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Testar Resposta Automática (Simular Mensagem do Cliente)
+                    </span>
+                    <span className="text-[9px] text-slate-400">Sem gastar créditos ou enviar para celular</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={testCustomerText}
+                      onChange={(e) => setTestCustomerText(e.target.value)}
+                      placeholder="Ex: Olá, quero ver o cardápio"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold text-white placeholder-slate-400 outline-none focus:border-emerald-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSimulateCustomerMessage()}
+                      disabled={simulatingCustomerMsg || !testCustomerText.trim()}
+                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
+                    >
+                      {simulatingCustomerMsg ? 'Processando...' : 'Testar Resposta'}
+                    </button>
+                  </div>
+
+                  {/* Quick option buttons for testing */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[9.5px] text-slate-400 font-bold uppercase mr-1">Atalhos de Teste:</span>
+                    {[
+                      { label: '"Oi"', text: 'Oi, tudo bem?' },
+                      { label: '"1" (Cardápio)', text: '1' },
+                      { label: '"2" (Rastrear)', text: '2' },
+                      { label: '"3" (Horários)', text: '3' },
+                      { label: '"4" (Atendente)', text: '4' }
+                    ].map((btn) => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={() => {
+                          setTestCustomerText(btn.text);
+                          handleSimulateCustomerMessage(btn.text);
+                        }}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 text-[10px] font-semibold rounded-lg border border-white/10 cursor-pointer transition-all"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Simulated Reply Preview */}
+                  {simulatedReply && (
+                    <div className="mt-3 p-3.5 bg-[#005c4b]/80 border border-emerald-500/40 rounded-xl text-left">
+                      <div className="text-[9.5px] font-black uppercase text-emerald-200 mb-1 flex items-center gap-1">
+                        <CheckCheck className="w-3.5 h-3.5 text-emerald-300" />
+                        O que o cliente receberá no WhatsApp:
+                      </div>
+                      <p className="text-xs text-white whitespace-pre-wrap font-sans leading-relaxed">
+                        {simulatedReply}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1903,7 +2183,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         <div className="w-16 h-16 rounded-full border-4 border-slate-100 border-t-emerald-600 animate-spin" />
                         <Bot className="w-6 h-6 text-emerald-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce" />
                       </div>
-                      <p className="text-xs font-black uppercase text-slate-700 tracking-wider animate-pulse">Consultando Servidor...</p>
+                      <p className="text-xs font-black uppercase text-slate-700 tracking-wider animate-pulse text-center px-4">
+                        {qrProgressMsg || 'Consultando Servidor...'}
+                      </p>
                     </div>
                   )}
 
