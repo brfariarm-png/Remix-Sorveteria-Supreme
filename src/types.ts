@@ -143,10 +143,23 @@ export interface StoreSettings {
   pagseguroEnvironment?: 'sandbox' | 'production';
 
   // Customizable WhatsApp Bot properties
+  whatsappBotEnabled?: boolean;
+  whatsappBotName?: string;
+  whatsappWebhookUrl?: string;
+  whatsappApiKey?: string;
   whatsappBotWelcomeMessage?: string;
   whatsappBotMenuMessage?: string;
   whatsappBotSupportMessage?: string;
   whatsappBotMenuLink?: string;
+  whatsappConnectionProvider?: 'simulator' | 'evolution' | 'zapi' | 'wppconnect';
+  whatsappEvolutionUrl?: string;
+  whatsappEvolutionInstance?: string;
+  whatsappEvolutionToken?: string;
+  whatsappZapiInstanceId?: string;
+  whatsappZapiToken?: string;
+  whatsappWppconnectUrl?: string;
+  whatsappWppconnectInstance?: string;
+  whatsappWppconnectToken?: string;
 
   // Custom cup sizes editable base prices
   cupPrices?: {

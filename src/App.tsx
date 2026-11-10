@@ -525,6 +525,23 @@ export default function App() {
           pagseguroEmail: data.pagseguroEmail ?? prev.pagseguroEmail,
           pagseguroToken: data.pagseguroToken ?? prev.pagseguroToken,
           pagseguroEnvironment: data.pagseguroEnvironment ?? prev.pagseguroEnvironment,
+          whatsappBotEnabled: data.whatsappBotEnabled ?? prev.whatsappBotEnabled ?? true,
+          whatsappBotName: data.whatsappBotName ?? prev.whatsappBotName,
+          whatsappWebhookUrl: data.whatsappWebhookUrl ?? prev.whatsappWebhookUrl,
+          whatsappApiKey: data.whatsappApiKey ?? prev.whatsappApiKey,
+          whatsappBotWelcomeMessage: data.whatsappBotWelcomeMessage ?? prev.whatsappBotWelcomeMessage,
+          whatsappBotMenuMessage: data.whatsappBotMenuMessage ?? prev.whatsappBotMenuMessage,
+          whatsappBotSupportMessage: data.whatsappBotSupportMessage ?? prev.whatsappBotSupportMessage,
+          whatsappBotMenuLink: data.whatsappBotMenuLink ?? prev.whatsappBotMenuLink,
+          whatsappConnectionProvider: data.whatsappConnectionProvider ?? prev.whatsappConnectionProvider ?? 'simulator',
+          whatsappEvolutionUrl: data.whatsappEvolutionUrl ?? prev.whatsappEvolutionUrl,
+          whatsappEvolutionInstance: data.whatsappEvolutionInstance ?? prev.whatsappEvolutionInstance,
+          whatsappEvolutionToken: data.whatsappEvolutionToken ?? prev.whatsappEvolutionToken,
+          whatsappZapiInstanceId: data.whatsappZapiInstanceId ?? prev.whatsappZapiInstanceId,
+          whatsappZapiToken: data.whatsappZapiToken ?? prev.whatsappZapiToken,
+          whatsappWppconnectUrl: data.whatsappWppconnectUrl ?? prev.whatsappWppconnectUrl,
+          whatsappWppconnectInstance: data.whatsappWppconnectInstance ?? prev.whatsappWppconnectInstance,
+          whatsappWppconnectToken: data.whatsappWppconnectToken ?? prev.whatsappWppconnectToken,
            cupPrices: data.cupPrices ?? prev.cupPrices ?? {
             '300ml': 18,
             '400ml': 21,
@@ -1417,6 +1434,10 @@ export default function App() {
     if (params.get('privacy') === 'true' || params.get('politica') === 'true') {
       setIsPrivacyOpen(true);
     }
+    if (params.get('tab') === 'whatsapp' || params.get('admin') === 'whatsapp' || params.get('bot') === 'true' || params.get('bot') === '1') {
+      setActiveTab('tracker');
+      setAdminSubTab('whatsapp');
+    }
 
     // Recover lost/new-session orders from URL tracking parameter (?track=order-ID)
     const trackId = params.get('track');
@@ -1759,6 +1780,23 @@ export default function App() {
           pagseguroEmail: settings.pagseguroEmail || '',
           pagseguroToken: settings.pagseguroToken || '',
           pagseguroEnvironment: settings.pagseguroEnvironment || 'sandbox',
+          whatsappBotEnabled: settings.whatsappBotEnabled !== false,
+          whatsappBotName: settings.whatsappBotName || 'Supreme Bot Premium 💜',
+          whatsappWebhookUrl: settings.whatsappWebhookUrl || '',
+          whatsappApiKey: settings.whatsappApiKey || '',
+          whatsappBotWelcomeMessage: settings.whatsappBotWelcomeMessage || '',
+          whatsappBotMenuMessage: settings.whatsappBotMenuMessage || '',
+          whatsappBotSupportMessage: settings.whatsappBotSupportMessage || '',
+          whatsappBotMenuLink: settings.whatsappBotMenuLink || '',
+          whatsappConnectionProvider: settings.whatsappConnectionProvider || 'simulator',
+          whatsappEvolutionUrl: settings.whatsappEvolutionUrl || '',
+          whatsappEvolutionInstance: settings.whatsappEvolutionInstance || '',
+          whatsappEvolutionToken: settings.whatsappEvolutionToken || '',
+          whatsappZapiInstanceId: settings.whatsappZapiInstanceId || '',
+          whatsappZapiToken: settings.whatsappZapiToken || '',
+          whatsappWppconnectUrl: settings.whatsappWppconnectUrl || '',
+          whatsappWppconnectInstance: settings.whatsappWppconnectInstance || '',
+          whatsappWppconnectToken: settings.whatsappWppconnectToken || '',
           cupPrices: settings.cupPrices || {
             '300ml': 18,
             '400ml': 21,
@@ -4251,6 +4289,21 @@ E-mail: ${storeSettings.email}`;
                   >
                     <MessageCircle className="w-4 h-4" /> Iniciar Conversa
                   </a>
+
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowWhatsAppQrModal(false);
+                        setActiveTab('tracker');
+                        setAdminSubTab('whatsapp');
+                      }}
+                      className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black text-[11px] py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      🤖 Abrir Central do WhatsApp Bot
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setShowWhatsAppQrModal(false)}
@@ -5864,22 +5917,20 @@ E-mail: ${storeSettings.email}`;
       </AnimatePresence>
 
       {/* Floating WhatsApp Support Trigger Button */}
-      {!isAdmin && (
-        <motion.button
-          onClick={() => setShowWhatsAppQrModal(true)}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-          className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-[90] bg-emerald-500 hover:bg-emerald-600 text-white p-3.5 rounded-full shadow-2xl flex items-center justify-center gap-2 cursor-pointer group active:scale-90"
-          title="Fale Conosco no WhatsApp"
-        >
-          <MessageCircle className="w-6 h-6 animate-pulse" />
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out font-black text-[10px] uppercase tracking-wider block whitespace-nowrap leading-none">
-            Suporte WhatsApp
-          </span>
-        </motion.button>
-      )}
+      <motion.button
+        onClick={() => setShowWhatsAppQrModal(true)}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.95 }}
+        className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-[90] bg-emerald-500 hover:bg-emerald-600 text-white p-3.5 rounded-full shadow-2xl flex items-center justify-center gap-2 cursor-pointer group active:scale-90"
+        title={isAdmin ? "WhatsApp Bot & Suporte" : "Fale Conosco no WhatsApp"}
+      >
+        <MessageCircle className="w-6 h-6 animate-pulse" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out font-black text-[10px] uppercase tracking-wider block whitespace-nowrap leading-none">
+          {isAdmin ? "WhatsApp Bot 💬" : "Suporte WhatsApp"}
+        </span>
+      </motion.button>
 
     </div>
   );
