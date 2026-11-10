@@ -54,6 +54,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
   const [qrError, setQrError] = useState('');
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [testingServer, setTestingServer] = useState(false);
+  const [creatingInstanceManual, setCreatingInstanceManual] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<{ success: boolean; message: string; details?: string } | null>(null);
 
   // Internal WhatsApp Device Linking QR Code states
   const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>(() => {
@@ -519,6 +522,148 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
+  // Diagnostic Test for Evolution API on Render
+  const handleTestRenderConnection = async () => {
+    setTestingServer(true);
+    setDiagnosticResult(null);
+    try {
+      if (!evolutionUrl) {
+        throw new Error('Preencha o campo "URL Base do Servidor" primeiro.');
+      }
+      let cleanUrl = evolutionUrl.trim().replace(/\/$/, '');
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = `https://${cleanUrl}`;
+      }
+
+      const candidateKeys = [
+        evolutionToken.trim(),
+        '429683C4C977415CAAFCCE10F7D57E11',
+        'supreme2026'
+      ].filter(Boolean);
+
+      let keySuccess = '';
+      let fetchInstancesRes: any = null;
+      let lastErrText = '';
+
+      for (const k of candidateKeys) {
+        try {
+          const res = await fetch(`${cleanUrl}/instance/fetchInstances`, {
+            method: 'GET',
+            headers: { 'apikey': k }
+          });
+          if (res.ok) {
+            keySuccess = k;
+            fetchInstancesRes = await res.json();
+            break;
+          } else {
+            const txt = await res.text();
+            lastErrText = `Status ${res.status}: ${txt}`;
+          }
+        } catch (fetchErr: any) {
+          lastErrText = fetchErr.message || 'Falha de conexão com o Render';
+        }
+      }
+
+      if (keySuccess) {
+        if (keySuccess !== evolutionToken.trim()) {
+          setEvolutionToken(keySuccess);
+        }
+        const instances = Array.isArray(fetchInstancesRes) ? fetchInstancesRes : (fetchInstancesRes?.data || []);
+        const names = instances.map((it: any) => it.name || it.instanceName || it.instance?.instanceName).filter(Boolean);
+        const hasSupreme = names.includes((evolutionInstance || 'supreme-bot').trim());
+
+        setDiagnosticResult({
+          success: true,
+          message: `Servidor Evolution API Online e Autenticado! (${instances.length} instância(s) encontrada(s))`,
+          details: `Instâncias no banco: ${names.length > 0 ? names.join(', ') : 'Nenhuma criada ainda'}. ${hasSupreme ? '✓ A instância supreme-bot já existe e está pronta!' : 'ℹ️ A instância supreme-bot precisa ser criada. Clique em "Criar Instância supreme-bot" abaixo!'}`
+        });
+      } else {
+        // Test root ping
+        let rootReachable = false;
+        try {
+          const rootRes = await fetch(`${cleanUrl}/`);
+          rootReachable = rootRes.status === 200 || rootRes.status === 404;
+        } catch (_) {}
+
+        if (rootReachable) {
+          setDiagnosticResult({
+            success: false,
+            message: 'Servidor Render respondeu, mas a API Key não foi aceita.',
+            details: 'No Render > Environment: adicione a variável AUTHENTICATION_API_KEY com valor "supreme2026" (ou use a chave padrão 429683C4C977415CAAFCCE10F7D57E11).'
+          });
+        } else {
+          setDiagnosticResult({
+            success: false,
+            message: 'Não foi possível alcançar o servidor no Render.',
+            details: `O Render gratuito pode estar inicializando/acordando (aguarde cerca de 40s) ou a URL está incorreta. Detalhe: ${lastErrText}`
+          });
+        }
+      }
+    } catch (e: any) {
+      setDiagnosticResult({
+        success: false,
+        message: 'Falha no teste de conexão',
+        details: e.message || String(e)
+      });
+    } finally {
+      setTestingServer(false);
+    }
+  };
+
+  // Manual explicit instance creation
+  const handleManualCreateInstance = async () => {
+    setCreatingInstanceManual(true);
+    setQrError('');
+    try {
+      if (!evolutionUrl) {
+        throw new Error('Informe a URL da Evolution API.');
+      }
+      let cleanUrl = evolutionUrl.trim().replace(/\/$/, '');
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = `https://${cleanUrl}`;
+      }
+      const cleanInstance = (evolutionInstance || 'supreme-bot').trim();
+      const tokenToUse = evolutionToken.trim() || '429683C4C977415CAAFCCE10F7D57E11';
+
+      const createRes = await fetch(`${cleanUrl}/instance/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': tokenToUse
+        },
+        body: JSON.stringify({
+          instanceName: cleanInstance,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS'
+        })
+      });
+
+      const createText = await createRes.text();
+      let createData: any = null;
+      try { createData = JSON.parse(createText); } catch (_) {}
+
+      if (createRes.ok || (createData && (createData.message?.includes('already in use') || createData.message?.includes('already exists')))) {
+        const qr = createData?.qrcode?.base64 || createData?.qrcode?.code || createData?.base64 || createData?.code;
+        if (qr) {
+          setQrCodePayload(qr);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
+          alert(`✓ Instância "${cleanInstance}" criada com sucesso e QR Code pronto para escanear!`);
+        } else {
+          alert(`✓ Instância "${cleanInstance}" criada/confirmada com sucesso no servidor! Agora clique em "Gerar QR Code Oficial".`);
+        }
+      } else {
+        const detail = Array.isArray(createData?.response?.message) ? createData.response.message.join(', ') : (createData?.message || createText);
+        throw new Error(`Erro ao criar instância (${createRes.status}): ${detail}`);
+      }
+    } catch (e: any) {
+      alert(`Falha: ${e.message}`);
+      setQrError(e.message);
+    } finally {
+      setCreatingInstanceManual(false);
+    }
+  };
+
   // Handle generating QR Code trigger
   const handleGenerateQr = async () => {
     setQrError('');
@@ -533,65 +678,123 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     } else if (connectionProvider === 'evolution') {
       setQrCodeStatus('generating');
       try {
-        if (!evolutionUrl || !evolutionInstance || !evolutionToken) {
-          throw new Error('Preencha os campos da Evolution API (URL, Instância e Token) na aba de Ajustes de Conexão!');
+        if (!evolutionUrl) {
+          throw new Error('Preencha a URL da Evolution API na aba de Ajustes de Conexão!');
         }
-        const cleanUrl = evolutionUrl.replace(/\/$/, '');
+        let cleanUrl = evolutionUrl.trim().replace(/\/$/, '');
+        if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+          cleanUrl = `https://${cleanUrl}`;
+        }
+        const cleanInstance = (evolutionInstance || 'supreme-bot').trim();
+        
+        // Find working key: entered key, default key, or supreme2026
+        const candidateKeys = [
+          evolutionToken.trim(),
+          '429683C4C977415CAAFCCE10F7D57E11',
+          'supreme2026'
+        ].filter(Boolean);
 
-        // 1. Automaticamente cria a instância caso ela ainda não exista no servidor
-        try {
-          const createRes = await fetch(`${cleanUrl}/instance/create`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': evolutionToken
-            },
-            body: JSON.stringify({
-              instanceName: evolutionInstance,
-              qrcode: true,
-              integration: 'WHATSAPP-BAILEYS'
-            })
-          });
-          const createData = await createRes.json();
-          if (createData?.instance?.status === 'open' || createData?.instance?.state === 'open') {
-            setQrCodeStatus('connected');
-            localStorage.setItem('whatsapp_qr_status', 'connected');
-            return;
+        let cleanToken = evolutionToken.trim();
+        let createSuccessOrExists = false;
+        let qrFound: string | null = null;
+        let lastCreateError = '';
+
+        for (const tokenCandidate of candidateKeys) {
+          try {
+            const createRes = await fetch(`${cleanUrl}/instance/create`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': tokenCandidate
+              },
+              body: JSON.stringify({
+                instanceName: cleanInstance,
+                qrcode: true,
+                integration: 'WHATSAPP-BAILEYS'
+              })
+            });
+
+            const createText = await createRes.text();
+            let createData: any = null;
+            try { createData = JSON.parse(createText); } catch (_) {}
+
+            if (createRes.status === 401 || createRes.status === 403) {
+              lastCreateError = `Token / API Key incorreto (${createRes.status}). Certifique-se de que configurou AUTHENTICATION_API_KEY no Render.`;
+              continue; // try next candidate key
+            }
+
+            cleanToken = tokenCandidate;
+            if (tokenCandidate !== evolutionToken.trim()) {
+              setEvolutionToken(tokenCandidate);
+            }
+
+            if (createData?.instance?.status === 'open' || createData?.instance?.state === 'open' || createData?.status === 'open') {
+              setQrCodeStatus('connected');
+              localStorage.setItem('whatsapp_qr_status', 'connected');
+              return;
+            }
+
+            const qrFromCreate = createData?.qrcode?.base64 || createData?.qrcode?.code || createData?.base64 || createData?.code || createData?.hash?.qrcode?.base64;
+            if (qrFromCreate) {
+              qrFound = qrFromCreate;
+              createSuccessOrExists = true;
+              break;
+            }
+
+            const isAlreadyExists = createText.toLowerCase().includes('already') || createText.toLowerCase().includes('existe');
+            if (createRes.ok || isAlreadyExists) {
+              createSuccessOrExists = true;
+              break;
+            } else {
+              const msg = Array.isArray(createData?.response?.message) ? createData.response.message.join(', ') : (createData?.message || createText);
+              lastCreateError = `Erro ao criar instância (${createRes.status}): ${msg}`;
+            }
+          } catch (createErr: any) {
+            lastCreateError = createErr.message || 'Falha de rede ao conectar no Render.';
           }
-          const possibleQr = createData?.qrcode?.base64 || createData?.qrcode?.code || createData?.base64 || createData?.code;
-          if (possibleQr) {
-            setQrCodePayload(possibleQr);
-            setQrCodeStatus('waiting');
-            setQrTimer(120);
-            return;
-          }
-        } catch (createErr) {
-          console.warn('Tentativa de criação inicial da instância:', createErr);
         }
 
-        // 2. Busca o QR Code da instância conectando nela
-        const res = await fetch(`${cleanUrl}/instance/connect/${evolutionInstance}`, {
+        if (qrFound) {
+          setQrCodePayload(qrFound);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
+          return;
+        }
+
+        if (!createSuccessOrExists && lastCreateError) {
+          throw new Error(lastCreateError);
+        }
+
+        // 2. Busca o QR Code da instância conectando nela via GET
+        const res = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
           method: 'GET',
-          headers: { 'apikey': evolutionToken }
+          headers: { 'apikey': cleanToken }
         });
+
         if (!res.ok) {
           const text = await res.text();
-          throw new Error(`Erro na API (${res.status}): ${text || 'Verifique as credenciais.'}`);
+          let parsed: any = null;
+          try { parsed = JSON.parse(text); } catch (_) {}
+          const errorMsg = Array.isArray(parsed?.response?.message) 
+            ? parsed.response.message.join(', ')
+            : (parsed?.message || text);
+          throw new Error(`Erro na conexão (${res.status}): ${errorMsg || 'A instância ainda não está pronta.'}`);
         }
+
         const data = await res.json();
         if (data.status === 'open' || data.status === 'CONNECTED' || data.instance?.state === 'open') {
           setQrCodeStatus('connected');
           localStorage.setItem('whatsapp_qr_status', 'connected');
-        } else if (data.code || (data.qrcode && data.qrcode.code)) {
-          setQrCodePayload(data.code || data.qrcode.code);
-          setQrCodeStatus('waiting');
-          setQrTimer(120);
         } else if (data.base64 || (data.qrcode && data.qrcode.base64)) {
           setQrCodePayload(data.base64 || data.qrcode.base64);
           setQrCodeStatus('waiting');
           setQrTimer(120);
+        } else if (data.code || (data.qrcode && data.qrcode.code)) {
+          setQrCodePayload(data.code || data.qrcode.code);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
         } else {
-          throw new Error('Instância criada, mas nenhum QR Code foi retornado.');
+          throw new Error('Instância criada com sucesso! O QR Code está sendo gerado. Aguarde 5 segundos e clique novamente.');
         }
       } catch (err: any) {
         setQrError(err.message || 'Erro ao conectar à Evolution API');
@@ -1428,14 +1631,29 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             />
                           </div>
                           <div>
-                            <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Token Global / Api Key</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-500">Token Global / Api Key</label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEvolutionToken('429683C4C977415CAAFCCE10F7D57E11');
+                                }}
+                                className="text-[9px] font-bold text-emerald-700 bg-emerald-100/70 hover:bg-emerald-200/80 px-1.5 py-0.5 rounded cursor-pointer transition-all"
+                                title="Preenche a chave global padrão da Evolution API v2"
+                              >
+                                Usar Chave Padrão
+                              </button>
+                            </div>
                             <input
                               type="password"
                               value={evolutionToken}
                               onChange={(e) => setEvolutionToken(e.target.value)}
-                              placeholder="Insira a API Key..."
+                              placeholder="supreme2026 ou 429683C4C977415CAAFCCE10F7D57E11"
                               className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
                             />
+                            <p className="text-[9px] text-slate-500 mt-1 leading-tight">
+                              Se você <strong>não criou</strong> a variável <code className="bg-slate-150 px-1 rounded">AUTHENTICATION_API_KEY</code> no Render, clique em <strong>"Usar Chave Padrão"</strong> acima.
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1613,20 +1831,69 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         <p>2. No modo <strong>Evolution API / Z-API</strong>, preencha os dados à esquerda e clique em gerar o QR Code oficial para ler com o seu celular.</p>
                       </div>
 
+                      {diagnosticResult && (
+                        <div className={`p-3.5 rounded-2xl border text-left text-xs ${
+                          diagnosticResult.success 
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                            : 'bg-amber-50 border-amber-200 text-amber-900'
+                        }`}>
+                          <div className="font-black flex items-center gap-1.5 mb-1">
+                            {diagnosticResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-amber-600" />}
+                            {diagnosticResult.message}
+                          </div>
+                          {diagnosticResult.details && (
+                            <p className="text-[11px] leading-relaxed opacity-90 font-medium">
+                              {diagnosticResult.details}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       {qrError && (
-                        <div className="p-3 bg-rose-50 border border-rose-150 rounded-xl text-[10.5px] text-rose-700 font-bold text-left">
-                          ⚠️ {qrError}
+                        <div className="p-3 bg-rose-50 border border-rose-150 rounded-xl text-[10.5px] text-rose-700 font-bold text-left space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                            <span>⚠️ {qrError}</span>
+                          </div>
+                          {qrError.includes('does not exist') && (
+                            <p className="text-[10px] text-slate-600 font-normal pl-5">
+                              👉 Clique no botão <strong>"🛠️ Criar Instância supreme-bot"</strong> abaixo para registrar a sessão no seu banco antes de conectar!
+                            </p>
+                          )}
                         </div>
                       )}
 
                       <button
                         type="button"
                         onClick={handleGenerateQr}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-xs rounded-2xl cursor-pointer shadow-md shadow-emerald-100 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-xs rounded-2xl cursor-pointer shadow-md shadow-emerald-100 transition-all flex items-center justify-center gap-2 active:scale-98"
                       >
                         <QrCode className="w-4 h-4" />
                         {connectionProvider === 'simulator' ? 'Iniciar Pareamento no Simulador' : 'Gerar QR Code Oficial'}
                       </button>
+
+                      {connectionProvider === 'evolution' && (
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={handleTestRenderConnection}
+                            disabled={testingServer}
+                            className="py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${testingServer ? 'animate-spin' : ''}`} />
+                            {testingServer ? 'Testando...' : '🔍 Testar Servidor'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleManualCreateInstance}
+                            disabled={creatingInstanceManual}
+                            className="py-2 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                            {creatingInstanceManual ? 'Criando...' : '🛠️ Criar Instância'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
