@@ -44,18 +44,52 @@ function addBotLog(log: Omit<BotLog, 'id' | 'timestamp'>) {
 // In-memory store config cache (updated via sync or API)
 let cachedStoreConfig = {
   botName: 'Supreme Bot Premium 💜',
-  storeName: 'Sorveteria Supreme',
-  phone: '5519998765432',
-  evolutionUrl: '',
+  storeName: 'Sorveteria Gourmet Supreme',
+  phone: '5519974118672',
+  evolutionUrl: 'https://supreme-bot-2bm0.onrender.com',
   evolutionInstance: 'supreme-bot',
-  evolutionToken: '429683C4C977415CAAFCCE10F7D57E11',
-  welcomeMsg: `Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
+  evolutionToken: 'Rmfa1100@',
+  welcomeMsg: `Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
   menuLink: 'https://ais-dev-yhf54sfjf6of4ko46v7bn3-576759142795.us-west2.run.app',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
-  supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
-  address: 'Rua Principal do Açaí, 100 - Monte Mor/SP',
-  openHours: '11:00 às 23:59'
+  supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
+  address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
+  openHours: '13:00 às 20:00'
 };
+
+// Auto-sync configuration directly from Firestore settings/store_config
+async function syncStoreConfigFromDb() {
+  try {
+    const { db } = await import('./src/firebase');
+    const { doc, getDoc } = await import('firebase/firestore');
+    const snap = await getDoc(doc(db, 'settings', 'store_config'));
+    if (snap.exists()) {
+      const data = snap.data();
+      cachedStoreConfig = {
+        ...cachedStoreConfig,
+        botName: data.whatsappBotName || cachedStoreConfig.botName,
+        storeName: data.name || cachedStoreConfig.storeName,
+        phone: data.phone || cachedStoreConfig.phone,
+        evolutionUrl: (data.whatsappEvolutionUrl || cachedStoreConfig.evolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/$/, ''),
+        evolutionInstance: (data.whatsappEvolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim(),
+        evolutionToken: (data.whatsappEvolutionToken || cachedStoreConfig.evolutionToken || 'Rmfa1100@').trim(),
+        welcomeMsg: data.whatsappBotWelcomeMessage || cachedStoreConfig.welcomeMsg,
+        menuMsg: data.whatsappBotMenuMessage || cachedStoreConfig.menuMsg,
+        menuLink: data.whatsappBotMenuLink || cachedStoreConfig.menuLink,
+        supportMsg: data.whatsappBotSupportMessage || cachedStoreConfig.supportMsg,
+        address: data.address || cachedStoreConfig.address,
+      };
+      console.log(`✅ [WhatsApp Bot] Configurações carregadas do Firestore! Evolution URL: ${cachedStoreConfig.evolutionUrl} | Instância: ${cachedStoreConfig.evolutionInstance}`);
+    }
+  } catch (err: any) {
+    console.warn('⚠️ [WhatsApp Bot] Erro não impeditivo ao ler Firestore:', err?.message || err);
+  }
+}
+
+// Initial sync on startup
+syncStoreConfigFromDb();
+// Periodic refresh every 60s
+setInterval(syncStoreConfigFromDb, 60000);
 
 // Determine response text based on incoming message
 function processIncomingMessage(userText: string, pushName: string = 'Cliente') {
@@ -94,33 +128,46 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
     cleanUrl = `https://${cleanUrl}`;
   }
   const cleanInstance = (config.evolutionInstance || 'supreme-bot').trim();
-  const cleanToken = (config.evolutionToken || '429683C4C977415CAAFCCE10F7D57E11').trim();
+  const cleanToken = (config.evolutionToken || 'Rmfa1100@').trim();
   const cleanNumber = targetNumber.replace(/\D/g, '');
 
   if (!cleanUrl || !cleanInstance) {
     throw new Error('Evolution API URL e Instância não configuradas.');
   }
 
-  const res = await fetch(`${cleanUrl}/message/sendText/${cleanInstance}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': cleanToken
-    },
-    body: JSON.stringify({
-      number: cleanNumber,
-      text: messageText
-    })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-  const responseText = await res.text();
-  if (!res.ok) {
-    throw new Error(`Evolution API erro ${res.status}: ${responseText}`);
+  try {
+    const res = await fetch(`${cleanUrl}/message/sendText/${cleanInstance}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': cleanToken
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        number: cleanNumber,
+        text: messageText
+      })
+    });
+
+    clearTimeout(timeoutId);
+    const responseText = await res.text();
+    if (!res.ok) {
+      throw new Error(`Evolution API erro ${res.status}: ${responseText}`);
+    }
+
+    let data = null;
+    try { data = JSON.parse(responseText); } catch (_) {}
+    return data;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Timeout de 8s na Evolution API (o WhatsApp ainda não está pareado/conectado na Evolution API)');
+    }
+    throw err;
   }
-
-  let data = null;
-  try { data = JSON.parse(responseText); } catch (_) {}
-  return data;
 }
 
 // ------------------- API ROUTES ------------------- //
@@ -135,6 +182,93 @@ app.post('/api/bot/sync-config', (req: Request, res: Response) => {
     };
   }
   res.json({ success: true, config: cachedStoreConfig });
+});
+
+// Force sync from Firestore DB
+app.post('/api/bot/sync-from-db', async (_req: Request, res: Response) => {
+  await syncStoreConfigFromDb();
+  res.json({ success: true, config: cachedStoreConfig });
+});
+
+// Complete server-side diagnostic of Evolution API and Webhook
+app.get('/api/evolution/diagnostic', async (_req: Request, res: Response) => {
+  try {
+    const cleanUrl = cachedStoreConfig.evolutionUrl.replace(/\/$/, '');
+    const cleanInstance = cachedStoreConfig.evolutionInstance;
+    const cleanToken = cachedStoreConfig.evolutionToken;
+
+    // 1. Test ping to root
+    let online = false;
+    let version = '';
+    try {
+      const rootRes = await fetch(`${cleanUrl}/`, { method: 'GET' });
+      if (rootRes.ok) {
+        const rootJson = await rootRes.json();
+        online = true;
+        version = rootJson.version || '';
+      }
+    } catch (_) {}
+
+    // 2. Fetch instances
+    let instanceExists = false;
+    let instanceState = 'disconnected';
+    let isPaired = false;
+    let ownerJid: string | null = null;
+    let tokenValid = false;
+
+    try {
+      const instRes = await fetch(`${cleanUrl}/instance/fetchInstances`, {
+        method: 'GET',
+        headers: { 'apikey': cleanToken }
+      });
+      if (instRes.ok) {
+        tokenValid = true;
+        const instances: any[] = await instRes.json();
+        const found = instances.find(i => i.name === cleanInstance);
+        if (found) {
+          instanceExists = true;
+          instanceState = found.connectionStatus || 'close';
+          ownerJid = found.ownerJid || null;
+          isPaired = Boolean(found.ownerJid);
+        }
+      } else if (instRes.status === 401 || instRes.status === 403) {
+        tokenValid = false;
+      }
+    } catch (_) {}
+
+    // 3. Check Webhook
+    let webhookActive = false;
+    let webhookUrl: string | null = null;
+    try {
+      const whRes = await fetch(`${cleanUrl}/webhook/find/${cleanInstance}`, {
+        method: 'GET',
+        headers: { 'apikey': cleanToken }
+      });
+      if (whRes.ok) {
+        const whData = await whRes.json();
+        webhookActive = whData.enabled === true || whData.webhook?.enabled === true;
+        webhookUrl = whData.url || whData.webhook?.url || null;
+      }
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      evolutionOnline: online,
+      evolutionVersion: version,
+      evolutionUrl: cleanUrl,
+      instanceName: cleanInstance,
+      tokenValid,
+      instanceExists,
+      instanceState,
+      isPaired,
+      ownerJid,
+      webhookActive,
+      webhookUrl,
+      recentLogs: recentBotLogs.slice(0, 10)
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Erro no diagnóstico' });
+  }
 });
 
 // Get current config & logs
@@ -283,7 +417,8 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
       return;
     }
 
-    const data = payload?.data;
+    const rawData = payload?.data;
+    const data = Array.isArray(rawData) ? rawData[0] : rawData;
     if (!data) return;
 
     const key = data?.key;
@@ -302,12 +437,16 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
     const cleanSender = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
     const pushName = data?.pushName || 'Cliente';
 
-    // Extract text from message payload
+    // Extract text from message payload across Baileys variations
     const incomingText = 
       data?.message?.conversation ||
       data?.message?.extendedTextMessage?.text ||
+      data?.message?.imageMessage?.caption ||
+      data?.message?.videoMessage?.caption ||
       data?.message?.buttonsResponseMessage?.selectedDisplayText ||
+      data?.message?.buttonsResponseMessage?.selectedButtonId ||
       data?.message?.listResponseMessage?.title ||
+      data?.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
       '';
 
     if (!incomingText.trim()) {
@@ -315,6 +454,11 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
     }
 
     console.log(`[WhatsApp Bot] Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
+
+    // Ensure config is fresh
+    if (!cachedStoreConfig.evolutionUrl || !cachedStoreConfig.evolutionToken) {
+      await syncStoreConfigFromDb();
+    }
 
     // Generate the bot response (welcome message + options)
     const replyText = processIncomingMessage(incomingText, pushName);

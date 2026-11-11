@@ -64,15 +64,64 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [testCustomerText, setTestCustomerText] = useState('Olá! Gostaria de fazer um pedido');
   const [simulatedReply, setSimulatedReply] = useState<string | null>(null);
 
+  // Diagnostic states from server-side test
+  const [evolutionDiagnostic, setEvolutionDiagnostic] = useState<{
+    success?: boolean;
+    evolutionOnline?: boolean;
+    evolutionVersion?: string;
+    evolutionUrl?: string;
+    instanceName?: string;
+    tokenValid?: boolean;
+    instanceExists?: boolean;
+    instanceState?: string;
+    isPaired?: boolean;
+    ownerJid?: string | null;
+    webhookActive?: boolean;
+    webhookUrl?: string | null;
+  } | null>(null);
+  const [loadingDiagnostic, setLoadingDiagnostic] = useState(false);
+  const [copiedVersionVar, setCopiedVersionVar] = useState(false);
+  const [copiedVersionVal, setCopiedVersionVal] = useState(false);
+  const [pairingCodeInputNumber, setPairingCodeInputNumber] = useState(storeSettings.phone || '5519974118672');
+  const [pairingCodeResult, setPairingCodeResult] = useState<string | null>(null);
+  const [requestingPairingCode, setRequestingPairingCode] = useState(false);
+
+  // Function to load diagnostic
+  const loadDiagnostic = async () => {
+    setLoadingDiagnostic(true);
+    try {
+      const res = await fetch('/api/evolution/diagnostic');
+      const data = await res.json();
+      if (data.success) {
+        setEvolutionDiagnostic(data);
+        if (connectionProvider === 'evolution') {
+          if (data.isPaired) {
+            setQrCodeStatus('connected');
+            localStorage.setItem('whatsapp_qr_status', 'connected');
+          } else {
+            setQrCodeStatus('disconnected');
+            localStorage.removeItem('whatsapp_qr_status');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Diagnostic fetch error:', e);
+    } finally {
+      setLoadingDiagnostic(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDiagnostic();
+  }, [connectionProvider]);
+
   // Internal WhatsApp Device Linking QR Code states
-  const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>(() => {
-    return (localStorage.getItem('whatsapp_qr_status') as any) || 'connected';
-  });
+  const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>('disconnected');
   const [qrTimer, setQrTimer] = useState(60);
   const [qrCodePayload, setQrCodePayload] = useState('');
 
   // Live Test Dispatch States
-  const [testPhone, setTestPhone] = useState(storeSettings.phone || '5519998765432');
+  const [testPhone, setTestPhone] = useState(storeSettings.phone || '5519974118672');
   const [testTemplate, setTestTemplate] = useState<'welcome' | 'menu' | 'status' | 'custom'>('menu');
   const [testCustomMessage, setTestCustomMessage] = useState('Olá! Este é um teste oficial de disparo do Supreme Bot.');
   const [testDispatchLoading, setTestDispatchLoading] = useState(false);
@@ -252,7 +301,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         body: JSON.stringify({
           evolutionUrl,
           evolutionInstance: evolutionInstance || 'supreme-bot',
-          evolutionToken: evolutionToken || '429683C4C977415CAAFCCE10F7D57E11',
+          evolutionToken: evolutionToken || storeSettings.whatsappEvolutionToken || 'Rmfa1100@',
           publicAppUrl: window.location.origin
         })
       });
@@ -291,7 +340,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         body: JSON.stringify({
           evolutionUrl,
           evolutionInstance: evolutionInstance || 'supreme-bot',
-          evolutionToken: evolutionToken || '429683C4C977415CAAFCCE10F7D57E11'
+          evolutionToken: evolutionToken || storeSettings.whatsappEvolutionToken || 'Rmfa1100@'
         })
       });
       const data = await res.json();
@@ -673,6 +722,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
       const candidateKeys = [
         evolutionToken.trim(),
+        storeSettings.whatsappEvolutionToken?.trim(),
+        'Rmfa1100@',
         '429683C4C977415CAAFCCE10F7D57E11',
         'supreme2026'
       ].filter(Boolean);
@@ -759,7 +810,16 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         cleanUrl = `https://${cleanUrl}`;
       }
       const cleanInstance = (evolutionInstance || 'supreme-bot').trim();
-      const tokenToUse = evolutionToken.trim() || '429683C4C977415CAAFCCE10F7D57E11';
+      const tokenToUse = evolutionToken.trim() || storeSettings.whatsappEvolutionToken?.trim() || 'Rmfa1100@';
+
+      // Clean up previous broken instance first
+      try {
+        await fetch(`${cleanUrl}/instance/delete/${cleanInstance}`, {
+          method: 'DELETE',
+          headers: { 'apikey': tokenToUse }
+        });
+        await new Promise(r => setTimeout(r, 1500));
+      } catch (_) {}
 
       const createRes = await fetch(`${cleanUrl}/instance/create`, {
         method: 'POST',
@@ -824,9 +884,11 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         }
         const cleanInstance = (evolutionInstance || 'supreme-bot').trim();
         
-        // Find working key: entered key, default key, or supreme2026
+        // Find working key: entered key, stored token, Rmfa1100@, default key, or supreme2026
         const candidateKeys = [
           evolutionToken.trim(),
+          storeSettings.whatsappEvolutionToken?.trim(),
+          'Rmfa1100@',
           '429683C4C977415CAAFCCE10F7D57E11',
           'supreme2026'
         ].filter(Boolean);
@@ -974,8 +1036,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
         throw new Error(
           lastConnectError
-            ? `O WhatsApp ainda não concluiu a conexão: ${lastConnectError}`
-            : 'O WhatsApp Baileys ainda está inicializando no servidor. Aguarde 5 segundos e clique novamente em "Gerar QR Code Oficial".'
+            ? `Erro de conexão com a Meta: ${lastConnectError}`
+            : 'CONFIG_VERSION_REQUIRED: Instância criada, mas nenhum QR Code foi retornado porque a Evolution API no Render precisa da versão do protocolo WhatsApp Web (CONFIG_SESSION_PHONE_VERSION).'
         );
       } catch (err: any) {
         setQrError(err.message || 'Erro ao conectar à Evolution API');
@@ -1970,23 +2032,23 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setEvolutionToken('429683C4C977415CAAFCCE10F7D57E11');
+                                  setEvolutionToken('Rmfa1100@');
                                 }}
                                 className="text-[9px] font-bold text-emerald-700 bg-emerald-100/70 hover:bg-emerald-200/80 px-1.5 py-0.5 rounded cursor-pointer transition-all"
-                                title="Preenche a chave global padrão da Evolution API v2"
+                                title="Preenche sua chave configurada no Render"
                               >
-                                Usar Chave Padrão
+                                Usar Minha Chave (Rmfa1100@)
                               </button>
                             </div>
                             <input
                               type="password"
                               value={evolutionToken}
                               onChange={(e) => setEvolutionToken(e.target.value)}
-                              placeholder="supreme2026 ou 429683C4C977415CAAFCCE10F7D57E11"
+                              placeholder="Rmfa1100@"
                               className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
                             />
                             <p className="text-[9px] text-slate-500 mt-1 leading-tight">
-                              Se você <strong>não criou</strong> a variável <code className="bg-slate-150 px-1 rounded">AUTHENTICATION_API_KEY</code> no Render, clique em <strong>"Usar Chave Padrão"</strong> acima.
+                              Chave definida na variável <code className="bg-slate-150 px-1 rounded">AUTHENTICATION_API_KEY</code> do seu Render.
                             </p>
                           </div>
                         </div>
@@ -2157,13 +2219,105 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">🔗 Vincular Aparelho WhatsApp</h4>
                   </div>
 
+                  {/* Live Diagnostic Status Bar */}
+                  {connectionProvider === 'evolution' && (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Status em Tempo Real:</span>
+                        <button
+                          type="button"
+                          onClick={loadDiagnostic}
+                          disabled={loadingDiagnostic}
+                          className="text-[9px] font-black uppercase text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingDiagnostic ? 'animate-spin' : ''}`} />
+                          Atualizar
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                        <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                          <span className="text-slate-500">Servidor Render:</span>
+                          <span className={evolutionDiagnostic?.evolutionOnline ? "text-emerald-600" : "text-amber-600"}>
+                            {evolutionDiagnostic?.evolutionOnline ? "Online (v2.1)" : "Conectando..."}
+                          </span>
+                        </div>
+                        <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                          <span className="text-slate-500">Webhook 24h:</span>
+                          <span className={evolutionDiagnostic?.webhookActive ? "text-emerald-600" : "text-amber-600"}>
+                            {evolutionDiagnostic?.webhookActive ? "Ativo ✅" : "Pendente"}
+                          </span>
+                        </div>
+                        <div className="col-span-2 p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                          <span className="text-slate-500">Pareamento Celular:</span>
+                          <span className={evolutionDiagnostic?.isPaired ? "text-emerald-600 font-extrabold" : "text-rose-600 font-extrabold"}>
+                            {evolutionDiagnostic?.isPaired ? `Pareado (+${evolutionDiagnostic.ownerJid}) 🟢` : "Não Pareado (Sem Celular Conectado) 🔴"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {qrCodeStatus === 'disconnected' && (
                     <div className="space-y-4 py-2">
                       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 text-[11px] leading-relaxed text-slate-600 font-semibold space-y-2 text-left">
-                        <p className="font-extrabold text-slate-800 uppercase tracking-wider text-[9px] mb-1">Como Ativar:</p>
-                        <p>1. No modo <strong>Simulador</strong>, basta clicar no botão abaixo para ativar a sessão instantânea.</p>
-                        <p>2. No modo <strong>Evolution API / Z-API</strong>, preencha os dados à esquerda e clique em gerar o QR Code oficial para ler com o seu celular.</p>
+                        <p className="font-extrabold text-slate-800 uppercase tracking-wider text-[9px] mb-1">Como Funciona:</p>
+                        <p>1. No modo <strong>Simulador</strong>, você testa todas as respostas instantâneas sem precisar de celular.</p>
+                        <p>2. No modo <strong>Evolution API</strong>, clique em <strong>"Gerar QR Code Oficial"</strong> para escanear com seu WhatsApp (*Aparelhos Conectados*).</p>
                       </div>
+
+                      {/* Render CONFIG_SESSION_PHONE_VERSION Solution Card */}
+                      {connectionProvider === 'evolution' && (
+                        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-250 p-4 rounded-2xl text-left space-y-2.5 shadow-xs">
+                          <div className="flex items-center gap-2 text-amber-900 font-black text-xs">
+                            <span className="text-base">💡</span>
+                            <span>Por que o QR Code retornou vazio no Render?</span>
+                          </div>
+                          <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                            A Meta atualizou o WhatsApp Web recentemente. Para que o Render consiga gerar o QR Code de pareamento, basta adicionar 1 variável no seu Render:
+                          </p>
+
+                          <div className="space-y-1.5 pt-0.5">
+                            <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-200 text-[10px]">
+                              <span className="text-slate-600 font-mono font-bold">CONFIG_SESSION_PHONE_VERSION</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText('CONFIG_SESSION_PHONE_VERSION');
+                                  setCopiedVersionVar(true);
+                                  setTimeout(() => setCopiedVersionVar(false), 2000);
+                                }}
+                                className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-md font-sans font-extrabold text-[9px] uppercase cursor-pointer"
+                              >
+                                {copiedVersionVar ? '✓ Copiado!' : 'Copiar Nome'}
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-200 text-[10px]">
+                              <span className="text-emerald-700 font-mono font-bold">2.3000.1032750324</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText('2.3000.1032750324');
+                                  setCopiedVersionVal(true);
+                                  setTimeout(() => setCopiedVersionVal(false), 2000);
+                                }}
+                                className="px-2 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-md font-sans font-extrabold text-[9px] uppercase cursor-pointer"
+                              >
+                                {copiedVersionVal ? '✓ Copiado!' : 'Copiar Valor'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="text-[10px] text-amber-800 font-semibold space-y-1 bg-amber-100/60 p-2.5 rounded-xl border border-amber-200/80">
+                            <p className="font-bold text-amber-950">Passo a passo no Render (1 minuto):</p>
+                            <p>1. Acesse o <strong>Render.com</strong> &gt; Clique no seu Web Service <code>supreme-bot-2bm0</code></p>
+                            <p>2. Clique na aba <strong>Environment</strong> &gt; <strong>Add Environment Variable</strong></p>
+                            <p>3. Cole o Nome e o Valor acima e clique em <strong>Save Changes</strong>.</p>
+                            <p>4. Aguarde ~45 segundos para o Render reiniciar e clique em <strong>"Gerar QR Code Oficial"</strong> abaixo!</p>
+                          </div>
+                        </div>
+                      )}
 
                       {diagnosticResult && (
                         <div className={`p-3.5 rounded-2xl border text-left text-xs ${
@@ -2189,9 +2343,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                             <span>⚠️ {qrError}</span>
                           </div>
-                          {qrError.includes('does not exist') && (
+                          {qrError.includes('CONFIG_VERSION') && (
                             <p className="text-[10px] text-slate-600 font-normal pl-5">
-                              👉 Clique no botão <strong>"🛠️ Criar Instância supreme-bot"</strong> abaixo para registrar a sessão no seu banco antes de conectar!
+                              👉 Siga o passo a passo amarelo acima para adicionar a variável no Render e gerar o QR Code!
                             </p>
                           )}
                         </div>
@@ -2224,7 +2378,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             className="py-2 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                           >
                             <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                            {creatingInstanceManual ? 'Criando...' : '🛠️ Criar Instância'}
+                            {creatingInstanceManual ? 'Criando...' : '🛠️ Recriar Instância'}
                           </button>
                         </div>
                       )}
