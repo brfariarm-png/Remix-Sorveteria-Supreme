@@ -106,7 +106,11 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
       `;
     }
 
-    const notesHtml = item.notes ? `
+    const isFelicidadeItem = Boolean(
+      item.menuItem?.name?.toLowerCase()?.includes('felicidade') ||
+      item.menuItem?.id?.toLowerCase()?.includes('felicidade')
+    );
+    const notesHtml = (item.notes && !isFelicidadeItem) ? `
       <div style="font-size: ${fontSize - 1}px; background: #fffbeb; color: #b45309; border: 2px dashed #f59e0b; padding: 4px 6px; margin-top: 4px; font-weight: 900; text-transform: uppercase; border-radius: 4px; line-height: 1.3;">
         ⚠️ OBS: ${item.notes}
       </div>

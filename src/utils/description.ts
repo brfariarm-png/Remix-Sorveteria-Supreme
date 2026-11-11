@@ -21,6 +21,12 @@ export function cleanDescriptionForSingleSize(description: string): string {
     /se vai açaí puro,? sorvete ou casadinho\??/gi,
     /se vai acai puro,? sorvete ou casadinho\??/gi,
     /monte seu copo com os seus adicionais favoritos/gi,
+    /escolha at[eé] \d+ sabores(de)?( sorvete)?\,?/gi,
+    /com tudo para te fazer mais feliz\,?/gi,
+    /copo de \d+\s*ml com tudo para te fazer mais feliz\,?/gi,
+    /observa[cç][aã]o:?.*?(\,|$|\.)/gi,
+    /observa[cç][oõ]es:?.*?(\,|$|\.)/gi,
+    /obs:?.*?(\,|$|\.)/gi,
   ];
 
   phrasesToRemove.forEach((regex) => {
@@ -29,7 +35,10 @@ export function cleanDescriptionForSingleSize(description: string): string {
 
   // Clean up any double spaces, extra commas/periods, or trailing punctuation
   cleaned = cleaned.replace(/\s+/g, ' ');
+  cleaned = cleaned.replace(/\s*,\s*,+/g, ',');
+  cleaned = cleaned.replace(/\s*,\s*/g, ', ');
   cleaned = cleaned.replace(/^\s*,\s*/g, '');
+  cleaned = cleaned.replace(/\s*,\s*$/g, '');
   cleaned = cleaned.trim();
 
   // If the entire description is cleaned out or empty, return a high-quality fallback

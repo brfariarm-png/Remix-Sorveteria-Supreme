@@ -553,7 +553,7 @@ export default function AdminPDV({
         isCustomCup: true,
         customCupConfig: customizationObj,
         customCupPrice: calculatedPrice,
-        notes: itemSpecificNotes
+        notes: (customizingItem.name?.toLowerCase().includes('felicidade') || customizingItem.id?.toLowerCase().includes('felicidade')) ? '' : itemSpecificNotes
       }
     ]);
 
@@ -1373,19 +1373,21 @@ export default function AdminPDV({
                 </div>
               )}
 
-              {/* Item Specific Notes */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">5. Observações deste Copo</label>
+              {/* Item Specific Notes - Ocultado para Copo da Felicidade */}
+              {!(customizingItem?.name?.toLowerCase().includes('felicidade') || customizingItem?.id?.toLowerCase().includes('felicidade')) && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">5. Observações deste Copo</label>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Ex: Granola separado, retire leite condensado..."
+                    value={itemSpecificNotes}
+                    onChange={(e) => setItemSpecificNotes(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-250 font-bold text-slate-750 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Ex: Granola separado, retire leite condensado..."
-                  value={itemSpecificNotes}
-                  onChange={(e) => setItemSpecificNotes(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-250 font-bold text-slate-750 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                />
-              </div>
+              )}
 
             </div>
 

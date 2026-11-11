@@ -39,6 +39,7 @@ export default function CupCustomizer({
   const isLinhaBrownie = customizingItem?.id === 'acai-sensacao' || customizingItem?.name === 'Linha Brownie';
   const isSplit = customizingItem?.name?.toLowerCase()?.includes('banana split') || customizingItem?.name?.toLowerCase()?.includes('morango split') || customizingItem?.id?.toLowerCase()?.includes('banana-split') || customizingItem?.id?.toLowerCase()?.includes('morango-split');
   const isCopoTrufado = customizingItem?.name?.toLowerCase()?.includes('trufado') || customizingItem?.id?.toLowerCase()?.includes('trufado');
+  const isFelicidade = Boolean(customizingItem?.name?.toLowerCase()?.includes('felicidade') || customizingItem?.id?.toLowerCase()?.includes('felicidade'));
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
     if (customizingItem?.sizeMode) {
@@ -376,7 +377,7 @@ export default function CupCustomizer({
       isCustomCup: true,
       customCupConfig: config,
       customCupPrice: totalPrice,
-      notes: notes.trim() || undefined,
+      notes: isFelicidade ? undefined : (notes.trim() || undefined),
       needSpoon: needSpoon ?? false,
     };
 
@@ -436,11 +437,19 @@ export default function CupCustomizer({
               </button>
             </div>
             <h3 className="text-xl font-bold text-slate-800 leading-tight">
-              {resolvedSizeMode === 'single' ? 'Adicionais e Observações' : isLinhaBrownie ? 'Escolha Seu Brownie Favorito e Adicionais' : isMilkshake ? 'Escolha o Sabor e Adicionais' : 'Escolha Seu Tamanho e Adicionais'}
+              {isFelicidade 
+                ? 'Personalize seu Copo da Felicidade' 
+                : resolvedSizeMode === 'single' 
+                  ? 'Adicionais e Acompanhamentos' 
+                  : isLinhaBrownie 
+                    ? 'Escolha Seu Brownie Favorito e Adicionais' 
+                    : isMilkshake 
+                      ? 'Escolha o Sabor e Adicionais' 
+                      : 'Escolha Seu Tamanho e Adicionais'}
             </h3>
             <p className="text-[11px] text-slate-650 leading-normal bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/20">
               {customizingItem 
-                ? (resolvedSizeMode === 'single' ? cleanDescriptionForSingleSize(customizingItem.description) : customizingItem.description)
+                ? (resolvedSizeMode === 'single' || isFelicidade ? cleanDescriptionForSingleSize(customizingItem.description) : customizingItem.description)
                 : 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola. O melhor acai preparado com ingredientes selecionados e de boa qualidade.'}
             </p>
           </div>
@@ -857,16 +866,18 @@ export default function CupCustomizer({
               </div>
             </div>
 
-            {/* Notes Input */}
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Observações do Pedido</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Mandar a calda separada, colocar a granola no fundo do copo, etc..."
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none h-14"
-              />
-            </div>
+            {/* Notes Input - Ocultado para Copo da Felicidade */}
+            {!isFelicidade && (
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Observações do Pedido</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: Mandar a calda separada, colocar a granola no fundo do copo, etc..."
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none h-14"
+                />
+              </div>
+            )}
           </div>
 
           {/* Action Footer */}
