@@ -78,45 +78,47 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
           ? (storeSettings?.milkshakeLabels?.[sz] || sz)
           : (storeSettings?.cupLabels?.[sz] || sz);
 
+      const spoonText = (item.needSpoon ?? config.needSpoon) !== undefined
+        ? ((item.needSpoon ?? config.needSpoon) ? 'Sim' : 'Não dispensada')
+        : '';
+
       customDetails = `
-        <div style="font-size: ${fontSize - 1}px; color: #111; margin-left: 10px; margin-top: 2px; line-height: 1.3;">
-          <strong>• Base:</strong> ${baseText}<br/>
-          <strong>• Tamanho:</strong> ${sizeLabel}<br/>
-          ${flavorNames ? `<strong>• Sabores:</strong> ${flavorNames}<br/>` : ''}
-          ${toppingNames ? `<strong>• Adicionais:</strong> ${toppingNames}<br/>` : ''}
+        <div style="font-size: ${fontSize - 1}px; color: #000; margin-top: 4px; padding: 4px 6px; background: #f4f4f5; border-left: 3px solid #000; line-height: 1.35;">
+          <div style="font-weight: 900; font-size: ${fontSize}px; text-transform: uppercase;">
+            📦 TAMANHO: ${sizeLabel}
+          </div>
+          <div style="margin-top: 2px;">
+            <strong>BASE:</strong> ${baseText}
+          </div>
+          ${flavorNames ? `
+          <div style="margin-top: 2px;">
+            <strong>SABORES:</strong> ${flavorNames}
+          </div>` : ''}
+          ${toppingNames ? `
+          <div style="margin-top: 2px;">
+            <strong>ADICIONAIS:</strong> ${toppingNames}
+          </div>` : ''}
+          ${spoonText ? `
+          <div style="margin-top: 2px; font-size: ${fontSize - 2}px; color: #444;">
+            <strong>Colher:</strong> ${spoonText}
+          </div>` : ''}
         </div>
       `;
     }
-    const notesHtml = item.notes ? (() => {
-      const lower = item.notes.toLowerCase();
-      const isRetire = lower.includes('retir') || lower.includes('tirar') || lower.includes('sem ') || lower.includes('tire');
-      const isSeparado = lower.includes('separad') || lower.includes('mande separ') || lower.includes('pote') || lower.includes('potinho') || lower.includes('mandar separ');
-      
-      let badgeStyle = 'background: #f0f0f0; color: #333; border: 1px solid #ccc; font-weight: bold;';
-      let titlePrefix = 'Obs: ';
-      
-      if (isRetire && isSeparado) {
-        badgeStyle = `background: #fff1f2; color: #be123c; border: 2px solid #e11d48; font-weight: 900; text-transform: uppercase; font-size: ${fontSize - 1}px;`;
-        titlePrefix = '⚠️ ATENÇÃO (RETIRAR & SEPARAR): ';
-      } else if (isRetire) {
-        badgeStyle = `background: #fffbeb; color: #b45309; border: 2px dashed #f59e0b; font-weight: 900; text-transform: uppercase; font-size: ${fontSize - 1}px;`;
-        titlePrefix = '🚫 ATENÇÃO (RETIRAR INGREDIENTE): ';
-      } else if (isSeparado) {
-        badgeStyle = `background: #ecfeff; color: #0891b2; border: 2px solid #06b6d4; font-weight: 900; text-transform: uppercase; font-size: ${fontSize - 1}px;`;
-        titlePrefix = '📦 ATENÇÃO (MANDAR SEPARADO): ';
-      } else {
-        badgeStyle = `background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; font-weight: bold;`;
-        titlePrefix = 'Obs: ';
-      }
-      
-      return `<div style="font-size: ${fontSize - 2}px; ${badgeStyle} margin-left: 10px; margin-top: 5px; padding: 4px 6px; border-radius: 4px; display: block; line-height: 1.3;">${titlePrefix}${item.notes}</div>`;
-    })() : '';
+
+    const notesHtml = item.notes ? `
+      <div style="font-size: ${fontSize - 1}px; background: #fffbeb; color: #b45309; border: 2px dashed #f59e0b; padding: 4px 6px; margin-top: 4px; font-weight: 900; text-transform: uppercase; border-radius: 4px; line-height: 1.3;">
+        ⚠️ OBS: ${item.notes}
+      </div>
+    ` : '';
+
+    const price = ((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity);
 
     return `
       <div style="margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 6px;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${fontSize}px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: ${fontSize + 1}px;">
           <span>${item.quantity}x ${item.menuItem.name}</span>
-          <span>R$ ${((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity).toFixed(2)}</span>
+          <span>R$ ${price.toFixed(2)}</span>
         </div>
         ${customDetails}
         ${notesHtml}
@@ -129,66 +131,77 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
     order.details.paymentType === 'card' ? 'Cartão pelo App' :
     order.details.paymentType === 'cash_on_delivery' ? 'Dinheiro' : 'Cartão na Entrega';
 
+  const isDelivery = order.details.deliveryType === 'delivery';
   const addressDetails = order.details.address;
-  const addressHtml = order.details.deliveryType === 'delivery' && addressDetails
-    ? `<div><strong>Endereço de Entrega:</strong><br/>${addressDetails.street}, ${addressDetails.number} - Bairro: ${addressDetails.neighborhood || 'Não informado'}<br/>Cidade: ${addressDetails.city}${addressDetails.reference ? `<br/>Ref: ${addressDetails.reference}` : ''}</div>`
-    : `<div><strong>Retirada no Balcão:</strong><br/>Cliente irá retirar o pedido na loja.</div>`;
+  const addressHtml = isDelivery && addressDetails
+    ? `<div style="font-size: ${fontSize - 1}px; line-height: 1.35; padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; margin-top: 4px;">
+        <strong>Endereço de Entrega:</strong><br/>
+        ${addressDetails.street}, ${addressDetails.number}<br/>
+        Bairro: ${addressDetails.neighborhood || 'Não informado'} - ${addressDetails.city || ''}
+        ${addressDetails.reference ? `<br/><strong>Ref:</strong> ${addressDetails.reference}` : ''}
+      </div>`
+    : `<div style="font-size: ${fontSize - 1}px; padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; margin-top: 4px;">
+        <strong>Retirada no Balcão:</strong><br/>Cliente irá retirar o pedido na loja física.
+      </div>`;
 
   // Render copy block
   const renderCopy = (copyIndex: number) => {
     const copyLabel = numCopies > 1 
-      ? `<div style="text-align: center; font-weight: bold; font-size: ${fontSize - 1}px; border: 1px solid #000; padding: 4px; margin-bottom: 10px; text-transform: uppercase;">VIA ${copyIndex === 1 ? 'COZINHA/PRODUÇÃO' : copyIndex === 2 ? 'CLIENTE/ENTREGA' : 'CONTROLE/SALA'}</div>`
+      ? `<div style="text-align: center; font-weight: 900; font-size: ${fontSize}px; border: 2px solid #000; padding: 4px; margin-bottom: 8px; text-transform: uppercase;">VIA ${copyIndex === 1 ? 'COZINHA / PREPARO' : copyIndex === 2 ? 'ENTREGA / CLIENTE' : 'CONTROLE'}</div>`
       : '';
 
+    const deliveryBadge = isDelivery
+      ? `<div style="text-align: center; font-weight: 900; font-size: ${fontSize + 1}px; border: 2px solid #000; padding: 4px; margin: 6px 0; text-transform: uppercase; background: #000; color: #fff;">🛵 ENTREGA EM DOMICÍLIO</div>`
+      : `<div style="text-align: center; font-weight: 900; font-size: ${fontSize + 1}px; border: 2px solid #000; padding: 4px; margin: 6px 0; text-transform: uppercase;">🛍️ RETIRADA NO BALCÃO</div>`;
+
     return `
-      <div class="receipt-copy" style="page-break-after: always; padding: 5px; box-sizing: border-box;">
+      <div class="receipt-copy" style="page-break-after: always; padding: 4px; box-sizing: border-box;">
         ${copyLabel}
+        
         <div class="header">
-          <div class="title" style="font-size: ${fontSize + 4}px;">${storeSettings?.name || 'SORVETERIA SUPREME'}</div>
-          ${showAddress && storeSettings?.address ? `<div class="subtitle">${storeSettings.address}<br/>Tel/WhatsApp: ${storeSettings.phone || '(11) 99999-9999'}</div>` : ''}
+          <div class="title" style="font-size: ${fontSize + 3}px; font-weight: 900;">${storeSettings?.name || 'SORVETERIA SUPREME'}</div>
+          ${showAddress && storeSettings?.address ? `<div class="subtitle" style="font-size: ${fontSize - 2}px;">${storeSettings.address}<br/>Tel/WhatsApp: ${storeSettings.phone || ''}</div>` : ''}
+          ${headerMessage ? `<div style="font-weight: bold; font-size: ${fontSize - 1}px; margin-top: 4px; text-transform: uppercase;">${headerMessage}</div>` : ''}
         </div>
 
-        <div class="section">
-          <div class="flex-between">
-            <span><strong>${headerMessage.toUpperCase()}</strong></span>
-            <span><strong>#${order.id.slice(-6).toUpperCase()}</strong></span>
+        <div class="section" style="padding-bottom: 6px; margin-bottom: 8px;">
+          <div class="flex-between" style="font-size: ${fontSize + 2}px; font-weight: 900;">
+            <span>PEDIDO:</span>
+            <span>#${order.id.slice(-6).toUpperCase()}</span>
           </div>
-          <div>Data/Hora: ${order.timestamp}</div>
-          <div>Status: <strong>${
-            order.status === 'waiting' ? 'Aguardando' :
-            order.status === 'preparing' ? 'Preparando' :
-            order.status === 'delivering' ? (order.details.deliveryType === 'delivery' ? 'A Caminho' : 'Pronto p/ Retirada') : 'Entregue'
-          }</strong></div>
+          <div style="font-size: ${fontSize - 1}px; color: #333; margin-top: 2px;">Data/Hora: ${order.timestamp}</div>
+          ${deliveryBadge}
         </div>
 
-        <div class="section">
+        <div class="section" style="padding-bottom: 6px; margin-bottom: 8px;">
           <div><strong>Cliente:</strong> ${order.details.customerName}</div>
           <div><strong>Telefone:</strong> ${order.details.customerPhone}</div>
-          <div style="margin-top: 4px;">
-            ${addressHtml}
-          </div>
+          ${addressHtml}
         </div>
 
-        <div class="section">
-          <div style="font-weight: bold; margin-bottom: 6px; text-transform: uppercase;">Itens do Pedido:</div>
+        <div class="section" style="padding-bottom: 6px; margin-bottom: 8px;">
+          <div style="font-weight: 900; margin-bottom: 6px; text-transform: uppercase; font-size: ${fontSize}px; border-bottom: 1px dashed #000; padding-bottom: 3px;">
+            📋 ITENS DO PEDIDO:
+          </div>
           ${itemsHtml}
         </div>
 
-        <div class="section" style="border-bottom: none;">
-          <div class="flex-between">
-            <span>Forma de Pagamento:</span>
-            <span>${paymentTypeText}</span>
+        <div class="section" style="border-bottom: none; padding-bottom: 4px; margin-bottom: 6px;">
+          <div class="flex-between" style="font-size: ${fontSize - 1}px;">
+            <span>Pagamento:</span>
+            <strong>${paymentTypeText}</strong>
           </div>
-          <div class="flex-between totais" style="border-top: 1px dashed #eee; padding-top: 4px; font-size: ${fontSize + 1}px;">
-            <span>VALOR TOTAL:</span>
+          <div class="flex-between totais" style="border-top: 2px solid #000; padding-top: 5px; font-size: ${fontSize + 2}px; font-weight: 900;">
+            <span>TOTAL:</span>
             <span>R$ ${order.total.toFixed(2)}</span>
           </div>
         </div>
 
-        <div class="footer">
-          <div>${footerMessage}</div>
-          <div style="margin-top: 4px; font-weight: bold; font-size: ${fontSize - 2}px;">Desenvolvido por Sorveteria Supreme • Pedidos Online</div>
-        </div>
+        ${footerMessage ? `
+          <div class="footer" style="text-align: center; border-top: 1px dashed #000; padding-top: 6px; font-size: ${fontSize - 2}px; font-style: italic;">
+            ${footerMessage}
+          </div>
+        ` : ''}
       </div>
     `;
   };

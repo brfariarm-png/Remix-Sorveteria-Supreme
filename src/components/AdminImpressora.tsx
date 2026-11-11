@@ -531,52 +531,69 @@ export default function AdminImpressora({
 
                 {/* Simulated Order Metadata */}
                 <div className="space-y-1 font-bold">
-                  <div className="flex justify-between">
-                    <span>PEDIDO: #F39B6</span>
-                    <span>PIX - DELIVERY</span>
+                  <div className="flex justify-between text-[11px] font-black">
+                    <span>PEDIDO:</span>
+                    <span>#F39B6</span>
                   </div>
-                  <div>CLIENTE: Felipe Barbosa</div>
-                  <div>FONE: (11) 98765-4321</div>
-                  <div>HORA: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div className="text-[8.5px] text-slate-500">HORA: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div className="bg-black text-white text-center py-1 rounded text-[9.5px] font-black uppercase tracking-wider my-1">
+                    🛵 ENTREGA EM DOMICÍLIO
+                  </div>
+                  <div className="text-[9.5px]">CLIENTE: Felipe Barbosa</div>
+                  <div className="text-[9.5px]">FONE: (19) 98765-4321</div>
+                  <div className="text-[8.5px] bg-slate-50 p-1.5 rounded border border-slate-200 font-normal">
+                    <strong>Endereço:</strong> Rua Principal, 100 - Bairro Centro
+                  </div>
                   
                   <div className="border-t border-dashed border-slate-300 my-1.5" />
                 </div>
 
                 {/* Simulated Items */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between font-bold text-slate-800">
-                    <span>1x Copo Personalizado 500ml</span>
-                    <span>R$ 20,00</span>
-                  </div>
-                  <div className="text-[9.5px] text-slate-500 pl-2 leading-relaxed space-y-0.5">
-                    <p>• Calda/Base: Casadinho</p>
-                    <p>• Sabores: Açaí, Ninho</p>
-                    <p>• Coberturas: Morango, Leite Condensado</p>
+                <div className="space-y-2">
+                  <div className="text-[9px] font-black uppercase text-slate-700 pb-0.5 border-b border-dashed border-slate-250">
+                    📋 ITENS DO PEDIDO:
                   </div>
 
-                  <div className="flex justify-between font-bold text-slate-800">
-                    <span>1x Sundae Morango Especial</span>
-                    <span>R$ 15,00</span>
+                  <div>
+                    <div className="flex justify-between font-black text-slate-900 text-[10px]">
+                      <span>1x Copo Personalizado</span>
+                      <span>R$ 20,00</span>
+                    </div>
+                    <div className="mt-1 bg-slate-100 p-1.5 rounded border-l-2 border-black text-[9px] leading-tight space-y-0.5">
+                      <p className="font-black text-slate-900 uppercase">📦 TAMANHO: 500ML</p>
+                      <p><strong>BASE:</strong> Casadinho</p>
+                      <p><strong>SABORES:</strong> Açaí, Ninho</p>
+                      <p><strong>ADICIONAIS:</strong> Morango, Leite Condensado</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-black text-slate-900 text-[10px]">
+                      <span>1x Sundae Especial</span>
+                      <span>R$ 15,00</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="border-t border-dashed border-slate-300 my-2" />
+                <div className="border-t-2 border-black my-2" />
 
                 {/* Total section */}
-                <div className="font-bold flex justify-between text-[11.5px] text-slate-950 uppercase">
-                  <span>TOTAL A PAGAR:</span>
-                  <span>R$ 35,00</span>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[9px] text-slate-600">
+                    <span>Pagamento:</span>
+                    <strong>PIX Online</strong>
+                  </div>
+                  <div className="font-black flex justify-between text-[11.5px] text-slate-950 uppercase border-t border-slate-200 pt-1">
+                    <span>TOTAL:</span>
+                    <span>R$ 35,00</span>
+                  </div>
                 </div>
 
                 {currentFooterMessage && (
-                  <div className="mt-3.5 pt-2.5 border-t border-slate-250 text-center font-semibold text-[8.5px] text-slate-500 leading-relaxed italic">
+                  <div className="mt-3 pt-2 border-t border-dashed border-slate-250 text-center font-semibold text-[8.5px] text-slate-500 leading-relaxed italic">
                     {currentFooterMessage}
                   </div>
                 )}
-
-                <div className="text-center text-[7.5px] text-slate-400 uppercase mt-4">
-                  SISTEMA SUPREME ICE
-                </div>
               </div>
             </div>
           </div>
