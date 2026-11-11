@@ -8,7 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+const PORT = isProd ? (Number(process.env.PORT) || 8080) : 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -145,6 +146,44 @@ app.get('/api/bot/status', (_req: Request, res: Response) => {
   });
 });
 
+// Check Webhook status on Evolution API
+app.post('/api/bot/check-webhook', async (req: Request, res: Response) => {
+  try {
+    const { evolutionUrl, evolutionInstance, evolutionToken } = req.body;
+    let cleanUrl = (evolutionUrl || cachedStoreConfig.evolutionUrl || '').trim().replace(/\/$/, '');
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+    const cleanInstance = (evolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim();
+    const cleanToken = (evolutionToken || cachedStoreConfig.evolutionToken || '429683C4C977415CAAFCCE10F7D57E11').trim();
+
+    if (!cleanUrl) {
+      return res.status(400).json({ error: 'URL da Evolution API obrigatória.' });
+    }
+
+    const checkRes = await fetch(`${cleanUrl}/webhook/find/${cleanInstance}`, {
+      method: 'GET',
+      headers: { 'apikey': cleanToken }
+    });
+
+    const text = await checkRes.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch (_) {}
+
+    const isActive = data?.enabled === true || data?.webhook?.enabled === true;
+    const url = data?.url || data?.webhook?.url || null;
+
+    res.json({
+      success: true,
+      active: isActive,
+      webhookUrl: url,
+      raw: data || text
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Falha ao consultar webhook' });
+  }
+});
+
 // Configure Webhook automatically on Evolution API
 app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
   try {
@@ -156,33 +195,53 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
     const cleanInstance = (evolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim();
     const cleanToken = (evolutionToken || cachedStoreConfig.evolutionToken || '429683C4C977415CAAFCCE10F7D57E11').trim();
 
-    // The webhook destination is this server's endpoint
-    const appHost = publicAppUrl || `${req.protocol}://${req.get('host')}`;
-    const webhookDestination = `${appHost.replace(/\/$/, '')}/api/webhook/whatsapp`;
-
     if (!cleanUrl) {
       return res.status(400).json({ error: 'URL da Evolution API obrigatória.' });
     }
 
-    // Call Evolution API /webhook/set/{instance}
+    // Persist configuration in cachedStoreConfig so webhook reply knows the URL & Token
+    cachedStoreConfig.evolutionUrl = cleanUrl;
+    cachedStoreConfig.evolutionInstance = cleanInstance;
+    cachedStoreConfig.evolutionToken = cleanToken;
+    if (publicAppUrl) {
+      cachedStoreConfig.menuLink = publicAppUrl.replace(/\/$/, '');
+    }
+
+    // The webhook destination is this server's endpoint
+    const appHost = publicAppUrl || `${req.protocol}://${req.get('host')}`;
+    const webhookDestination = `${appHost.replace(/\/$/, '')}/api/webhook/whatsapp`;
+
+    // Call Evolution API /webhook/set/{instance} with both flat and nested payloads
+    const webhookPayload = {
+      enabled: true,
+      url: webhookDestination,
+      webhook_by_events: false,
+      webhook_base64: false,
+      events: [
+        'MESSAGES_UPSERT',
+        'SEND_MESSAGE',
+        'CONNECTION_UPDATE'
+      ],
+      webhook: {
+        enabled: true,
+        url: webhookDestination,
+        byEvents: false,
+        base64: false,
+        events: [
+          'MESSAGES_UPSERT',
+          'SEND_MESSAGE',
+          'CONNECTION_UPDATE'
+        ]
+      }
+    };
+
     const setWebhookRes = await fetch(`${cleanUrl}/webhook/set/${cleanInstance}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': cleanToken
       },
-      body: JSON.stringify({
-        webhook: {
-          enabled: true,
-          url: webhookDestination,
-          byEvents: false,
-          base64: false,
-          events: [
-            'MESSAGES_UPSERT',
-            'SEND_MESSAGE'
-          ]
-        }
-      })
+      body: JSON.stringify(webhookPayload)
     });
 
     const respText = await setWebhookRes.text();
@@ -194,7 +253,7 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
 
     addBotLog({
       from: 'Sistema',
-      incomingText: 'Configuração de Webhook',
+      incomingText: 'Configuração de Webhook 24h',
       replyText: `Webhook ativado apontando para: ${webhookDestination}`,
       status: 'sent'
     });
@@ -347,7 +406,8 @@ async function startServer() {
   } else {
     // Serve static files in production
     app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
+    // Express 5 wildcard fallback (avoids path-to-regexp PathError)
+    app.use((_req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }

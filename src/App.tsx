@@ -5916,22 +5916,6 @@ E-mail: ${storeSettings.email}`;
         )}
       </AnimatePresence>
 
-      {/* Floating WhatsApp Support Trigger Button */}
-      <motion.button
-        onClick={() => setShowWhatsAppQrModal(true)}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
-        className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-[90] bg-emerald-500 hover:bg-emerald-600 text-white p-3.5 rounded-full shadow-2xl flex items-center justify-center gap-2 cursor-pointer group active:scale-90"
-        title={isAdmin ? "WhatsApp Bot & Suporte" : "Fale Conosco no WhatsApp"}
-      >
-        <MessageCircle className="w-6 h-6 animate-pulse" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out font-black text-[10px] uppercase tracking-wider block whitespace-nowrap leading-none">
-          {isAdmin ? "WhatsApp Bot 💬" : "Suporte WhatsApp"}
-        </span>
-      </motion.button>
-
     </div>
   );
 }

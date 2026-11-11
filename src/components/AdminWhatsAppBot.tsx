@@ -277,6 +277,45 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
+  // Check Webhook Status
+  const [checkingWebhookStatus, setCheckingWebhookStatus] = useState(false);
+  const handleCheckWebhookStatus = async () => {
+    setCheckingWebhookStatus(true);
+    try {
+      if (!evolutionUrl) {
+        throw new Error('Preencha a URL da Evolution API na aba "Conexão & QR Code".');
+      }
+      const res = await fetch('/api/bot/check-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evolutionUrl,
+          evolutionInstance: evolutionInstance || 'supreme-bot',
+          evolutionToken: evolutionToken || '429683C4C977415CAAFCCE10F7D57E11'
+        })
+      });
+      const data = await res.json();
+      if (data.active) {
+        setWebhookActiveResult({
+          success: true,
+          message: 'Webhook Ativo e Operando no WhatsApp!',
+          url: data.webhookUrl
+        });
+        alert(`✓ O Webhook está ATIVO na Evolution API!\n\nDestino configurado: ${data.webhookUrl}\n\nO robô responderá automaticamente a qualquer cliente que enviar mensagem.`);
+      } else {
+        setWebhookActiveResult({
+          success: false,
+          message: 'Webhook ainda não está ativado na Evolution API.'
+        });
+        alert('⚠️ O Webhook ainda NÃO está ativado na Evolution API.\n\nClique no botão "⚡ Ativar Robô no WhatsApp" para conectar agora mesmo!');
+      }
+    } catch (e: any) {
+      alert(`Erro ao checar status: ${e.message}`);
+    } finally {
+      setCheckingWebhookStatus(false);
+    }
+  };
+
   // Simulate customer sending message to bot
   const handleSimulateCustomerMessage = async (textToSimulate?: string) => {
     const text = textToSimulate || testCustomerText;
@@ -324,6 +363,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     ]);
 
     await handleSaveSettings({ whatsappBotEnabled: true });
+    if (connectionProvider === 'evolution' && evolutionUrl) {
+      handleActivateWebhookAutoBot().catch(() => {});
+    }
     playBellSound();
   };
 
@@ -1334,15 +1376,27 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleActivateWebhookAutoBot}
-                    disabled={activatingWebhook}
-                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
-                  >
-                    <Zap className={`w-4 h-4 fill-current ${activatingWebhook ? 'animate-spin' : ''}`} />
-                    {activatingWebhook ? 'Ativando Webhook...' : '⚡ Ativar Robô no WhatsApp'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCheckWebhookStatus}
+                      disabled={checkingWebhookStatus}
+                      className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-white/15 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      title="Verifica se o Webhook está ativo na Evolution API"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${checkingWebhookStatus ? 'animate-spin' : ''}`} />
+                      {checkingWebhookStatus ? 'Verificando...' : '🔍 Checar Status'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleActivateWebhookAutoBot}
+                      disabled={activatingWebhook}
+                      className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
+                    >
+                      <Zap className={`w-4 h-4 fill-current ${activatingWebhook ? 'animate-spin' : ''}`} />
+                      {activatingWebhook ? 'Ativando Webhook...' : '⚡ Ativar Robô no WhatsApp'}
+                    </button>
+                  </div>
                 </div>
 
                 {webhookActiveResult && (
