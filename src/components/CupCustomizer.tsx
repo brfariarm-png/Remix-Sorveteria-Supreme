@@ -40,8 +40,12 @@ export default function CupCustomizer({
   const isSplit = customizingItem?.name?.toLowerCase()?.includes('banana split') || customizingItem?.name?.toLowerCase()?.includes('morango split') || customizingItem?.id?.toLowerCase()?.includes('banana-split') || customizingItem?.id?.toLowerCase()?.includes('morango-split');
   const isCopoTrufado = customizingItem?.name?.toLowerCase()?.includes('trufado') || customizingItem?.id?.toLowerCase()?.includes('trufado');
   const isFelicidade = Boolean(customizingItem?.name?.toLowerCase()?.includes('felicidade') || customizingItem?.id?.toLowerCase()?.includes('felicidade'));
+  const isBanoffee = Boolean(customizingItem?.name?.toLowerCase()?.includes('banoffee') || customizingItem?.id?.toLowerCase()?.includes('banoffee'));
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
+    if (isBanoffee) {
+      return 'single';
+    }
     if (customizingItem?.sizeMode) {
       return customizingItem.sizeMode;
     }
@@ -99,6 +103,7 @@ export default function CupCustomizer({
     if (isMilkshake) return 'sorvete';
     if (isSplit) return 'sorvete';
     if (isCopoTrufado) return 'sorvete';
+    if (isBanoffee) return 'sorvete';
     if (customizingItem?.category === 'sorvete') return 'sorvete';
     return 'casadinho';
   });
@@ -106,6 +111,7 @@ export default function CupCustomizer({
     if (isMilkshake) return ['baunilha'];
     if (isSplit) return [];
     if (isCopoTrufado) return [];
+    if (isBanoffee) return [];
     if (customizingItem?.category === 'sorvete') return [];
     return ['acai-puro-organico'];
   });
@@ -439,13 +445,15 @@ export default function CupCustomizer({
             <h3 className="text-xl font-bold text-slate-800 leading-tight">
               {isFelicidade 
                 ? 'Personalize seu Copo da Felicidade' 
-                : resolvedSizeMode === 'single' 
-                  ? 'Adicionais e Acompanhamentos' 
-                  : isLinhaBrownie 
-                    ? 'Escolha Seu Brownie Favorito e Adicionais' 
-                    : isMilkshake 
-                      ? 'Escolha o Sabor e Adicionais' 
-                      : 'Escolha Seu Tamanho e Adicionais'}
+                : isBanoffee
+                  ? 'Copo Banoffee Especial'
+                  : resolvedSizeMode === 'single' 
+                    ? 'Adicionais e Acompanhamentos' 
+                    : isLinhaBrownie 
+                      ? 'Escolha Seu Brownie Favorito e Adicionais' 
+                      : isMilkshake 
+                        ? 'Escolha o Sabor e Adicionais' 
+                        : 'Escolha Seu Tamanho e Adicionais'}
             </h3>
             <p className="text-[11px] text-slate-650 leading-normal bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/20">
               {customizingItem 
@@ -615,8 +623,8 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {/* 3. Flavors / Polpas Selection */}
-            {true && (
+            {/* 3. Flavors / Polpas Selection - Ocultado para Banoffee (sabor e receita única) */}
+            {!isBanoffee && (
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-sm font-bold text-slate-700">
@@ -672,8 +680,8 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {/* 4. Toppings Checklist (Tabs categorized) */}
-            {true && (
+            {/* 4. Toppings Checklist (Tabs categorized) - Ocultado para Banoffee */}
+            {!isBanoffee && (
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
@@ -734,7 +742,7 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {resolvedSizeMode === 'single' && (
+            {resolvedSizeMode === 'single' && !isBanoffee && (
               <div className="bg-rose-50/60 border border-rose-200/50 rounded-2xl p-4 flex gap-3 text-rose-900">
                 <span className="text-xl">✨</span>
                 <div>
@@ -890,9 +898,9 @@ export default function CupCustomizer({
             </button>
             <button
               onClick={handleAddCupToCart}
-              disabled={((customizingItem?.sizeMode !== 'single' && base !== 'acai' && selectedFlavors.length === 0) || needSpoon === null)}
+              disabled={((customizingItem?.sizeMode !== 'single' && !isBanoffee && base !== 'acai' && selectedFlavors.length === 0) || needSpoon === null)}
               className={`flex-2 py-3 px-6 rounded-2xl font-bold shadow-md transition-all flex items-center justify-center gap-2 text-sm text-white ${
-                (customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0) && needSpoon !== null
+                (customizingItem?.sizeMode === 'single' || isBanoffee || base === 'acai' || selectedFlavors.length > 0) && needSpoon !== null
                   ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-100 cursor-pointer'
                   : 'bg-neutral-300 cursor-not-allowed shadow-none'
               }`}
@@ -900,7 +908,7 @@ export default function CupCustomizer({
               <ShoppingBag className="w-4 h-4" />
               {needSpoon === null 
                 ? 'Escolha se precisa de colher 🥄'
-                : (customizingItem?.sizeMode === 'single' || base === 'acai' || selectedFlavors.length > 0 
+                : (customizingItem?.sizeMode === 'single' || isBanoffee || base === 'acai' || selectedFlavors.length > 0 
                   ? 'Adicionar ao Carrinho' 
                   : 'Selecione ao menos 1 Sabor')
               }

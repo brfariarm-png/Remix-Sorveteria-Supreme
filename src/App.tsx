@@ -2729,7 +2729,7 @@ export default function App() {
 
                           <h3 className="text-[17px] font-black text-slate-800 font-display tracking-tight leading-snug line-clamp-1 group-hover:text-rose-600 transition-colors">{item.name}</h3>
                           <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-3">
-                            {(item.sizeMode === 'single' || item.name.toLowerCase().includes('felicidade')) ? cleanDescriptionForSingleSize(item.description) : item.description}
+                            {(item.sizeMode === 'single' || item.name.toLowerCase().includes('felicidade') || item.name.toLowerCase().includes('banoffee')) ? cleanDescriptionForSingleSize(item.description) : item.description}
                           </p>
                         </div>
 

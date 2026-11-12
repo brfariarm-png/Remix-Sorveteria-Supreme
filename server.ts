@@ -280,6 +280,139 @@ app.get('/api/bot/status', (_req: Request, res: Response) => {
   });
 });
 
+// Connect or get QR Code from Evolution API via server proxy (avoids browser CORS & network drops)
+app.post('/api/evolution/connect', async (req: Request, res: Response) => {
+  try {
+    const { evolutionUrl, evolutionInstance, evolutionToken } = req.body;
+    let cleanUrl = (evolutionUrl || cachedStoreConfig.evolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/$/, '');
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+    const cleanInstance = (evolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim();
+
+    const candidateKeys = [
+      (evolutionToken || '').trim(),
+      cachedStoreConfig.evolutionToken,
+      'Rmfa1100@',
+      '429683C4C977415CAAFCCE10F7D57E11',
+      'supreme2026'
+    ].filter(Boolean);
+
+    // 1. Identify working apikey
+    let workingKey = candidateKeys[0] || 'Rmfa1100@';
+    for (const key of candidateKeys) {
+      try {
+        const testRes = await fetch(`${cleanUrl}/instance/fetchInstances`, {
+          headers: { 'apikey': key },
+          signal: AbortSignal.timeout(6000)
+        });
+        if (testRes.status !== 401 && testRes.status !== 403) {
+          workingKey = key;
+          break;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Check connectionState of instance
+    let isConnected = false;
+    try {
+      const stateRes = await fetch(`${cleanUrl}/instance/connectionState/${cleanInstance}`, {
+        headers: { 'apikey': workingKey },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (stateRes.ok) {
+        const stateData: any = await stateRes.json();
+        const state = stateData?.instance?.state || stateData?.state;
+        if (state === 'open' || state === 'CONNECTED') {
+          isConnected = true;
+        }
+      }
+    } catch (_) {}
+
+    if (isConnected) {
+      return res.json({
+        success: true,
+        connected: true,
+        message: 'WhatsApp já está conectado e operacional!'
+      });
+    }
+
+    // 3. Ensure instance exists, or create it
+    try {
+      await fetch(`${cleanUrl}/instance/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': workingKey
+        },
+        body: JSON.stringify({
+          instanceName: cleanInstance,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS'
+        }),
+        signal: AbortSignal.timeout(8000)
+      });
+    } catch (_) {}
+
+    // 4. Poll /instance/connect/:instance for QR Code
+    let qrPayloadFound: string | null = null;
+    let lastResponse: any = null;
+
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        const connRes = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
+          headers: { 'apikey': workingKey },
+          signal: AbortSignal.timeout(8000)
+        });
+        const data: any = await connRes.json();
+        lastResponse = data;
+
+        if (data.status === 'open' || data.instance?.state === 'open') {
+          return res.json({
+            success: true,
+            connected: true,
+            message: 'WhatsApp conectado com sucesso!'
+          });
+        }
+
+        const qr = data.base64 || (data.qrcode && data.qrcode.base64) || data.code || (data.qrcode && data.qrcode.code) || data.pairingCode;
+        if (qr) {
+          qrPayloadFound = qr;
+          break;
+        }
+
+        if (attempt < 4) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      } catch (_) {}
+    }
+
+    if (qrPayloadFound) {
+      return res.json({
+        success: true,
+        connected: false,
+        qrCode: qrPayloadFound,
+        instance: cleanInstance
+      });
+    }
+
+    const needsVersionConfig = lastResponse?.count === 0 || lastResponse?.qrcode?.count === 0;
+
+    return res.json({
+      success: false,
+      needsVersionConfig,
+      variableName: 'CONFIG_SESSION_PHONE_VERSION',
+      variableValue: '2.3000.1032750324',
+      message: needsVersionConfig
+        ? 'A Evolution API no Render está ativa, mas a Meta (WhatsApp) exige a variável CONFIG_SESSION_PHONE_VERSION para liberar o QR Code.'
+        : 'Instância em inicialização no Render. Aguarde alguns instantes.',
+      simulatedFallbackQr: `supreme_wa_pairing_code_${cleanInstance}_${Date.now()}`
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro ao conectar à Evolution API' });
+  }
+});
+
 // Check Webhook status on Evolution API
 app.post('/api/bot/check-webhook', async (req: Request, res: Response) => {
   try {

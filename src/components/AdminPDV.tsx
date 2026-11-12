@@ -99,8 +99,13 @@ export default function AdminPDV({
   } | null>(null);
 
   // Helpers to align with CupCustomizer logic
+  const isBanoffee = customizingItem ? (customizingItem.name?.toLowerCase().includes('banoffee') || customizingItem.id?.toLowerCase().includes('banoffee')) : false;
+
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
     if (!customizingItem) return 'default';
+    if (isBanoffee) {
+      return 'single';
+    }
     if (customizingItem.sizeMode) {
       return customizingItem.sizeMode;
     }
@@ -108,7 +113,7 @@ export default function AdminPDV({
       return 'single';
     }
     return 'default';
-  }, [customizingItem]);
+  }, [customizingItem, isBanoffee]);
 
   const isLinhaBrownie = customizingItem ? (customizingItem.id === 'acai-sensacao' || customizingItem.name === 'Linha Brownie' || customizingItem.name?.toLowerCase().includes('brownie')) : false;
   const isMilkshake = customizingItem ? (customizingItem.category === 'milkshake' || customizingItem.category === 'milkshake_especiais' || customizingItem.category?.includes('milkshake')) : false;
@@ -525,11 +530,13 @@ export default function AdminPDV({
 
     let finalDesc = customizingItem.description || '';
     if (resolvedSizeMode === 'single') {
-      if (flavorsStr && selectedFlavors.length > 0) {
-        finalDesc += ` (Sabores: ${flavorsStr})`;
-      }
-      if (toppingsStr && selectedToppings.length > 0) {
-        finalDesc += ` (Adicionais: ${toppingsStr})`;
+      if (!isBanoffee) {
+        if (flavorsStr && selectedFlavors.length > 0) {
+          finalDesc += ` (Sabores: ${flavorsStr})`;
+        }
+        if (toppingsStr && selectedToppings.length > 0) {
+          finalDesc += ` (Adicionais: ${toppingsStr})`;
+        }
       }
     } else {
       finalDesc += ` Sabores: ${flavorsStr || 'Nenhum'}. Adicionais: ${toppingsStr || 'Nenhum'}.`;
@@ -1290,11 +1297,12 @@ export default function AdminPDV({
                 </div>
               )}
 
-              {/* Flavors Select */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <span>3. Sabores de Sorvete (Máx {maxFlavors})</span>
-                </div>
+              {/* Flavors Select - Ocultado para Banoffee */}
+              {!isBanoffee && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    <span>3. Sabores de Sorvete (Máx {maxFlavors})</span>
+                  </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50/50">
                   {availableFlavors.map((f) => {
                     const isSel = selectedFlavors.includes(f.id);
@@ -1316,8 +1324,10 @@ export default function AdminPDV({
                   })}
                 </div>
               </div>
+            )}
 
-              {/* Toppings Select */}
+            {/* Toppings Select - Ocultado para Banoffee */}
+            {!isBanoffee && (
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
                   <span>4. Adicionais & Coberturas</span>
@@ -1360,8 +1370,9 @@ export default function AdminPDV({
                   })}
                 </div>
               </div>
+            )}
 
-              {resolvedSizeMode === 'single' && (
+              {resolvedSizeMode === 'single' && !isBanoffee && (
                 <div className="bg-rose-50/40 border border-rose-150 rounded-xl p-3 flex gap-2 text-rose-950 font-bold">
                   <span className="text-base flex-shrink-0">✨</span>
                   <div>

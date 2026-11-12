@@ -874,171 +874,45 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }, 1200);
     } else if (connectionProvider === 'evolution') {
       setQrCodeStatus('generating');
+      setQrProgressMsg('Conectando ao servidor Evolution API...');
       try {
         if (!evolutionUrl) {
           throw new Error('Preencha a URL da Evolution API na aba de Ajustes de Conexão!');
         }
-        let cleanUrl = evolutionUrl.trim().replace(/\/$/, '');
-        if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-          cleanUrl = `https://${cleanUrl}`;
-        }
-        const cleanInstance = (evolutionInstance || 'supreme-bot').trim();
-        
-        // Find working key: entered key, stored token, Rmfa1100@, default key, or supreme2026
-        const candidateKeys = [
-          evolutionToken.trim(),
-          storeSettings.whatsappEvolutionToken?.trim(),
-          'Rmfa1100@',
-          '429683C4C977415CAAFCCE10F7D57E11',
-          'supreme2026'
-        ].filter(Boolean);
 
-        let cleanToken = evolutionToken.trim();
-        let createSuccessOrExists = false;
-        let qrFound: string | null = null;
-        let lastCreateError = '';
+        const res = await fetch('/api/evolution/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            evolutionUrl: evolutionUrl.trim(),
+            evolutionInstance: (evolutionInstance || 'supreme-bot').trim(),
+            evolutionToken: evolutionToken.trim()
+          })
+        });
 
-        for (const tokenCandidate of candidateKeys) {
-          try {
-            const createRes = await fetch(`${cleanUrl}/instance/create`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': tokenCandidate
-              },
-              body: JSON.stringify({
-                instanceName: cleanInstance,
-                qrcode: true,
-                integration: 'WHATSAPP-BAILEYS'
-              })
-            });
+        const data = await res.json();
 
-            const createText = await createRes.text();
-            let createData: any = null;
-            try { createData = JSON.parse(createText); } catch (_) {}
-
-            if (createRes.status === 401 || createRes.status === 403) {
-              lastCreateError = `Token / API Key incorreto (${createRes.status}). Certifique-se de que configurou AUTHENTICATION_API_KEY no Render.`;
-              continue; // try next candidate key
-            }
-
-            cleanToken = tokenCandidate;
-            if (tokenCandidate !== evolutionToken.trim()) {
-              setEvolutionToken(tokenCandidate);
-            }
-
-            if (createData?.instance?.status === 'open' || createData?.instance?.state === 'open' || createData?.status === 'open') {
-              setQrCodeStatus('connected');
-              localStorage.setItem('whatsapp_qr_status', 'connected');
-              return;
-            }
-
-            const qrFromCreate = createData?.qrcode?.base64 || createData?.qrcode?.code || createData?.base64 || createData?.code || createData?.hash?.qrcode?.base64;
-            if (qrFromCreate) {
-              qrFound = qrFromCreate;
-              createSuccessOrExists = true;
-              break;
-            }
-
-            const isAlreadyExists = createText.toLowerCase().includes('already') || createText.toLowerCase().includes('existe');
-            if (createRes.ok || isAlreadyExists) {
-              createSuccessOrExists = true;
-              break;
-            } else {
-              const msg = Array.isArray(createData?.response?.message) ? createData.response.message.join(', ') : (createData?.message || createText);
-              lastCreateError = `Erro ao criar instância (${createRes.status}): ${msg}`;
-            }
-          } catch (createErr: any) {
-            lastCreateError = createErr.message || 'Falha de rede ao conectar no Render.';
-          }
-        }
-
-        if (qrFound) {
-          setQrCodePayload(qrFound);
-          setQrCodeStatus('waiting');
-          setQrTimer(120);
-          return;
-        }
-
-        if (!createSuccessOrExists && lastCreateError) {
-          throw new Error(lastCreateError);
-        }
-
-        // 2. Busca o QR Code da instância conectando nela via GET com retentativas automáticas
-        let qrPayloadFound: string | null = null;
-        let isInstanceConnected = false;
-        let lastConnectError = '';
-
-        for (let attempt = 1; attempt <= 7; attempt++) {
-          setQrProgressMsg(`Aguardando o WhatsApp carregar o QR Code (${attempt}/7)...`);
-          try {
-            const res = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
-              method: 'GET',
-              headers: { 'apikey': cleanToken }
-            });
-
-            if (!res.ok) {
-              const text = await res.text();
-              let parsed: any = null;
-              try { parsed = JSON.parse(text); } catch (_) {}
-              lastConnectError = Array.isArray(parsed?.response?.message) 
-                ? parsed.response.message.join(', ')
-                : (parsed?.message || text);
-              if (attempt < 7) {
-                await new Promise(r => setTimeout(r, 2000));
-                continue;
-              }
-              break;
-            }
-
-            const data = await res.json();
-            if (data.status === 'open' || data.status === 'CONNECTED' || data.instance?.state === 'open' || data.state === 'open') {
-              isInstanceConnected = true;
-              break;
-            }
-
-            const qrCode = data.base64 || (data.qrcode && data.qrcode.base64) || data.code || (data.qrcode && data.qrcode.code);
-            if (qrCode) {
-              qrPayloadFound = qrCode;
-              break;
-            }
-
-            if (data.pairingCode) {
-              qrPayloadFound = data.pairingCode;
-              break;
-            }
-
-            // Socket WhatsApp ainda está conectando na Meta/WhatsApp Web. Aguarda 2s e tenta de novo.
-            if (attempt < 7) {
-              await new Promise(r => setTimeout(r, 2000));
-            }
-          } catch (connErr: any) {
-            lastConnectError = connErr.message || String(connErr);
-            if (attempt < 7) {
-              await new Promise(r => setTimeout(r, 2000));
-            }
-          }
-        }
-
-        if (isInstanceConnected) {
+        if (data.connected) {
           setQrCodeStatus('connected');
           localStorage.setItem('whatsapp_qr_status', 'connected');
           alert('✓ Seu WhatsApp já está conectado e online no servidor!');
           return;
         }
 
-        if (qrPayloadFound) {
-          setQrCodePayload(qrPayloadFound);
+        if (data.qrCode) {
+          setQrCodePayload(data.qrCode);
           setQrCodeStatus('waiting');
           setQrTimer(120);
           return;
         }
 
-        throw new Error(
-          lastConnectError
-            ? `Erro de conexão com a Meta: ${lastConnectError}`
-            : 'CONFIG_VERSION_REQUIRED: Instância criada, mas nenhum QR Code foi retornado porque a Evolution API no Render precisa da versão do protocolo WhatsApp Web (CONFIG_SESSION_PHONE_VERSION).'
-        );
+        if (data.needsVersionConfig) {
+          setQrError('CONFIG_VERSION_REQUIRED: A Evolution API no Render está ativa, mas a Meta (WhatsApp) exige a variável CONFIG_SESSION_PHONE_VERSION para liberar o QR Code.');
+          setQrCodeStatus('disconnected');
+          return;
+        }
+
+        throw new Error(data.message || data.error || 'Nenhum QR Code retornado pelo servidor.');
       } catch (err: any) {
         setQrError(err.message || 'Erro ao conectar à Evolution API');
         setQrCodeStatus('disconnected');
@@ -2338,15 +2212,40 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       )}
 
                       {qrError && (
-                        <div className="p-3 bg-rose-50 border border-rose-150 rounded-xl text-[10.5px] text-rose-700 font-bold text-left space-y-1.5">
+                        <div className="p-3 bg-rose-50 border border-rose-150 rounded-xl text-[10.5px] text-rose-700 font-bold text-left space-y-2">
                           <div className="flex items-center gap-1.5">
                             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                             <span>⚠️ {qrError}</span>
                           </div>
-                          {qrError.includes('CONFIG_VERSION') && (
-                            <p className="text-[10px] text-slate-600 font-normal pl-5">
-                              👉 Siga o passo a passo amarelo acima para adicionar a variável no Render e gerar o QR Code!
-                            </p>
+                          {qrError.includes('CONFIG_VERSION') ? (
+                            <div className="space-y-2 pt-1 border-t border-rose-200/50">
+                              <p className="text-[10px] text-slate-700 font-medium leading-relaxed">
+                                💡 <strong>Como resolver no Render (1 minuto):</strong> Acesse seu serviço no Render &gt; aba <em>Environment</em> &gt; adicione a variável <code>CONFIG_SESSION_PHONE_VERSION</code> com valor <code>2.3000.1032750324</code> e salve.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQrCodeStatus('connected');
+                                  localStorage.setItem('whatsapp_qr_status', 'connected');
+                                  setQrError('');
+                                }}
+                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1.5"
+                              >
+                                <span>📲 Ativar Conexão Agora (Modo Teste / Demonstração)</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQrCodeStatus('connected');
+                                localStorage.setItem('whatsapp_qr_status', 'connected');
+                                setQrError('');
+                              }}
+                              className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9.5px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all text-center"
+                            >
+                              Conectar em Modo Simulado / Teste
+                            </button>
                           )}
                         </div>
                       )}
