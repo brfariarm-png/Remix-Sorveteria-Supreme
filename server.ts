@@ -103,19 +103,36 @@ syncStoreConfigFromDb();
 // Periodic refresh every 60s
 setInterval(syncStoreConfigFromDb, 60000);
 
+// Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message ALWAYS triggers Welcome Message
+const greetedContacts = new Map<string, number>();
+const GREET_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 // Determine response text based on incoming message
-function processIncomingMessage(userText: string, pushName: string = 'Cliente') {
+function processIncomingMessage(userText: string, pushName: string = 'Cliente', senderKey?: string) {
   const clean = userText.trim().toLowerCase();
   const cfg = cachedStoreConfig;
 
+  const isExactOption = clean === '1' || clean === '2' || clean === '3' || clean === '4';
+  const lastGreeted = senderKey ? greetedContacts.get(senderKey) : undefined;
+  const isFirstContact = senderKey ? (!lastGreeted || Date.now() - lastGreeted > GREET_TTL_MS) : false;
+
+  if (senderKey) {
+    greetedContacts.set(senderKey, Date.now());
+  }
+
+  // First contact (any text except exact menu digit 1/2/3/4) OR explicit greeting => ALWAYS send Welcome Message!
+  if ((isFirstContact && !isExactOption) || /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(clean)) {
+    return cfg.welcomeMsg.replace('{nome}', pushName);
+  }
+
   // 1. Menu
-  if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean.includes('fazer pedido') || clean.includes('pedir') || clean.includes('menu')) {
+  if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
     const raw = cfg.menuMsg.replace('{menu_link}', cfg.menuLink).replace('[LINK_CARDAPIO]', cfg.menuLink);
     return raw;
   }
 
-  // 2. Track Order
-  if (clean === '2' || clean.includes('rastrear') || clean.includes('status') || clean.includes('onde esta') || clean.includes('onde está') || clean.includes('pedido')) {
+  // 2. Track Order (only explicit tracking words, not "fazer pedido")
+  if (clean === '2' || clean.includes('rastrear') || clean.includes('rastreio') || clean.includes('status') || clean.includes('onde esta') || clean.includes('onde está') || clean.includes('meu pedido') || clean.includes('acompanhar')) {
     return `🔍 *RASTREADOR DE PEDIDOS SUPREME*\n\nOlá, *${pushName}*! Para acompanhar o status do seu pedido em tempo real, acesse:\n👉 ${cfg.menuLink}?track=true\n\nCaso já tenha o código do pedido (ex: #SUP123), digite aqui que verificamos para você!`;
   }
 
@@ -144,12 +161,21 @@ let nativeOwnerJid: string | null = null;
 let nativeLastError: string | null = null;
 let nativeManualStop = false;
 const sentBotMessageIds = new Set<string>();
-function trackSentMessageId(id?: string | null) {
+const repliedInboundMsgIds = new Set<string>();
+const sentMessageStore = new Map<string, any>();
+
+function trackSentMessageId(id?: string | null, msgProto?: any) {
   if (!id) return;
   sentBotMessageIds.add(id);
+  if (msgProto) {
+    sentMessageStore.set(id, msgProto);
+  }
   if (sentBotMessageIds.size > 300) {
     const first = sentBotMessageIds.values().next().value;
-    if (first) sentBotMessageIds.delete(first);
+    if (first) {
+      sentBotMessageIds.delete(first);
+      sentMessageStore.delete(first);
+    }
   }
 }
 
@@ -272,13 +298,20 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
 
     const sock = makeWASocket({
       version,
-      logger: pino({ level: 'silent' }) as any,
+      logger: pino({ level: 'warn' }) as any,
       auth: state,
       browser: Browsers.ubuntu('Chrome'),
       printQRInTerminal: false,
       connectTimeoutMs: 25000,
       defaultQueryTimeoutMs: 25000,
-      syncFullHistory: false
+      syncFullHistory: false,
+      markOnlineOnConnect: true,
+      getMessage: async (key) => {
+        if (key?.id && sentMessageStore.has(key.id)) {
+          return sentMessageStore.get(key.id);
+        }
+        return undefined;
+      }
     });
 
     nativeSocket = sock;
@@ -358,21 +391,30 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
       if (type !== 'notify' && type !== 'append') return;
       for (const msg of messages) {
         try {
-          if (!msg.message) continue;
           const msgId = msg.key.id;
-          if (msgId && sentBotMessageIds.has(msgId)) continue;
+          if (msgId && (sentBotMessageIds.has(msgId) || repliedInboundMsgIds.has(msgId))) continue;
+          if (!msg.message) continue;
 
           const remoteJid = msg.key.remoteJid || '';
-          if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
+          if (
+            !remoteJid ||
+            remoteJid.endsWith('@g.us') ||
+            remoteJid.endsWith('@newsletter') ||
+            remoteJid === 'status@broadcast'
+          ) {
+            continue;
+          }
 
-          // Ignore old messages synced from history (older than 2 minutes)
+          // Ignore old history sync messages (older than 15 minutes)
           const msgTs = Number(msg.messageTimestamp || 0);
-          if (msgTs > 0 && Date.now() / 1000 - msgTs > 120) continue;
+          if (msgTs > 0 && Date.now() / 1000 - msgTs > 900) continue;
 
-          const cleanSender = remoteJid.split(':')[0].split('@')[0];
+          const senderPn = (msg.key as any)?.senderPn as string | undefined;
+          const cleanSender = (senderPn || remoteJid).split(':')[0].split('@')[0];
           const ownNum = (sock.user?.id || '').split(':')[0].split('@')[0];
           const ownLid = (sock.user?.lid || '').split(':')[0].split('@')[0];
-          const isSelfChat = Boolean(cleanSender && (cleanSender === ownNum || cleanSender === ownLid));
+          const remoteBase = remoteJid.split(':')[0].split('@')[0];
+          const isSelfChat = Boolean(remoteBase && (remoteBase === ownNum || remoteBase === ownLid));
 
           // Ignore manual human replies sent from the store phone to customers, but allow self-chat testing
           if (msg.key.fromMe && !isSelfChat) continue;
@@ -397,12 +439,29 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
             continue;
           }
 
-          const pushName = msg.pushName || 'Cliente';
-          console.log(`[WhatsApp Native] Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
+          if (msgId) {
+            repliedInboundMsgIds.add(msgId);
+            if (repliedInboundMsgIds.size > 500) {
+              const first = repliedInboundMsgIds.values().next().value;
+              if (first) repliedInboundMsgIds.delete(first);
+            }
+          }
 
-          const replyText = processIncomingMessage(incomingText, pushName);
-          const sent = await sock.sendMessage(remoteJid, { text: replyText });
-          trackSentMessageId(sent?.key?.id);
+          const pushName = msg.pushName || 'Cliente';
+          console.log(`[WhatsApp Native] (${type}) Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
+
+          const replyText = processIncomingMessage(incomingText, pushName, cleanSender);
+          let sent: any = null;
+          try {
+            sent = await sock.sendMessage(remoteJid, { text: replyText });
+          } catch (primaryErr) {
+            if (senderPn && senderPn !== remoteJid) {
+              sent = await sock.sendMessage(senderPn, { text: replyText });
+            } else {
+              throw primaryErr;
+            }
+          }
+          trackSentMessageId(sent?.key?.id, sent?.message);
 
           console.log(`[WhatsApp Native] Resposta automática enviada para ${remoteJid}`);
           addBotLog({
@@ -468,7 +527,7 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
   if (nativeStatus === 'connected' && nativeSocket) {
     const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
     const result = await nativeSocket.sendMessage(jid, { text: messageText });
-    trackSentMessageId(result?.key?.id);
+    trackSentMessageId(result?.key?.id, result?.message);
     return { provider: 'native', jid, result };
   }
 

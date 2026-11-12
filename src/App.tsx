@@ -585,6 +585,16 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // Keep WhatsApp Bot server awake and paired across all tabs while the app is open
+  useEffect(() => {
+    const pingBot = () => {
+      fetch('/api/whatsapp/native/status').catch(() => {});
+    };
+    pingBot();
+    const heartbeat = setInterval(pingBot, 25000);
+    return () => clearInterval(heartbeat);
+  }, []);
+
   // 2b. Load dynamic menu from Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'menu_items'), (snapshot) => {
