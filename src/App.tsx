@@ -1585,6 +1585,54 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isRingingLoop, isSoundEnabled, orders, isAdmin]);
 
+  // Send automatic WhatsApp message via connected bot (or open wa.me fallback in simulator mode)
+  const dispatchOrderWhatsApp = async (order: Order, status: OrderStatus, showSuccessToast = false) => {
+    const rawPhone = (order.details?.customerPhone || '').replace(/\D/g, '').replace(/^0+/, '');
+    if (!rawPhone || rawPhone.length < 8) return;
+    const formattedPhone = (rawPhone.length === 10 || rawPhone.length === 11) ? `55${rawPhone}` : rawPhone;
+    const message = getWhatsAppStatusText(order, status);
+    if (!message) return;
+
+    const provider = storeSettings.whatsappConnectionProvider || 'simulator';
+    if (provider === 'native' || provider === 'evolution') {
+      try {
+        const res = await fetch('/api/whatsapp/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: formattedPhone, message })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          if (showSuccessToast) {
+            setNotificationToast({
+              title: '📱 WhatsApp Enviado!',
+              message: `Mensagem automática enviada para ${order.details?.customerName || formattedPhone}.`
+            });
+          }
+          return;
+        }
+        throw new Error(data.error || 'WhatsApp não conectado');
+      } catch (err: any) {
+        console.warn('Falha ao enviar via API WhatsApp:', err?.message || err);
+        if (showSuccessToast) {
+          setNotificationToast({
+            title: '⚠️ Falha no Envio Automático',
+            message: err?.message || 'Verifique a conexão na aba WhatsApp Bot.'
+          });
+        }
+        return;
+      }
+    }
+
+    // Fallback when in simulator mode
+    try {
+      const url = getWhatsAppStatusUrl(order, status);
+      window.open(url, 'supreme_whatsapp');
+    } catch (e) {
+      console.error("Failed to open WhatsApp URL:", e);
+    }
+  };
+
   // Handle manually forcing simulation status advance
   const handleForceStatusAdvance = async () => {
     if (!activeTrackingOrder) return;
@@ -1596,12 +1644,7 @@ export default function App() {
 
     // Auto send WhatsApp status notification if configured
     if (autoSendWhatsAppStatus) {
-      try {
-        const url = getWhatsAppStatusUrl(activeTrackingOrder, nextStatus);
-        window.open(url, 'supreme_whatsapp');
-      } catch (e) {
-        console.error("Failed to auto open WhatsApp status on simulator click:", e);
-      }
+      dispatchOrderWhatsApp(activeTrackingOrder, nextStatus, true);
     }
 
     if (currentUser) {
@@ -1643,12 +1686,7 @@ export default function App() {
 
     // Auto send WhatsApp status notification if configured
     if (targetOrder && autoSendWhatsAppStatus) {
-      try {
-        const url = getWhatsAppStatusUrl(targetOrder, newStatus);
-        window.open(url, 'supreme_whatsapp');
-      } catch (e) {
-        console.error("Failed to auto open WhatsApp status:", e);
-      }
+      dispatchOrderWhatsApp(targetOrder, newStatus, true);
     }
 
     if (currentUser) {
@@ -3497,14 +3535,24 @@ export default function App() {
                           <h4 className="font-extrabold text-slate-800 text-sm leading-snug">{o.details.customerName}</h4>
                           <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span>📱 {o.details.customerPhone}</span>
-                            <a
-                              href={getWhatsAppStatusUrl(o, o.status)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase ml-1.5 transition-colors"
-                            >
-                              WhatsApp 💬
-                            </a>
+                            {(storeSettings.whatsappConnectionProvider === 'native' || storeSettings.whatsappConnectionProvider === 'evolution') ? (
+                              <button
+                                type="button"
+                                onClick={() => dispatchOrderWhatsApp(o, o.status, true)}
+                                className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase ml-1.5 transition-colors cursor-pointer"
+                              >
+                                WhatsApp 💬
+                              </button>
+                            ) : (
+                              <a
+                                href={getWhatsAppStatusUrl(o, o.status)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase ml-1.5 transition-colors"
+                              >
+                                WhatsApp 💬
+                              </a>
+                            )}
                           </p>
                           <p className="text-[10px] text-stone-400 font-medium mt-0.5">Realizado às {o.timestamp}</p>
                         </div>
@@ -3640,15 +3688,26 @@ export default function App() {
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </button>
-                            <a
-                              href={getWhatsAppStatusUrl(o, o.status)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all flex items-center justify-center cursor-pointer text-xs font-semibold"
-                              title="Notificar Cliente p/ WhatsApp"
-                            >
-                              <span className="font-extrabold uppercase tracking-wide text-[10px]">Zap 💬</span>
-                            </a>
+                            {(storeSettings.whatsappConnectionProvider === 'native' || storeSettings.whatsappConnectionProvider === 'evolution') ? (
+                              <button
+                                type="button"
+                                onClick={() => dispatchOrderWhatsApp(o, o.status, true)}
+                                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all flex items-center justify-center cursor-pointer text-xs font-semibold"
+                                title="Enviar Notificação Automática p/ WhatsApp"
+                              >
+                                <span className="font-extrabold uppercase tracking-wide text-[10px]">Zap 💬</span>
+                              </button>
+                            ) : (
+                              <a
+                                href={getWhatsAppStatusUrl(o, o.status)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all flex items-center justify-center cursor-pointer text-xs font-semibold"
+                                title="Notificar Cliente p/ WhatsApp"
+                              >
+                                <span className="font-extrabold uppercase tracking-wide text-[10px]">Zap 💬</span>
+                              </a>
+                            )}
                           </>
                         )}
                         

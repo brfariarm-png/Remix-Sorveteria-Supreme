@@ -53,6 +53,7 @@ function addBotLog(log: Omit<BotLog, 'id' | 'timestamp'>) {
 
 // In-memory store config cache (updated via sync or API)
 let cachedStoreConfig = {
+  botEnabled: true,
   botName: 'Supreme Bot Premium 💜',
   storeName: 'Sorveteria Gourmet Supreme',
   phone: '5519974118672',
@@ -77,6 +78,7 @@ async function syncStoreConfigFromDb() {
       const data = snap.data();
       cachedStoreConfig = {
         ...cachedStoreConfig,
+        botEnabled: data.whatsappBotEnabled !== false,
         botName: data.whatsappBotName || cachedStoreConfig.botName,
         storeName: data.name || cachedStoreConfig.storeName,
         phone: data.phone || cachedStoreConfig.phone,
@@ -141,6 +143,73 @@ let nativePairingCode: string | null = null;
 let nativeOwnerJid: string | null = null;
 let nativeLastError: string | null = null;
 let nativeManualStop = false;
+const sentBotMessageIds = new Set<string>();
+function trackSentMessageId(id?: string | null) {
+  if (!id) return;
+  sentBotMessageIds.add(id);
+  if (sentBotMessageIds.size > 300) {
+    const first = sentBotMessageIds.values().next().value;
+    if (first) sentBotMessageIds.delete(first);
+  }
+}
+
+function unwrapWhatsAppMessage(msgContent: any): any {
+  let current = msgContent;
+  for (let i = 0; i < 6 && current; i++) {
+    if (current.ephemeralMessage?.message) {
+      current = current.ephemeralMessage.message;
+    } else if (current.viewOnceMessage?.message) {
+      current = current.viewOnceMessage.message;
+    } else if (current.viewOnceMessageV2?.message) {
+      current = current.viewOnceMessageV2.message;
+    } else if (current.viewOnceMessageV2Extension?.message) {
+      current = current.viewOnceMessageV2Extension.message;
+    } else if (current.editedMessage?.message) {
+      current = current.editedMessage.message;
+    } else if (current.documentWithCaptionMessage?.message) {
+      current = current.documentWithCaptionMessage.message;
+    } else if (current.protocolMessage?.editedMessage) {
+      current = current.protocolMessage.editedMessage;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
+function normalizePhoneDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, '').replace(/^0+/, '');
+  // Auto-prefix Brazil DDI 55 for standard 10 or 11 digit DDD+number strings
+  if (digits.length === 10 || digits.length === 11) {
+    digits = `55${digits}`;
+  }
+  return digits;
+}
+
+async function resolveWhatsAppJid(sock: ReturnType<typeof makeWASocket>, rawPhone: string): Promise<string> {
+  const normalized = normalizePhoneDigits(rawPhone);
+  const candidates = [normalized];
+
+  // For Brazilian mobile numbers (55 + 2-digit DDD + 8 or 9 digits), test both with and without the 9th digit
+  if (normalized.startsWith('55') && normalized.length === 13 && normalized[4] === '9') {
+    candidates.push(normalized.slice(0, 4) + normalized.slice(5));
+  } else if (normalized.startsWith('55') && normalized.length === 12) {
+    candidates.push(normalized.slice(0, 4) + '9' + normalized.slice(4));
+  }
+
+  try {
+    const checks = await sock.onWhatsApp(...candidates);
+    const valid = checks?.find((item) => item.exists && item.jid);
+    if (valid?.jid) {
+      return valid.jid;
+    }
+  } catch (err: any) {
+    console.warn('[WhatsApp Native] onWhatsApp lookup warning:', err?.message || err);
+  }
+
+  return `${normalized}@s.whatsapp.net`;
+}
+
 let nativeReconnectAttempts = 0;
 
 function clearNativeAuthDir() {
@@ -269,9 +338,9 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
           return;
         }
 
-        if (!nativeManualStop && nativeReconnectAttempts < 4) {
+        if (!nativeManualStop && nativeReconnectAttempts < 6) {
           nativeReconnectAttempts++;
-          const hasCreds = Boolean(state.creds?.registered);
+          const hasCreds = Boolean(state.creds?.me?.id || state.creds?.registered || fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json')));
           if (hasCreds || statusCode === DisconnectReason.restartRequired || statusCode === 515) {
             setTimeout(() => {
               startNativeWhatsApp().catch(() => {});
@@ -286,35 +355,56 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
+      if (type !== 'notify' && type !== 'append') return;
       for (const msg of messages) {
         try {
-          if (!msg.message || msg.key.fromMe) continue;
+          if (!msg.message) continue;
+          const msgId = msg.key.id;
+          if (msgId && sentBotMessageIds.has(msgId)) continue;
+
           const remoteJid = msg.key.remoteJid || '';
           if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
 
+          // Ignore old messages synced from history (older than 2 minutes)
+          const msgTs = Number(msg.messageTimestamp || 0);
+          if (msgTs > 0 && Date.now() / 1000 - msgTs > 120) continue;
+
+          const cleanSender = remoteJid.split(':')[0].split('@')[0];
+          const ownNum = (sock.user?.id || '').split(':')[0].split('@')[0];
+          const ownLid = (sock.user?.lid || '').split(':')[0].split('@')[0];
+          const isSelfChat = Boolean(cleanSender && (cleanSender === ownNum || cleanSender === ownLid));
+
+          // Ignore manual human replies sent from the store phone to customers, but allow self-chat testing
+          if (msg.key.fromMe && !isSelfChat) continue;
+
+          const content = unwrapWhatsAppMessage(msg.message);
           const incomingText =
-            msg.message.conversation ||
-            msg.message.extendedTextMessage?.text ||
-            msg.message.imageMessage?.caption ||
-            msg.message.videoMessage?.caption ||
-            msg.message.buttonsResponseMessage?.selectedDisplayText ||
-            msg.message.buttonsResponseMessage?.selectedButtonId ||
-            msg.message.listResponseMessage?.title ||
-            msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            content?.conversation ||
+            content?.extendedTextMessage?.text ||
+            content?.imageMessage?.caption ||
+            content?.videoMessage?.caption ||
+            content?.buttonsResponseMessage?.selectedDisplayText ||
+            content?.buttonsResponseMessage?.selectedButtonId ||
+            content?.listResponseMessage?.title ||
+            content?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            content?.templateButtonReplyMessage?.selectedDisplayText ||
             '';
 
           if (!incomingText.trim()) continue;
 
-          const cleanSender = remoteJid.split('@')[0];
+          if (cachedStoreConfig.botEnabled === false) {
+            console.log(`[WhatsApp Native] Robô pausado nas configurações; ignorando mensagem de +${cleanSender}.`);
+            continue;
+          }
+
           const pushName = msg.pushName || 'Cliente';
-
           console.log(`[WhatsApp Native] Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
+
           const replyText = processIncomingMessage(incomingText, pushName);
+          const sent = await sock.sendMessage(remoteJid, { text: replyText });
+          trackSentMessageId(sent?.key?.id);
 
-          await sock.sendMessage(remoteJid, { text: replyText });
-          console.log(`[WhatsApp Native] Resposta automática enviada para +${cleanSender}`);
-
+          console.log(`[WhatsApp Native] Resposta automática enviada para ${remoteJid}`);
           addBotLog({
             from: cleanSender,
             pushName,
@@ -324,6 +414,13 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
           });
         } catch (msgErr: any) {
           console.error('[WhatsApp Native] Erro ao responder mensagem:', msgErr?.message || msgErr);
+          addBotLog({
+            from: msg?.key?.remoteJid?.split('@')[0] || 'Desconhecido',
+            incomingText: 'Mensagem recebida',
+            replyText: '',
+            status: 'error',
+            details: msgErr?.message || String(msgErr)
+          });
         }
       }
     });
@@ -354,17 +451,29 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
 
 // Send Text via Native Socket (if connected) or Evolution API
 async function sendWhatsAppMessage(targetNumber: string, messageText: string, config: typeof cachedStoreConfig) {
-  const cleanNumber = targetNumber.replace(/\D/g, '');
+  const cleanNumber = normalizePhoneDigits(targetNumber);
+  if (!cleanNumber || cleanNumber.length < 10) {
+    throw new Error('Número de telefone inválido. Informe DDD + número (ex: 5519999999999).');
+  }
+
+  // If native session is currently reconnecting after server startup, wait up to 6s for it to open
+  if (nativeStatus === 'connecting' && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
+    const waitStart = Date.now();
+    while (nativeStatus === 'connecting' && Date.now() - waitStart < 6000) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
 
   // Priority 1: Native Baileys socket if paired and open
   if (nativeStatus === 'connected' && nativeSocket) {
-    const jid = `${cleanNumber}@s.whatsapp.net`;
+    const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
     const result = await nativeSocket.sendMessage(jid, { text: messageText });
-    return { provider: 'native', result };
+    trackSentMessageId(result?.key?.id);
+    return { provider: 'native', jid, result };
   }
 
   let cleanUrl = (config.evolutionUrl || '').trim().replace(/\/$/, '');
-  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+  if (cleanUrl && !cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
     cleanUrl = `https://${cleanUrl}`;
   }
   const cleanInstance = (config.evolutionInstance || 'supreme-bot').trim();
@@ -646,13 +755,20 @@ app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
     }
     const result = await sendWhatsAppMessage(String(phone), String(message), cachedStoreConfig);
     addBotLog({
-      from: String(phone).replace(/\D/g, ''),
-      incomingText: 'Disparo Manual / Notificação',
+      from: normalizePhoneDigits(String(phone)),
+      incomingText: 'Disparo Manual / Pedido',
       replyText: String(message),
       status: 'sent'
     });
     res.json({ success: true, result });
   } catch (err: any) {
+    addBotLog({
+      from: normalizePhoneDigits(String(req.body?.phone || '')),
+      incomingText: 'Tentativa de Disparo',
+      replyText: String(req.body?.message || '').slice(0, 120),
+      status: 'error',
+      details: err.message || String(err)
+    });
     res.status(500).json({ error: err.message || 'Falha ao enviar mensagem' });
   }
 });

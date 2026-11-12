@@ -137,10 +137,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [qrCodePayload, setQrCodePayload] = useState('');
 
   // Live Test Dispatch States
-  const [testPhone, setTestPhone] = useState(storeSettings.phone || '5519974118672');
+  const [testPhone, setTestPhone] = useState(() => {
+    const raw = (storeSettings.phone || '5519974118672').replace(/\D/g, '');
+    return raw.length === 10 || raw.length === 11 ? `55${raw}` : raw || '5519974118672';
+  });
   const [testTemplate, setTestTemplate] = useState<'welcome' | 'menu' | 'status' | 'custom'>('menu');
   const [testCustomMessage, setTestCustomMessage] = useState('Olá! Este é um teste oficial de disparo do Supreme Bot.');
   const [testDispatchLoading, setTestDispatchLoading] = useState(false);
+  const [dispatchFeedback, setDispatchFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [serverLogs, setServerLogs] = useState<Array<{ id: string; timestamp: string; from: string; incomingText: string; replyText: string; status: string; details?: string }>>([]);
   const [testLogs, setTestLogs] = useState<Array<{ id: string; time: string; text: string; type: 'success' | 'info' | 'error' }>>([
     {
       id: 'init-1',
@@ -149,6 +154,30 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       type: 'info'
     }
   ]);
+
+  const refreshServerLogs = async () => {
+    try {
+      const res = await fetch('/api/whatsapp/native/status');
+      const data = await res.json();
+      if (data.success) {
+        if (Array.isArray(data.recentLogs)) {
+          setServerLogs(data.recentLogs);
+        }
+        if (data.ownerJid) {
+          setNativeOwnerJid(data.ownerJid);
+        }
+        if (connectionProvider === 'native' && data.isPaired) {
+          setQrCodeStatus('connected');
+        }
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    refreshServerLogs();
+    const timer = setInterval(refreshServerLogs, 5000);
+    return () => clearInterval(timer);
+  }, [connectionProvider]);
 
   // Countdown timer logic for QR Code expiration
   useEffect(() => {
@@ -317,6 +346,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          botEnabled: override?.whatsappBotEnabled !== undefined ? override.whatsappBotEnabled : botEnabled,
           botName,
           storeName: storeSettings.name || 'Sorveteria Supreme',
           phone: whatsappPhone,
@@ -341,11 +371,32 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
-  // Activate 24/7 Webhook on Evolution API with 1-click
+  // Activate 24/7 Webhook on Evolution API with 1-click (or enable Native Direct Bot)
   const handleActivateWebhookAutoBot = async () => {
     setActivatingWebhook(true);
     setWebhookActiveResult(null);
     try {
+      if (connectionProvider === 'native') {
+        await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'native' });
+        const statusRes = await fetch('/api/whatsapp/native/status');
+        const statusData = await statusRes.json();
+        if (statusData.isPaired) {
+          setNativeOwnerJid(statusData.ownerJid || null);
+          setQrCodeStatus('connected');
+          setWebhookActiveResult({
+            success: true,
+            message: `Robô Automático Ativo no WhatsApp Direto (+${statusData.ownerJid || 'conectado'})!`
+          });
+        } else {
+          setWebhookActiveResult({
+            success: false,
+            message: 'Motor Direto salvo e ativado, mas falta escanear o QR Code na aba "Conexão & QR Code Real".'
+          });
+          setActiveTab('config');
+        }
+        return;
+      }
+
       if (!evolutionUrl) {
         throw new Error('Preencha a URL da Evolution API na aba "Conexão & QR Code".');
       }
@@ -368,23 +419,41 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         message: 'Robô Automático 24/7 Ativado com Sucesso no WhatsApp!',
         url: data.webhookUrl
       });
-      alert('✓ Robô Automático Ativado no WhatsApp!\n\nAgora, sempre que um cliente mandar mensagem para o seu número, ele receberá imediatamente as Boas-Vindas e o Menu com as Opções (1, 2, 3 e 4)!');
     } catch (e: any) {
       setWebhookActiveResult({
         success: false,
         message: e.message || 'Erro ao ativar'
       });
-      alert(`Falha: ${e.message}`);
     } finally {
       setActivatingWebhook(false);
     }
   };
 
-  // Check Webhook Status
+  // Check Webhook / Bot Status
   const [checkingWebhookStatus, setCheckingWebhookStatus] = useState(false);
   const handleCheckWebhookStatus = async () => {
     setCheckingWebhookStatus(true);
     try {
+      if (connectionProvider === 'native') {
+        const res = await fetch('/api/whatsapp/native/status');
+        const data = await res.json();
+        if (data.isPaired) {
+          setNativeOwnerJid(data.ownerJid || null);
+          setQrCodeStatus('connected');
+          setWebhookActiveResult({
+            success: true,
+            message: `WhatsApp Direto Conectado (+${data.ownerJid || 'pareado'}) e respondendo mensagens automaticamente!`
+          });
+        } else {
+          setWebhookActiveResult({
+            success: false,
+            message: 'WhatsApp Direto ainda não pareado. Gere e escaneie o QR Code na aba "Conexão & QR Code Real".'
+          });
+        }
+        await refreshServerLogs();
+        return;
+      }
+
       if (!evolutionUrl) {
         throw new Error('Preencha a URL da Evolution API na aba "Conexão & QR Code".');
       }
@@ -404,16 +473,17 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           message: 'Webhook Ativo e Operando no WhatsApp!',
           url: data.webhookUrl
         });
-        alert(`✓ O Webhook está ATIVO na Evolution API!\n\nDestino configurado: ${data.webhookUrl}\n\nO robô responderá automaticamente a qualquer cliente que enviar mensagem.`);
       } else {
         setWebhookActiveResult({
           success: false,
           message: 'Webhook ainda não está ativado na Evolution API.'
         });
-        alert('⚠️ O Webhook ainda NÃO está ativado na Evolution API.\n\nClique no botão "⚡ Ativar Robô no WhatsApp" para conectar agora mesmo!');
       }
     } catch (e: any) {
-      alert(`Erro ao checar status: ${e.message}`);
+      setWebhookActiveResult({
+        success: false,
+        message: `Erro ao checar status: ${e.message}`
+      });
     } finally {
       setCheckingWebhookStatus(false);
     }
@@ -441,7 +511,6 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }
     } catch (e: any) {
       console.error(e);
-      alert('Erro na simulação: ' + e.message);
     } finally {
       setSimulatingCustomerMsg(false);
     }
@@ -450,16 +519,27 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   // One-Click "Colocar Bot para Rodar"
   const handleOneClickRun = async () => {
     setBotEnabled(true);
-    setQrCodeStatus('connected');
-    localStorage.setItem('whatsapp_qr_status', 'connected');
-    
-    // Log
+    if (connectionProvider === 'simulator') {
+      setQrCodeStatus('connected');
+      localStorage.setItem('whatsapp_qr_status', 'connected');
+    } else if (connectionProvider === 'native') {
+      try {
+        const res = await fetch('/api/whatsapp/native/status');
+        const data = await res.json();
+        if (data.isPaired) {
+          setNativeOwnerJid(data.ownerJid || null);
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+        }
+      } catch (_) {}
+    }
+
     const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setTestLogs(prev => [
       {
         id: `run-${Date.now()}`,
         time: timeStr,
-        text: '🚀 BOT COLOCADO PARA RODAR COM SUCESSO! Conexão ativada e escuta de mensagens em execução.',
+        text: '🚀 BOT COLOCADO PARA RODAR COM SUCESSO! Escuta e respostas automáticas ativadas.',
         type: 'success'
       },
       ...prev
@@ -509,9 +589,14 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
   // Test Real Message Dispatch
   const handleSendTestMessage = async () => {
-    const cleanNumber = testPhone.replace(/\D/g, '');
-    if (!cleanNumber || cleanNumber.length < 8) {
-      alert('Por favor, informe um número de telefone válido com DDD (ex: 5519998765432).');
+    setDispatchFeedback(null);
+    const rawDigits = testPhone.replace(/\D/g, '').replace(/^0+/, '');
+    const cleanNumber = (rawDigits.length === 10 || rawDigits.length === 11) ? `55${rawDigits}` : rawDigits;
+    if (!cleanNumber || cleanNumber.length < 10) {
+      setDispatchFeedback({
+        type: 'error',
+        message: 'Informe um número válido com DDD (ex: 5519998765432 ou 19998765432).'
+      });
       return;
     }
 
@@ -533,16 +618,21 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         if (!res.ok || data.error) {
           throw new Error(data.error || `Erro HTTP ${res.status}`);
         }
+        const resolvedJid = data?.result?.jid ? ` (${data.result.jid.split('@')[0]})` : '';
         setTestLogs(prev => [
           {
             id: `msg-${Date.now()}`,
             time: timeStr,
-            text: `✓ Mensagem enviada via Conexão Direta para +${cleanNumber} com sucesso!`,
+            text: `✓ Mensagem enviada via Conexão Direta para +${cleanNumber}${resolvedJid}!`,
             type: 'success'
           },
           ...prev
         ]);
-        alert('✓ Mensagem enviada com sucesso pelo WhatsApp (Conexão Direta)!');
+        setDispatchFeedback({
+          type: 'success',
+          message: `✓ Mensagem enviada pelo WhatsApp para +${cleanNumber}${resolvedJid}!`
+        });
+        refreshServerLogs();
       }
       else if (connectionProvider === 'evolution') {
         if (!evolutionUrl || !evolutionInstance || !evolutionToken) {
@@ -573,7 +663,10 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           },
           ...prev
         ]);
-        alert('✓ Mensagem enviada com sucesso pelo WhatsApp via Evolution API!');
+        setDispatchFeedback({
+          type: 'success',
+          message: `✓ Mensagem enviada via Evolution API para +${cleanNumber}!`
+        });
       } 
       else if (connectionProvider === 'zapi') {
         if (!zapiInstanceId || !zapiToken) {
@@ -603,7 +696,10 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           },
           ...prev
         ]);
-        alert('✓ Mensagem enviada com sucesso pelo WhatsApp via Z-API!');
+        setDispatchFeedback({
+          type: 'success',
+          message: `✓ Mensagem enviada via Z-API para +${cleanNumber}!`
+        });
       }
       else if (connectionProvider === 'wppconnect') {
         if (!wppconnectUrl || !wppconnectInstance || !wppconnectToken) {
@@ -634,21 +730,56 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           },
           ...prev
         ]);
-        alert('✓ Mensagem enviada com sucesso pelo WhatsApp via WPPConnect!');
+        setDispatchFeedback({
+          type: 'success',
+          message: `✓ Mensagem enviada via WPPConnect para +${cleanNumber}!`
+        });
       }
       else {
+        // If native WhatsApp is actually paired on the server even while UI is on simulator, use it!
+        const nativeRes = await fetch('/api/whatsapp/native/status').then(r => r.json()).catch(() => null);
+        if (nativeRes?.isPaired) {
+          const res = await fetch('/api/whatsapp/send-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: cleanNumber, message: messageText })
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) {
+            throw new Error(data.error || `Erro HTTP ${res.status}`);
+          }
+          setTestLogs(prev => [
+            {
+              id: `msg-${Date.now()}`,
+              time: timeStr,
+              text: `✓ Mensagem enviada pelo WhatsApp conectado para +${cleanNumber}!`,
+              type: 'success'
+            },
+            ...prev
+          ]);
+          setDispatchFeedback({
+            type: 'success',
+            message: `✓ Mensagem enviada pelo WhatsApp conectado para +${cleanNumber}!`
+          });
+          refreshServerLogs();
+          return;
+        }
+
         // Simulator mode: simulate the dispatch
         playBellSound();
         setTestLogs(prev => [
           {
             id: `sim-${Date.now()}`,
             time: timeStr,
-            text: `[SIMULADOR] Disparo para +${cleanNumber} processado! Bot respondeu automaticamente.`,
-            type: 'success'
+            text: `[SIMULADOR] Disparo para +${cleanNumber} simulado! Para enviar no WhatsApp real, conecte na aba "Conexão & QR Code Real".`,
+            type: 'info'
           },
           ...prev
         ]);
-        alert(`[SIMULADOR ATIVO]\n\nDisparo simulado com sucesso para +${cleanNumber}!\n\nMensagem processada:\n"${messageText.slice(0, 100)}..."\n\n(Para disparar no WhatsApp real sem servidor, clique em "Abrir no Meu WhatsApp" abaixo!)`);
+        setDispatchFeedback({
+          type: 'error',
+          message: 'Canal está em "Simulador". Mude para "Conexão Direta no Sistema" na aba Conexão & QR Code para enviar mensagens reais!'
+        });
       }
     } catch (err: any) {
       console.error(err);
@@ -661,7 +792,10 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         },
         ...prev
       ]);
-      alert(`Falha ao disparar mensagem: ${err.message || err}`);
+      setDispatchFeedback({
+        type: 'error',
+        message: `Falha ao enviar: ${err.message || err}`
+      });
     } finally {
       setTestDispatchLoading(false);
     }
@@ -1779,6 +1913,20 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       </p>
                     </div>
 
+                    {/* Inline Dispatch Feedback */}
+                    {dispatchFeedback && (
+                      <div className={`p-3 rounded-2xl border text-xs font-bold flex items-center gap-2 ${
+                        dispatchFeedback.type === 'success'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                          : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}>
+                        {dispatchFeedback.type === 'success'
+                          ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                        <span>{dispatchFeedback.message}</span>
+                      </div>
+                    )}
+
                     {/* Actions */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                       <button
@@ -1848,6 +1996,23 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </div>
 
                     <div className="flex-1 overflow-y-auto space-y-2.5 font-mono text-[11px] pr-1 max-h-[320px]">
+                      {serverLogs.map((slog) => (
+                        <div
+                          key={slog.id}
+                          className={`p-2.5 rounded-xl border leading-relaxed ${
+                            slog.status === 'error'
+                              ? 'bg-rose-950/40 border-rose-800/50 text-rose-300'
+                              : 'bg-teal-950/40 border-teal-800/50 text-teal-200'
+                          }`}
+                        >
+                          <div className="text-[9px] text-slate-400 font-bold mb-0.5">
+                            [{slog.timestamp}] +{slog.from} • {slog.status === 'error' ? 'ERRO' : 'WHATSAPP'}
+                          </div>
+                          <div className="font-sans text-[11px]">
+                            <strong>{slog.incomingText}:</strong> {slog.details || slog.replyText.slice(0, 120)}
+                          </div>
+                        </div>
+                      ))}
                       {testLogs.map((log) => (
                         <div
                           key={log.id}
@@ -2697,11 +2862,29 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             <span className="text-emerald-700">Canal:</span>
                             <span className="font-extrabold text-emerald-950 uppercase">{connectionProvider}</span>
                           </div>
+                          {(nativeOwnerJid || evolutionDiagnostic?.ownerJid) && (
+                            <div className="flex justify-between">
+                              <span className="text-emerald-700">Número Conectado:</span>
+                              <span className="font-extrabold text-emerald-950">+{nativeOwnerJid || evolutionDiagnostic?.ownerJid}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-emerald-700">Status:</span>
                             <span className="font-extrabold text-emerald-950">ONLINE 🟢</span>
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (nativeOwnerJid) setTestPhone(nativeOwnerJid);
+                            setActiveTab('quickrun');
+                          }}
+                          className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Testar Envio de Mensagem Agora
+                        </button>
                       </div>
 
                       {connectionProvider !== 'simulator' && (
