@@ -42,16 +42,14 @@ export default function PlayStoreMobileHub({ customDomain }: PlayStoreMobileHubP
 
   const getPublicShareUrl = () => {
     if (customDomain) {
-      const domain = customDomain.trim();
-      return domain.startsWith('http://') || domain.startsWith('https://') 
-        ? domain 
-        : `https://${domain}`;
+      const domain = customDomain.trim().replace(/\/+$/, '');
+      if (domain && !domain.includes('.run.app')) {
+        return domain.startsWith('http://') || domain.startsWith('https://') 
+          ? domain 
+          : `https://${domain}`;
+      }
     }
-    const currentUrl = window.location.href;
-    if (currentUrl.includes('ais-dev-')) {
-      return currentUrl.replace('ais-dev-', 'ais-pre-');
-    }
-    return currentUrl;
+    return 'https://sorveteriasupreme.vercel.app';
   };
 
   const copyAppUrl = () => {

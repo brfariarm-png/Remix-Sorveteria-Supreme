@@ -233,7 +233,16 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   // Custom chatbot messages & links states
   const [welcomeMsg, setWelcomeMsg] = useState(storeSettings.whatsappBotWelcomeMessage || `Olá! Seja muito bem-vindo ao assistente automático da *${storeSettings.name}*! 🍨\n\nSou o *${storeSettings.whatsappBotName || 'Supreme Bot Premium 💜'}*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`);
   const [menuMsg, setMenuMsg] = useState(storeSettings.whatsappBotMenuMessage || `⭐️ *CARDÁPIO DIGITAL DA LOUCURA* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso site completo para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\n🔥 *Mais Pedidos de Hoje:*`);
-  const [menuLink, setMenuLink] = useState(storeSettings.whatsappBotMenuLink || window.location.origin);
+  const [menuLink, setMenuLink] = useState(
+    (storeSettings.whatsappBotMenuLink && !storeSettings.whatsappBotMenuLink.includes('.run.app'))
+      ? storeSettings.whatsappBotMenuLink
+      : 'https://sorveteriasupreme.vercel.app'
+  );
+  const getClientBaseUrl = () => {
+    const raw = (menuLink || storeSettings.whatsappBotMenuLink || storeSettings.customDomain || 'https://sorveteriasupreme.vercel.app').trim().replace(/\/+$/, '');
+    if (!raw || raw.includes('.run.app')) return 'https://sorveteriasupreme.vercel.app';
+    return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+  };
   const [supportMsg, setSupportMsg] = useState(storeSettings.whatsappBotSupportMessage || `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para os nossos atendentes humanos na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`);
 
   // Settings saving state
@@ -582,7 +591,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     if (testTemplate === 'status') {
       const latest = orders[0];
       const shortId = latest ? latest.id.slice(-6).toUpperCase() : 'SUP789';
-      return `📦 *ATUALIZAÇÃO DO PEDIDO #${shortId}*\n\nSeu pedido está *Sendo Montado com Carinho!* 🥣\n\nAcompanhe em tempo real:\n👉 ${window.location.origin}?track=${latest ? latest.id : 'demo'}\n\nTempo estimado: 15-25 minutos.`;
+      return `📦 *ATUALIZAÇÃO DO PEDIDO #${shortId}*\n\nSeu pedido está *Sendo Montado com Carinho!* 🥣\n\nAcompanhe em tempo real:\n👉 ${getClientBaseUrl()}?track=${latest ? latest.id : 'demo'}\n\nTempo estimado: 15-25 minutos.`;
     }
     return testCustomMessage;
   };
@@ -1388,9 +1397,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                            : latestOrder.status === 'delivering' ? 'Em Rota com o Motoboy! 🛵'
                            : 'Deliciosamente Entregue! 🎉';
           
-          responseText = `🔍 *LOCALIZADOR DE PEDIDOS ATIVOS*\n\nEncontrei o seu pedido mais recente em nosso painel:\n\n📦 *Pedido:* #${shortId}\n👤 *Cliente:* ${latestOrder.details?.customerName || 'Cliente'}\n📅 *Status:* ${statusText}\n💰 *Valor:* R$ ${latestOrder.total.toFixed(2)}\n\nAcompanhe em tempo real pelo link interativo:\n👉 ${window.location.origin}?track=${latestOrder.id}\n\nPrecisa de alterações? Digite *4* para falar com o caixa.`;
+          responseText = `🔍 *LOCALIZADOR DE PEDIDOS ATIVOS*\n\nEncontrei o seu pedido mais recente em nosso painel:\n\n📦 *Pedido:* #${shortId}\n👤 *Cliente:* ${latestOrder.details?.customerName || 'Cliente'}\n📅 *Status:* ${statusText}\n💰 *Valor:* R$ ${latestOrder.total.toFixed(2)}\n\nAcompanhe em tempo real pelo link interativo:\n👉 ${getClientBaseUrl()}?track=${latestOrder.id}\n\nPrecisa de alterações? Digite *4* para falar com o caixa.`;
         } else {
-          responseText = `🔍 *RASTREADOR DE PEDIDO*\n\nVocê ainda não possui pedidos registrados neste navegador hoje.\n\nPara fazer seu primeiro pedido, acesse nosso site:\n👉 *${window.location.origin}*\n\nCaso já tenha enviado, digite o código do pedido de 6 dígitos que retornaremos o status!`;
+          responseText = `🔍 *RASTREADOR DE PEDIDO*\n\nVocê ainda não possui pedidos registrados neste navegador hoje.\n\nPara fazer seu primeiro pedido, acesse nosso site:\n👉 *${getClientBaseUrl()}*\n\nCaso já tenha enviado, digite o código do pedido de 6 dígitos que retornaremos o status!`;
         }
       } 
       else if (cleanText === '3' || cleanText.includes('localizacao') || cleanText.includes('endereço') || cleanText.includes('horario')) {
@@ -1410,7 +1419,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                            : hasIdMatch.status === 'delivering' ? 'Em Rota com o Motoboy! 🛵'
                            : 'Deliciosamente Entregue! 🎉';
           
-          responseText = `✨ *STATUS DO PEDIDO #${shortId}* ✨\n\nEncontrei suas informações no banco de dados Firestore:\n\n👤 *Cliente:* ${hasIdMatch.details?.customerName}\n💰 *Total:* R$ ${hasIdMatch.total.toFixed(2)}\n🚚 *Método:* ${hasIdMatch.details?.deliveryType === 'delivery' ? 'Entrega em Casa' : 'Retirada no Balcão'}\n🚨 *Status:* ${statusText}\n\nLink do rastreador completo:\n👉 ${window.location.origin}?track=${hasIdMatch.id}`;
+          responseText = `✨ *STATUS DO PEDIDO #${shortId}* ✨\n\nEncontrei suas informações no banco de dados Firestore:\n\n👤 *Cliente:* ${hasIdMatch.details?.customerName}\n💰 *Total:* R$ ${hasIdMatch.total.toFixed(2)}\n🚚 *Método:* ${hasIdMatch.details?.deliveryType === 'delivery' ? 'Entrega em Casa' : 'Retirada no Balcão'}\n🚨 *Status:* ${statusText}\n\nLink do rastreador completo:\n👉 ${getClientBaseUrl()}?track=${hasIdMatch.id}`;
         } else {
           responseText = `💡 *${botName}:* Não entendi esta mensagem.\n\nPor favor, digite uma das opções abaixo:\n\n*1* - Ver Cardápio & Fazer Pedido 🥣\n*2* - Rastrear Pedido Ativo 🛵\n*3* - Localização e Horários 📍\n*4* - Falar com Atendente Humano 💬`;
         }
@@ -2456,6 +2465,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </label>
                     <input
                       type="text"
+                      placeholder="https://sorveteriasupreme.vercel.app"
                       value={menuLink}
                       onChange={(e) => setMenuLink(e.target.value)}
                       className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-750 focus:border-emerald-500"

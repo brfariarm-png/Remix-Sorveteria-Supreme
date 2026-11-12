@@ -500,6 +500,11 @@ export default function Checkout({
                           : paymentType === 'card_on_delivery' ? 'Maquininha de Cartão na Entrega 💳'
                           : 'Cartão de Crédito Online 💳';
 
+        const rawClientDomain = storeSettings?.customDomain ? storeSettings.customDomain.trim().replace(/\/+$/, '') : '';
+        const clientOrderUrl = (rawClientDomain && !rawClientDomain.includes('.run.app'))
+          ? (rawClientDomain.startsWith('http://') || rawClientDomain.startsWith('https://') ? rawClientDomain : `https://${rawClientDomain}`)
+          : 'https://sorveteriasupreme.vercel.app';
+
         const waText = `🍨 *NOVO PEDIDO CONFIRMADO* 🍨\n\n` +
                        `👤 *Cliente:* ${customerName}\n` +
                        `📞 *WhatsApp:* ${customerPhone}\n\n` +
@@ -509,7 +514,7 @@ export default function Checkout({
                        `💳 *Forma de Pagamento:* ${paymentText}\n\n` +
                        `${addressText}\n\n` +
                        `🤖 _Enviado via Cardápio Online Supreme_\n` +
-                       `🔗 ${window.location.origin}`;
+                       `🔗 ${clientOrderUrl}`;
 
         const cleanPhone = storePhone.replace(/\D/g, '');
         const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;

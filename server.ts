@@ -61,7 +61,7 @@ let cachedStoreConfig = {
   evolutionInstance: 'supreme-bot',
   evolutionToken: 'Rmfa1100@',
   welcomeMsg: `Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
-  menuLink: 'https://ais-dev-yhf54sfjf6of4ko46v7bn3-576759142795.us-west2.run.app',
+  menuLink: 'https://sorveteriasupreme.vercel.app',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
   supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
@@ -87,7 +87,9 @@ async function syncStoreConfigFromDb() {
         evolutionToken: (data.whatsappEvolutionToken || cachedStoreConfig.evolutionToken || 'Rmfa1100@').trim(),
         welcomeMsg: data.whatsappBotWelcomeMessage || cachedStoreConfig.welcomeMsg,
         menuMsg: data.whatsappBotMenuMessage || cachedStoreConfig.menuMsg,
-        menuLink: data.whatsappBotMenuLink || cachedStoreConfig.menuLink,
+        menuLink: (data.whatsappBotMenuLink && !String(data.whatsappBotMenuLink).includes('.run.app'))
+          ? String(data.whatsappBotMenuLink).trim().replace(/\/+$/, '')
+          : cachedStoreConfig.menuLink,
         supportMsg: data.whatsappBotSupportMessage || cachedStoreConfig.supportMsg,
         address: data.address || cachedStoreConfig.address,
       };
@@ -1022,9 +1024,6 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
     cachedStoreConfig.evolutionUrl = cleanUrl;
     cachedStoreConfig.evolutionInstance = cleanInstance;
     cachedStoreConfig.evolutionToken = cleanToken;
-    if (publicAppUrl) {
-      cachedStoreConfig.menuLink = publicAppUrl.replace(/\/$/, '');
-    }
 
     // The webhook destination is this server's endpoint
     const appHost = publicAppUrl || `${req.protocol}://${req.get('host')}`;

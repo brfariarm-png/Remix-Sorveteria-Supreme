@@ -334,16 +334,14 @@ export default function App() {
 
   const getPublicShareUrl = () => {
     if (storeSettings?.customDomain) {
-      const domain = storeSettings.customDomain.trim();
-      return domain.startsWith('http://') || domain.startsWith('https://') 
-        ? domain 
-        : `https://${domain}`;
+      const domain = storeSettings.customDomain.trim().replace(/\/+$/, '');
+      if (domain && !domain.includes('.run.app')) {
+        return domain.startsWith('http://') || domain.startsWith('https://') 
+          ? domain 
+          : `https://${domain}`;
+      }
     }
-    const currentUrl = window.location.href;
-    if (currentUrl.includes('ais-dev-')) {
-      return currentUrl.replace('ais-dev-', 'ais-pre-');
-    }
-    return currentUrl;
+    return 'https://sorveteriasupreme.vercel.app';
   };
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -532,7 +530,9 @@ export default function App() {
           whatsappBotWelcomeMessage: data.whatsappBotWelcomeMessage ?? prev.whatsappBotWelcomeMessage,
           whatsappBotMenuMessage: data.whatsappBotMenuMessage ?? prev.whatsappBotMenuMessage,
           whatsappBotSupportMessage: data.whatsappBotSupportMessage ?? prev.whatsappBotSupportMessage,
-          whatsappBotMenuLink: data.whatsappBotMenuLink ?? prev.whatsappBotMenuLink,
+          whatsappBotMenuLink: (data.whatsappBotMenuLink && !String(data.whatsappBotMenuLink).includes('.run.app'))
+            ? data.whatsappBotMenuLink
+            : (prev.whatsappBotMenuLink && !prev.whatsappBotMenuLink.includes('.run.app') ? prev.whatsappBotMenuLink : 'https://sorveteriasupreme.vercel.app'),
           whatsappConnectionProvider: data.whatsappConnectionProvider ?? prev.whatsappConnectionProvider ?? 'simulator',
           whatsappEvolutionUrl: data.whatsappEvolutionUrl ?? prev.whatsappEvolutionUrl,
           whatsappEvolutionInstance: data.whatsappEvolutionInstance ?? prev.whatsappEvolutionInstance,
@@ -1881,12 +1881,12 @@ export default function App() {
     const orderIdShort = order.id.slice(-6).toUpperCase();
     const customerName = order.details?.customerName || 'Cliente';
     const shopName = storeSettings.shortName;
-    const rawDomain = storeSettings.customDomain ? storeSettings.customDomain.trim() : '';
-    const cleanDomain = (rawDomain && rawDomain !== 'sorveteriasupreme.vercel.app')
+    const rawDomain = storeSettings.customDomain ? storeSettings.customDomain.trim().replace(/\/+$/, '') : '';
+    const cleanDomain = (rawDomain && !rawDomain.includes('.run.app'))
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) 
-      : window.location.origin;
+      : 'https://sorveteriasupreme.vercel.app';
     const trackingLink = `${cleanDomain}?track=${order.id}`;
-    const logoLink = window.location.origin;
+    const logoLink = cleanDomain;
 
     switch (status) {
       case 'waiting':
@@ -2916,7 +2916,7 @@ export default function App() {
                         <div className="shrink-0">
                           <button
                             onClick={() => {
-                              const sharedUrl = window.location.origin;
+                              const sharedUrl = getPublicShareUrl();
                               navigator.clipboard.writeText(sharedUrl);
                               alert("🍦 Link oficial de clientes copiado com sucesso!\n\nEnvie este link para que seus clientes façam pedidos online:\n" + sharedUrl);
                             }}
@@ -4181,7 +4181,7 @@ E-mail: ${storeSettings.email}`;
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      const urlWithQuery = window.location.origin + "/?privacy=true";
+                      const urlWithQuery = getPublicShareUrl() + "/?privacy=true";
                       navigator.clipboard.writeText(urlWithQuery);
                       alert("Link da Política de Privacidade copiado para a área de transferência!");
                     }}
@@ -4235,13 +4235,13 @@ E-mail: ${storeSettings.email}`;
               </div>
 
               <div className="flex flex-col items-center space-y-3.5">
-                <span className="bg-rose-500 text-white font-black text-[9px] tracking-wider px-2.5 py-1 rounded-full uppercase select-none animate-pulse">
-                  LEIA: Ativação Obrigatória ⚠️
+                <span className="bg-emerald-600 text-white font-black text-[9px] tracking-wider px-2.5 py-1 rounded-full uppercase select-none">
+                  Cardápio Oficial do Cliente 🍨
                 </span>
 
                 <div className="bg-white p-3.5 rounded-2xl border border-rose-100 shadow-xs">
                   <LazyImage 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href.replace('ais-dev-', 'ais-pre-'))}`} 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getPublicShareUrl())}`} 
                     alt="QR Code do App" 
                     className="w-40 h-40"
                     containerClassName="w-40 h-40"
@@ -4249,35 +4249,30 @@ E-mail: ${storeSettings.email}`;
                 </div>
                 
                 <h3 className="font-extrabold text-slate-900 text-sm leading-snug">
-                  Como liberar o acesso mobile?
+                  Acesse o Cardápio Online no Celular
                 </h3>
                 
-                <div className="text-[11px] text-slate-600 leading-normal font-semibold text-left bg-slate-50 border border-slate-150 p-3 rounded-2xl space-y-2">
+                <div className="text-[11px] text-slate-600 leading-normal font-semibold text-left bg-slate-50 border border-slate-150 p-3 rounded-2xl space-y-1.5">
                   <p>
-                    O Google bloqueia acessos externos por padrão. Para abrir o app em outro celular de forma pública:
+                    Escaneie o QR Code acima ou envie o link oficial abaixo para seus clientes fazerem pedidos diretamente pelo celular:
                   </p>
-                  <ol className="list-decimal pl-4 space-y-1.5 text-slate-700 text-[10.5px]">
-                    <li>No seu computador, no menu superior do <strong>Google AI Studio</strong>, clique em <strong className="text-rose-600">"Compartilhar" (Share)</strong>.</li>
-                    <li>Crie/Ative o link público de visualização.</li>
-                    <li>Acesse o link público <strong className="text-rose-600">ais-pre-...</strong> pelo QR Code ou copie-o no botão abaixo.</li>
-                  </ol>
                 </div>
 
-                <div className="w-full text-[9.5px] font-mono font-bold text-rose-600 bg-rose-50/55 border border-rose-105 p-2 rounded-xl break-all">
-                  {window.location.href.replace('ais-dev-', 'ais-pre-')}
+                <div className="w-full text-[10px] font-mono font-bold text-rose-600 bg-rose-50/55 border border-rose-105 p-2 rounded-xl break-all">
+                  {getPublicShareUrl()}
                 </div>
 
                 <div className="w-full flex flex-col gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => {
-                      const publicUrl = window.location.href.replace('ais-dev-', 'ais-pre-');
+                      const publicUrl = getPublicShareUrl();
                       navigator.clipboard.writeText(publicUrl);
-                      alert("✓ LINK PÚBLICO COPIADO! Cole no WhatsApp do seu celular para abrir na hora sem erro de login!");
+                      alert("✓ LINK DE CLIENTE COPIADO! Envie no WhatsApp ou redes sociais para seus clientes pedirem online!");
                     }}
                     className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black text-xs py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer shadow-xs"
                   >
-                    Copiar URL Pública
+                    Copiar Link de Clientes
                   </button>
                   <button
                     type="button"
