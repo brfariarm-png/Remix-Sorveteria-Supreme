@@ -37,7 +37,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [botName, setBotName] = useState(storeSettings.whatsappBotName || 'Supreme Bot Premium 💜');
   
   // Real Connection Provider states
-  const [connectionProvider, setConnectionProvider] = useState<'simulator' | 'evolution' | 'zapi' | 'wppconnect'>(
+  const [connectionProvider, setConnectionProvider] = useState<'native' | 'simulator' | 'evolution' | 'zapi' | 'wppconnect'>(
     storeSettings.whatsappConnectionProvider || 'simulator'
   );
   
@@ -78,7 +78,11 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     ownerJid?: string | null;
     webhookActive?: boolean;
     webhookUrl?: string | null;
+    nativeStatus?: string;
+    nativeIsPaired?: boolean;
+    nativeOwnerJid?: string | null;
   } | null>(null);
+  const [nativeOwnerJid, setNativeOwnerJid] = useState<string | null>(null);
   const [loadingDiagnostic, setLoadingDiagnostic] = useState(false);
   const [copiedVersionVar, setCopiedVersionVar] = useState(false);
   const [copiedVersionVal, setCopiedVersionVal] = useState(false);
@@ -94,12 +98,24 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       const data = await res.json();
       if (data.success) {
         setEvolutionDiagnostic(data);
-        if (connectionProvider === 'evolution') {
+        setNativeOwnerJid(data.nativeOwnerJid || null);
+        if (connectionProvider === 'native') {
+          if (data.nativeIsPaired) {
+            setQrCodeStatus('connected');
+            setPairingCodeResult(null);
+            localStorage.setItem('whatsapp_qr_status', 'connected');
+          } else {
+            setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
+            if (!data.nativeIsPaired) {
+              localStorage.removeItem('whatsapp_qr_status');
+            }
+          }
+        } else if (connectionProvider === 'evolution') {
           if (data.isPaired) {
             setQrCodeStatus('connected');
             localStorage.setItem('whatsapp_qr_status', 'connected');
           } else {
-            setQrCodeStatus('disconnected');
+            setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
             localStorage.removeItem('whatsapp_qr_status');
           }
         }
@@ -143,9 +159,47 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }, 1000);
     } else if (qrCodeStatus === 'waiting' && qrTimer === 0) {
       setQrCodeStatus('disconnected');
+      setPairingCodeResult(null);
     }
     return () => clearInterval(interval);
   }, [qrCodeStatus, qrTimer]);
+
+  // Automatic polling while waiting for QR / Pairing Code scan
+  useEffect(() => {
+    if (qrCodeStatus !== 'waiting') return;
+    if (connectionProvider !== 'native' && connectionProvider !== 'evolution') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        if (connectionProvider === 'native') {
+          const res = await fetch('/api/whatsapp/native/status');
+          const data = await res.json();
+          if (data.isPaired) {
+            setNativeOwnerJid(data.ownerJid || null);
+            setQrCodeStatus('connected');
+            setPairingCodeResult(null);
+            setQrCodePayload('');
+            localStorage.setItem('whatsapp_qr_status', 'connected');
+            playBellSound();
+            loadDiagnostic();
+          } else if (data.qrDataUrl && !pairingCodeResult) {
+            setQrCodePayload(prev => (prev !== data.qrDataUrl ? data.qrDataUrl : prev));
+          }
+        } else if (connectionProvider === 'evolution') {
+          const res = await fetch('/api/evolution/diagnostic');
+          const data = await res.json();
+          if (data.isPaired) {
+            setEvolutionDiagnostic(data);
+            setQrCodeStatus('connected');
+            localStorage.setItem('whatsapp_qr_status', 'connected');
+            playBellSound();
+          }
+        }
+      } catch (_) {}
+    }, 2500);
+
+    return () => clearInterval(pollInterval);
+  }, [qrCodeStatus, connectionProvider, pairingCodeResult]);
 
   // Custom chatbot messages & links states
   const [welcomeMsg, setWelcomeMsg] = useState(storeSettings.whatsappBotWelcomeMessage || `Olá! Seja muito bem-vindo ao assistente automático da *${storeSettings.name}*! 🍨\n\nSou o *${storeSettings.whatsappBotName || 'Supreme Bot Premium 💜'}*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`);
@@ -466,7 +520,31 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     try {
-      if (connectionProvider === 'evolution') {
+      if (connectionProvider === 'native') {
+        const res = await fetch('/api/whatsapp/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanNumber,
+            message: messageText
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || `Erro HTTP ${res.status}`);
+        }
+        setTestLogs(prev => [
+          {
+            id: `msg-${Date.now()}`,
+            time: timeStr,
+            text: `✓ Mensagem enviada via Conexão Direta para +${cleanNumber} com sucesso!`,
+            type: 'success'
+          },
+          ...prev
+        ]);
+        alert('✓ Mensagem enviada com sucesso pelo WhatsApp (Conexão Direta)!');
+      }
+      else if (connectionProvider === 'evolution') {
         if (!evolutionUrl || !evolutionInstance || !evolutionToken) {
           throw new Error('Configure a URL, Instância e API Key da Evolution API na aba "Conexão & QR Code".');
         }
@@ -654,7 +732,23 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
     setCheckingStatus(true);
     try {
-      if (connectionProvider === 'evolution') {
+      if (connectionProvider === 'native') {
+        const res = await fetch('/api/whatsapp/native/status');
+        const data = await res.json();
+        if (data.isPaired) {
+          setNativeOwnerJid(data.ownerJid || null);
+          setQrCodeStatus('connected');
+          setPairingCodeResult(null);
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          loadDiagnostic();
+          alert(`✓ Seu WhatsApp está conectado e online (+${data.ownerJid || 'pareado'})!`);
+        } else {
+          setQrCodeStatus('disconnected');
+          localStorage.removeItem('whatsapp_qr_status');
+          loadDiagnostic();
+          alert('❌ Aparelho ainda não pareado na Conexão Direta. Escaneie o QR Code gerado.');
+        }
+      } else if (connectionProvider === 'evolution') {
         const cleanUrl = evolutionUrl.replace(/\/$/, '');
         const res = await fetch(`${cleanUrl}/instance/connectionState/${evolutionInstance}`, {
           method: 'GET',
@@ -861,10 +955,149 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
+  // Request 8-digit pairing code directly via Native WhatsApp Web (Baileys)
+  const handleRequestNativePairingCode = async () => {
+    setQrError('');
+    setRequestingPairingCode(true);
+    setPairingCodeResult(null);
+    setQrCodeStatus('generating');
+    setQrProgressMsg('Gerando código de 8 dígitos direto no WhatsApp...');
+    try {
+      await fetch('/api/bot/sync-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botName,
+          storeName: storeSettings.name || 'Sorveteria Supreme',
+          phone: whatsappPhone,
+          welcomeMsg,
+          menuLink,
+          menuMsg,
+          supportMsg,
+          address: storeSettings.address || '',
+          openHours: `${storeSettings.openTime || '11:00'} às ${storeSettings.closeTime || '23:59'}`
+        })
+      }).catch(() => {});
+
+      const res = await fetch('/api/whatsapp/native/pairing-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: pairingCodeInputNumber })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao gerar código de pareamento');
+      }
+      if (data.connected) {
+        setNativeOwnerJid(data.ownerJid || null);
+        setQrCodeStatus('connected');
+        localStorage.setItem('whatsapp_qr_status', 'connected');
+        return;
+      }
+      if (data.pairingCode) {
+        setPairingCodeResult(data.pairingCode);
+        setQrCodePayload('');
+        setQrCodeStatus('waiting');
+        setQrTimer(120);
+        return;
+      }
+      throw new Error(data.error || 'Código não retornado. Tente gerar o QR Code.');
+    } catch (err: any) {
+      setQrError(err.message || 'Erro ao solicitar código por número');
+      setQrCodeStatus('disconnected');
+    } finally {
+      setRequestingPairingCode(false);
+    }
+  };
+
+  // One-click switch from broken Render Evolution API to Direct Native QR Code
+  const handleSwitchToNativeAndConnect = async () => {
+    setConnectionProvider('native');
+    setQrError('');
+    setPairingCodeResult(null);
+    setQrCodeStatus('generating');
+    setQrProgressMsg('Ativando conexão direta no servidor e gerando QR Code...');
+    await handleSaveSettings({ whatsappConnectionProvider: 'native' });
+    try {
+      const res = await fetch('/api/whatsapp/native/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forceFresh: true })
+      });
+      const data = await res.json();
+      if (data.connected) {
+        setNativeOwnerJid(data.ownerJid || null);
+        setQrCodeStatus('connected');
+        localStorage.setItem('whatsapp_qr_status', 'connected');
+        loadDiagnostic();
+        return;
+      }
+      if (data.qrCode) {
+        setQrCodePayload(data.qrCode);
+        setQrCodeStatus('waiting');
+        setQrTimer(120);
+        return;
+      }
+      throw new Error(data.error || 'Não foi possível gerar o QR Code direto.');
+    } catch (err: any) {
+      setQrError(err.message || 'Erro ao gerar QR Code direto');
+      setQrCodeStatus('disconnected');
+    }
+  };
+
   // Handle generating QR Code trigger
   const handleGenerateQr = async () => {
     setQrError('');
-    if (connectionProvider === 'simulator') {
+    setPairingCodeResult(null);
+    if (connectionProvider === 'native') {
+      setQrCodeStatus('generating');
+      setQrProgressMsg('Gerando QR Code oficial direto do WhatsApp Web...');
+      try {
+        await fetch('/api/bot/sync-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            botName,
+            storeName: storeSettings.name || 'Sorveteria Supreme',
+            phone: whatsappPhone,
+            welcomeMsg,
+            menuLink,
+            menuMsg,
+            supportMsg,
+            address: storeSettings.address || '',
+            openHours: `${storeSettings.openTime || '11:00'} às ${storeSettings.closeTime || '23:59'}`
+          })
+        }).catch(() => {});
+
+        const res = await fetch('/api/whatsapp/native/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ forceFresh: true })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Erro ao iniciar conexão direta');
+        }
+        if (data.connected) {
+          setNativeOwnerJid(data.ownerJid || null);
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          loadDiagnostic();
+          alert('✓ Seu WhatsApp já está conectado e online!');
+          return;
+        }
+        if (data.qrCode) {
+          setQrCodePayload(data.qrCode);
+          setQrCodeStatus('waiting');
+          setQrTimer(120);
+          return;
+        }
+        throw new Error(data.error || 'QR Code não retornado. Tente novamente.');
+      } catch (err: any) {
+        setQrError(err.message || 'Erro ao gerar QR Code direto');
+        setQrCodeStatus('disconnected');
+      }
+    } else if (connectionProvider === 'simulator') {
       setQrCodeStatus('generating');
       setQrTimer(60);
       setTimeout(() => {
@@ -979,11 +1212,17 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }, 1500);
   };
 
-  const handleDisconnectQr = () => {
+  const handleDisconnectQr = async () => {
     if (confirm("Deseja desconectar este aparelho de WhatsApp do robô?")) {
+      if (connectionProvider === 'native') {
+        await fetch('/api/whatsapp/native/disconnect', { method: 'POST' }).catch(() => {});
+        setNativeOwnerJid(null);
+        setPairingCodeResult(null);
+      }
       setQrCodeStatus('disconnected');
       setQrCodePayload('');
       localStorage.removeItem('whatsapp_qr_status');
+      loadDiagnostic();
     }
   };
 
@@ -1826,13 +2065,14 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       onChange={(e: any) => setConnectionProvider(e.target.value)}
                       className="w-full p-2.5 rounded-xl border border-slate-200 bg-white outline-none text-xs font-bold text-slate-750 focus:border-emerald-500 cursor-pointer"
                     >
+                      <option value="native">⚡ Conexão Direta no Sistema (QR Code Instantâneo — Sem Render)</option>
                       <option value="simulator">Simulador Interativo de Testes (Mock)</option>
-                      <option value="evolution">Evolution API (Recomendado VPS / Open-Source)</option>
+                      <option value="evolution">Evolution API (Servidor Externo / Render)</option>
                       <option value="zapi">Z-API Gateway (Profissional Pago)</option>
                       <option value="wppconnect">WPPConnect Server (Custom API)</option>
                     </select>
                     <p className="text-[9.5px] text-slate-500 font-medium leading-relaxed">
-                      Selecione <strong>"Evolution API"</strong>, <strong>"Z-API"</strong> ou <strong>"WPPConnect"</strong> para usar sua infraestrutura de WhatsApp real. O sistema carregará o QR Code oficial diretamente de lá para você escanear e deixará de simular!
+                      Use <strong>"Conexão Direta no Sistema"</strong> para gerar o QR Code oficial na hora sem depender do Render, ou selecione <strong>"Evolution API"</strong> / <strong>"Z-API"</strong> / <strong>"WPPConnect"</strong> se preferir usar servidor externo.
                     </p>
                   </div>
 
@@ -1860,6 +2100,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                   </div>
 
                   {/* Provider Settings */}
+                  {connectionProvider === 'native' && (
+                    <div className="space-y-2 border-l-2 border-emerald-500 pl-3 py-2 bg-emerald-50/40 rounded-r-xl">
+                      <h5 className="text-[11px] font-black text-emerald-950 uppercase">Motor WhatsApp Web Integrado</h5>
+                      <p className="text-[10.5px] text-emerald-900 font-medium leading-relaxed">
+                        Conecta diretamente no WhatsApp sem precisar configurar variáveis no Render. Clique em <strong>"Gerar QR Code Oficial"</strong> no painel ao lado para escanear com seu celular e ativar respostas automáticas imediatamente.
+                      </p>
+                    </div>
+                  )}
+
                   {connectionProvider === 'simulator' && (
                     <>
                       <div className="space-y-1">
@@ -2094,7 +2343,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                   </div>
 
                   {/* Live Diagnostic Status Bar */}
-                  {connectionProvider === 'evolution' && (
+                  {(connectionProvider === 'evolution' || connectionProvider === 'native') && (
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Status em Tempo Real:</span>
@@ -2109,26 +2358,60 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
-                        <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
-                          <span className="text-slate-500">Servidor Render:</span>
-                          <span className={evolutionDiagnostic?.evolutionOnline ? "text-emerald-600" : "text-amber-600"}>
-                            {evolutionDiagnostic?.evolutionOnline ? "Online (v2.1)" : "Conectando..."}
-                          </span>
+                      {connectionProvider === 'native' ? (
+                        <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                          <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                            <span className="text-slate-500">Motor Direto:</span>
+                            <span className="text-emerald-600">Online ✅</span>
+                          </div>
+                          <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                            <span className="text-slate-500">Auto-Resposta:</span>
+                            <span className="text-emerald-600">Ativa ✅</span>
+                          </div>
+                          <div className="col-span-2 p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                            <span className="text-slate-500">Pareamento Celular:</span>
+                            <span className={evolutionDiagnostic?.nativeIsPaired || nativeOwnerJid ? "text-emerald-600 font-extrabold" : "text-rose-600 font-extrabold"}>
+                              {evolutionDiagnostic?.nativeIsPaired || nativeOwnerJid
+                                ? `Pareado (+${nativeOwnerJid || evolutionDiagnostic?.nativeOwnerJid || 'Conectado'}) 🟢`
+                                : "Não Pareado (Escaneie o QR Code) 🔴"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
-                          <span className="text-slate-500">Webhook 24h:</span>
-                          <span className={evolutionDiagnostic?.webhookActive ? "text-emerald-600" : "text-amber-600"}>
-                            {evolutionDiagnostic?.webhookActive ? "Ativo ✅" : "Pendente"}
-                          </span>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                            <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                              <span className="text-slate-500">Servidor Render:</span>
+                              <span className={evolutionDiagnostic?.evolutionOnline ? "text-emerald-600" : "text-amber-600"}>
+                                {evolutionDiagnostic?.evolutionOnline ? "Online (v2.1)" : "Conectando..."}
+                              </span>
+                            </div>
+                            <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                              <span className="text-slate-500">Webhook 24h:</span>
+                              <span className={evolutionDiagnostic?.webhookActive ? "text-emerald-600" : "text-amber-600"}>
+                                {evolutionDiagnostic?.webhookActive ? "Ativo ✅" : "Pendente"}
+                              </span>
+                            </div>
+                            <div className="col-span-2 p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
+                              <span className="text-slate-500">Pareamento Celular:</span>
+                              <span className={evolutionDiagnostic?.isPaired ? "text-emerald-600 font-extrabold" : "text-rose-600 font-extrabold"}>
+                                {evolutionDiagnostic?.isPaired ? `Pareado (+${evolutionDiagnostic.ownerJid}) 🟢` : "Não Pareado (Sem Celular Conectado) 🔴"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {!evolutionDiagnostic?.isPaired && (
+                            <button
+                              type="button"
+                              onClick={handleSwitchToNativeAndConnect}
+                              className="w-full py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <Zap className="w-3.5 h-3.5" />
+                              ⚡ Conectar Agora com QR Code Direto (Sem Render)
+                            </button>
+                          )}
                         </div>
-                        <div className="col-span-2 p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
-                          <span className="text-slate-500">Pareamento Celular:</span>
-                          <span className={evolutionDiagnostic?.isPaired ? "text-emerald-600 font-extrabold" : "text-rose-600 font-extrabold"}>
-                            {evolutionDiagnostic?.isPaired ? `Pareado (+${evolutionDiagnostic.ownerJid}) 🟢` : "Não Pareado (Sem Celular Conectado) 🔴"}
-                          </span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -2136,8 +2419,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     <div className="space-y-4 py-2">
                       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 text-[11px] leading-relaxed text-slate-600 font-semibold space-y-2 text-left">
                         <p className="font-extrabold text-slate-800 uppercase tracking-wider text-[9px] mb-1">Como Funciona:</p>
-                        <p>1. No modo <strong>Simulador</strong>, você testa todas as respostas instantâneas sem precisar de celular.</p>
-                        <p>2. No modo <strong>Evolution API</strong>, clique em <strong>"Gerar QR Code Oficial"</strong> para escanear com seu WhatsApp (*Aparelhos Conectados*).</p>
+                        <p>1. No modo <strong>Conexão Direta</strong>, clique em <strong>"Gerar QR Code Oficial"</strong> para escanear com seu WhatsApp (*Aparelhos Conectados*) na hora, sem depender do Render.</p>
+                        <p>2. No modo <strong>Evolution API</strong>, o sistema busca o QR Code diretamente do seu servidor Render.</p>
                       </div>
 
                       {/* Render CONFIG_SESSION_PHONE_VERSION Solution Card */}
@@ -2148,7 +2431,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             <span>Por que o QR Code retornou vazio no Render?</span>
                           </div>
                           <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
-                            A Meta atualizou o WhatsApp Web recentemente. Para que o Render consiga gerar o QR Code de pareamento, basta adicionar 1 variável no seu Render:
+                            Se quiser usar o Render (ou prefira clicar no botão verde acima para gerar o QR direto aqui), adicione 1 variável no seu Render:
                           </p>
 
                           <div className="space-y-1.5 pt-0.5">
@@ -2168,11 +2451,11 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             </div>
 
                             <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-200 text-[10px]">
-                              <span className="text-emerald-700 font-mono font-bold">2.3000.1032750324</span>
+                              <span className="text-emerald-700 font-mono font-bold">2.3000.1043857760</span>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  navigator.clipboard.writeText('2.3000.1032750324');
+                                  navigator.clipboard.writeText('2.3000.1043857760');
                                   setCopiedVersionVal(true);
                                   setTimeout(() => setCopiedVersionVal(false), 2000);
                                 }}
@@ -2220,18 +2503,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                           {qrError.includes('CONFIG_VERSION') ? (
                             <div className="space-y-2 pt-1 border-t border-rose-200/50">
                               <p className="text-[10px] text-slate-700 font-medium leading-relaxed">
-                                💡 <strong>Como resolver no Render (1 minuto):</strong> Acesse seu serviço no Render &gt; aba <em>Environment</em> &gt; adicione a variável <code>CONFIG_SESSION_PHONE_VERSION</code> com valor <code>2.3000.1032750324</code> e salve.
+                                💡 <strong>Dica rápida:</strong> Clique no botão abaixo para usar a <strong>Conexão Direta no Sistema</strong> e escanear o QR Code na hora sem esperar o Render, ou atualize <code>CONFIG_SESSION_PHONE_VERSION</code> = <code>2.3000.1043857760</code> no Render.
                               </p>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setQrCodeStatus('connected');
-                                  localStorage.setItem('whatsapp_qr_status', 'connected');
-                                  setQrError('');
-                                }}
+                                onClick={handleSwitchToNativeAndConnect}
                                 className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1.5"
                               >
-                                <span>📲 Ativar Conexão Agora (Modo Teste / Demonstração)</span>
+                                <Zap className="w-3.5 h-3.5" />
+                                <span>⚡ Gerar QR Code Direto Agora (Sem Render)</span>
                               </button>
                             </div>
                           ) : (
@@ -2258,6 +2538,31 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         <QrCode className="w-4 h-4" />
                         {connectionProvider === 'simulator' ? 'Iniciar Pareamento no Simulador' : 'Gerar QR Code Oficial'}
                       </button>
+
+                      {connectionProvider === 'native' && (
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2">
+                          <label className="block text-[9.5px] font-black uppercase tracking-wide text-slate-600">
+                            📱 Ou conectar sem câmera (Código de 8 dígitos):
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={pairingCodeInputNumber}
+                              onChange={(e) => setPairingCodeInputNumber(e.target.value)}
+                              placeholder="5519999999999"
+                              className="flex-1 px-2.5 py-2 rounded-xl border border-slate-200 bg-white outline-none text-xs font-mono font-bold text-slate-800 focus:border-emerald-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleRequestNativePairingCode}
+                              disabled={requestingPairingCode}
+                              className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white font-black text-[10px] uppercase rounded-xl cursor-pointer disabled:opacity-50"
+                            >
+                              {requestingPairingCode ? 'Gerando...' : 'Gerar Código'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {connectionProvider === 'evolution' && (
                         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
@@ -2298,19 +2603,36 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
                   {qrCodeStatus === 'waiting' && (
                     <div className="space-y-5 py-2 flex flex-col items-center">
-                      <div className="relative p-4 bg-white border-2 border-slate-100 rounded-3xl shadow-sm">
-                        <img
-                          src={qrCodePayload.startsWith('data:image') || qrCodePayload.startsWith('http')
-                            ? qrCodePayload
-                            : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=075E54&data=${encodeURIComponent(qrCodePayload)}`
-                          }
-                          alt="WhatsApp QR Code"
-                          className="w-48 h-48 sm:w-56 sm:h-56 select-none"
-                        />
-                        <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {qrTimer}s restante
+                      {pairingCodeResult ? (
+                        <div className="w-full p-5 bg-emerald-50 border-2 border-emerald-200 rounded-3xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider">Código de Pareamento</span>
+                            <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
+                              {qrTimer}s restante
+                            </span>
+                          </div>
+                          <div className="py-3 px-4 bg-white rounded-2xl border border-emerald-200 text-2xl sm:text-3xl font-mono font-black tracking-[0.2em] text-emerald-950 select-all">
+                            {pairingCodeResult}
+                          </div>
+                          <p className="text-[10.5px] text-emerald-900 font-semibold leading-relaxed text-left">
+                            No celular: abra o <strong>WhatsApp</strong> &gt; <strong>Aparelhos conectados</strong> &gt; <strong>Conectar aparelho</strong> &gt; toque em <strong>Conectar com número de telefone</strong> e digite o código acima.
+                          </p>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="relative p-4 bg-white border-2 border-slate-100 rounded-3xl shadow-sm">
+                          <img
+                            src={qrCodePayload.startsWith('data:image') || qrCodePayload.startsWith('http')
+                              ? qrCodePayload
+                              : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=075E54&data=${encodeURIComponent(qrCodePayload)}`
+                            }
+                            alt="WhatsApp QR Code"
+                            className="w-48 h-48 sm:w-56 sm:h-56 select-none"
+                          />
+                          <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {qrTimer}s restante
+                          </div>
+                        </div>
+                      )}
 
                       <div className="w-full pt-2 border-t border-slate-100 space-y-2">
                         {connectionProvider === 'simulator' ? (
@@ -2325,20 +2647,20 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         ) : (
                           <button
                             type="button"
-                            onClick={() => {
-                              setQrCodeStatus('connected');
-                              localStorage.setItem('whatsapp_qr_status', 'connected');
-                              alert("✓ Aparelho pareado com sucesso!");
-                            }}
-                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-97"
+                            onClick={handleCheckRealConnectionStatus}
+                            disabled={checkingStatus}
+                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-97 disabled:opacity-50"
                           >
                             <CheckCheck className="w-3.5 h-3.5" />
-                            Já Escaneei (Confirmar Conexão)
+                            {checkingStatus ? 'Verificando Conexão...' : 'Já Escaneei (Verificar Conexão)'}
                           </button>
                         )}
                         <button
                           type="button"
-                          onClick={() => setQrCodeStatus('disconnected')}
+                          onClick={() => {
+                            setQrCodeStatus('disconnected');
+                            setPairingCodeResult(null);
+                          }}
                           className="text-[10px] text-slate-400 hover:text-slate-650 font-bold underline"
                         >
                           Cancelar e Voltar

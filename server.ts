@@ -2,7 +2,17 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
+import QRCode from 'qrcode';
+import pino from 'pino';
+import { Boom } from '@hapi/boom';
+import makeWASocket, {
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  DisconnectReason,
+  Browsers
+} from '@whiskeysockets/baileys';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -121,18 +131,247 @@ function processIncomingMessage(userText: string, pushName: string = 'Cliente') 
   return cfg.welcomeMsg.replace('{nome}', pushName);
 }
 
-// Send Text via Evolution API
+// ------------------- NATIVE WHATSAPP ENGINE (BAILEYS) ------------------- //
+const WA_AUTH_DIR = path.resolve(__dirname, '.wa_auth');
+let nativeSocket: ReturnType<typeof makeWASocket> | null = null;
+let nativeStatus: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' = 'disconnected';
+let nativeQrRaw: string | null = null;
+let nativeQrDataUrl: string | null = null;
+let nativePairingCode: string | null = null;
+let nativeOwnerJid: string | null = null;
+let nativeLastError: string | null = null;
+let nativeManualStop = false;
+let nativeReconnectAttempts = 0;
+
+function clearNativeAuthDir() {
+  try {
+    if (fs.existsSync(WA_AUTH_DIR)) {
+      fs.rmSync(WA_AUTH_DIR, { recursive: true, force: true });
+    }
+  } catch (e) {
+    console.warn('[WhatsApp Native] Erro ao limpar .wa_auth:', e);
+  }
+}
+
+async function stopNativeSocket() {
+  if (nativeSocket) {
+    try {
+      nativeSocket.ev.removeAllListeners('connection.update');
+      nativeSocket.ev.removeAllListeners('creds.update');
+      nativeSocket.ev.removeAllListeners('messages.upsert');
+      nativeSocket.end(undefined);
+    } catch (_) {}
+    nativeSocket = null;
+  }
+}
+
+async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhone?: string }) {
+  nativeManualStop = false;
+  nativeLastError = null;
+
+  if (options?.forceFresh) {
+    await stopNativeSocket();
+    clearNativeAuthDir();
+    nativeQrRaw = null;
+    nativeQrDataUrl = null;
+    nativePairingCode = null;
+    nativeOwnerJid = null;
+    nativeReconnectAttempts = 0;
+  }
+
+  if (nativeStatus === 'connected' && nativeSocket && !options?.forceFresh) {
+    return;
+  }
+
+  await stopNativeSocket();
+  nativeStatus = 'connecting';
+
+  try {
+    if (!fs.existsSync(WA_AUTH_DIR)) {
+      fs.mkdirSync(WA_AUTH_DIR, { recursive: true });
+    }
+
+    let version: [number, number, number] = [2, 3000, 1043857760];
+    try {
+      const latest = await fetchLatestBaileysVersion();
+      if (latest?.version) {
+        version = latest.version;
+      }
+    } catch (_) {}
+
+    const { state, saveCreds } = await useMultiFileAuthState(WA_AUTH_DIR);
+
+    const sock = makeWASocket({
+      version,
+      logger: pino({ level: 'silent' }) as any,
+      auth: state,
+      browser: Browsers.ubuntu('Chrome'),
+      printQRInTerminal: false,
+      connectTimeoutMs: 25000,
+      defaultQueryTimeoutMs: 25000,
+      syncFullHistory: false
+    });
+
+    nativeSocket = sock;
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        try {
+          nativeQrRaw = qr;
+          nativeQrDataUrl = await QRCode.toDataURL(qr, {
+            width: 300,
+            margin: 2,
+            color: { dark: '#075E54', light: '#FFFFFF' }
+          });
+          nativeStatus = 'qr_ready';
+          nativeLastError = null;
+        } catch (qrErr: any) {
+          nativeLastError = qrErr?.message || 'Erro ao gerar imagem QR';
+        }
+      }
+
+      if (connection === 'open') {
+        nativeStatus = 'connected';
+        nativeQrRaw = null;
+        nativeQrDataUrl = null;
+        nativePairingCode = null;
+        nativeLastError = null;
+        nativeReconnectAttempts = 0;
+        const rawId = sock.user?.id || '';
+        nativeOwnerJid = rawId ? rawId.split(':')[0].split('@')[0] : null;
+        console.log(`✅ [WhatsApp Native] Conectado com sucesso! Número: +${nativeOwnerJid}`);
+        addBotLog({
+          from: nativeOwnerJid || 'Sistema',
+          incomingText: 'Pareamento WhatsApp Direto',
+          replyText: `Aparelho conectado diretamente (+${nativeOwnerJid || 'WhatsApp'})`,
+          status: 'sent'
+        });
+      }
+
+      if (connection === 'close') {
+        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+        const errorMsg = (lastDisconnect?.error as any)?.message || '';
+        const loggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+
+        console.log(`[WhatsApp Native] Conexão fechada. Código: ${statusCode} | Msg: ${errorMsg}`);
+
+        if (loggedOut) {
+          clearNativeAuthDir();
+          nativeStatus = 'disconnected';
+          nativeOwnerJid = null;
+          nativeQrRaw = null;
+          nativeQrDataUrl = null;
+          nativePairingCode = null;
+          nativeLastError = 'Sessão desconectada no celular. Gere um novo QR Code.';
+          return;
+        }
+
+        if (!nativeManualStop && nativeReconnectAttempts < 4) {
+          nativeReconnectAttempts++;
+          const hasCreds = Boolean(state.creds?.registered);
+          if (hasCreds || statusCode === DisconnectReason.restartRequired || statusCode === 515) {
+            setTimeout(() => {
+              startNativeWhatsApp().catch(() => {});
+            }, 2000);
+            return;
+          }
+        }
+
+        nativeStatus = 'disconnected';
+        nativeLastError = errorMsg || 'Conexão encerrada. Tente gerar um novo QR Code.';
+      }
+    });
+
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      if (type !== 'notify') return;
+      for (const msg of messages) {
+        try {
+          if (!msg.message || msg.key.fromMe) continue;
+          const remoteJid = msg.key.remoteJid || '';
+          if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
+
+          const incomingText =
+            msg.message.conversation ||
+            msg.message.extendedTextMessage?.text ||
+            msg.message.imageMessage?.caption ||
+            msg.message.videoMessage?.caption ||
+            msg.message.buttonsResponseMessage?.selectedDisplayText ||
+            msg.message.buttonsResponseMessage?.selectedButtonId ||
+            msg.message.listResponseMessage?.title ||
+            msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            '';
+
+          if (!incomingText.trim()) continue;
+
+          const cleanSender = remoteJid.split('@')[0];
+          const pushName = msg.pushName || 'Cliente';
+
+          console.log(`[WhatsApp Native] Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
+          const replyText = processIncomingMessage(incomingText, pushName);
+
+          await sock.sendMessage(remoteJid, { text: replyText });
+          console.log(`[WhatsApp Native] Resposta automática enviada para +${cleanSender}`);
+
+          addBotLog({
+            from: cleanSender,
+            pushName,
+            incomingText,
+            replyText,
+            status: 'sent'
+          });
+        } catch (msgErr: any) {
+          console.error('[WhatsApp Native] Erro ao responder mensagem:', msgErr?.message || msgErr);
+        }
+      }
+    });
+
+    if (options?.pairingPhone && !state.creds.registered) {
+      const cleanPhone = options.pairingPhone.replace(/\D/g, '');
+      if (cleanPhone.length >= 10) {
+        setTimeout(async () => {
+          try {
+            if (nativeSocket === sock && nativeStatus !== 'connected') {
+              const code = await sock.requestPairingCode(cleanPhone);
+              nativePairingCode = code;
+              nativeStatus = 'qr_ready';
+              console.log(`[WhatsApp Native] Código de pareamento gerado para ${cleanPhone}: ${code}`);
+            }
+          } catch (pairErr: any) {
+            nativeLastError = pairErr?.message || 'Erro ao solicitar código de pareamento';
+          }
+        }, 2500);
+      }
+    }
+  } catch (err: any) {
+    nativeStatus = 'disconnected';
+    nativeLastError = err?.message || 'Falha ao iniciar conexão nativa com WhatsApp';
+    throw err;
+  }
+}
+
+// Send Text via Native Socket (if connected) or Evolution API
 async function sendWhatsAppMessage(targetNumber: string, messageText: string, config: typeof cachedStoreConfig) {
+  const cleanNumber = targetNumber.replace(/\D/g, '');
+
+  // Priority 1: Native Baileys socket if paired and open
+  if (nativeStatus === 'connected' && nativeSocket) {
+    const jid = `${cleanNumber}@s.whatsapp.net`;
+    const result = await nativeSocket.sendMessage(jid, { text: messageText });
+    return { provider: 'native', result };
+  }
+
   let cleanUrl = (config.evolutionUrl || '').trim().replace(/\/$/, '');
   if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
     cleanUrl = `https://${cleanUrl}`;
   }
   const cleanInstance = (config.evolutionInstance || 'supreme-bot').trim();
   const cleanToken = (config.evolutionToken || 'Rmfa1100@').trim();
-  const cleanNumber = targetNumber.replace(/\D/g, '');
 
   if (!cleanUrl || !cleanInstance) {
-    throw new Error('Evolution API URL e Instância não configuradas.');
+    throw new Error('Nenhum canal de WhatsApp conectado (conecte via QR Code Direto ou Evolution API).');
   }
 
   const controller = new AbortController();
@@ -264,6 +503,9 @@ app.get('/api/evolution/diagnostic', async (_req: Request, res: Response) => {
       ownerJid,
       webhookActive,
       webhookUrl,
+      nativeStatus,
+      nativeIsPaired: nativeStatus === 'connected',
+      nativeOwnerJid,
       recentLogs: recentBotLogs.slice(0, 10)
     });
   } catch (e: any) {
@@ -276,8 +518,143 @@ app.get('/api/bot/status', (_req: Request, res: Response) => {
   res.json({
     success: true,
     config: cachedStoreConfig,
+    nativeStatus,
+    nativeOwnerJid,
     recentLogs: recentBotLogs
   });
+});
+
+// Native WhatsApp Web (Baileys): Start / Generate QR Code
+app.post('/api/whatsapp/native/connect', async (req: Request, res: Response) => {
+  try {
+    const forceFresh = req.body?.forceFresh !== false;
+    await startNativeWhatsApp({ forceFresh });
+
+    // Wait up to 10s for QR code or immediate connection
+    const startMs = Date.now();
+    while (Date.now() - startMs < 10000) {
+      if (nativeStatus === 'connected') {
+        return res.json({
+          success: true,
+          connected: true,
+          ownerJid: nativeOwnerJid,
+          message: 'WhatsApp conectado diretamente com sucesso!'
+        });
+      }
+      if (nativeQrDataUrl) {
+        return res.json({
+          success: true,
+          connected: false,
+          qrCode: nativeQrDataUrl,
+          qrRaw: nativeQrRaw
+        });
+      }
+      if (nativeStatus === 'disconnected' && nativeLastError) {
+        return res.status(500).json({ error: nativeLastError });
+      }
+      await new Promise(r => setTimeout(r, 350));
+    }
+
+    return res.json({
+      success: false,
+      status: nativeStatus,
+      error: nativeLastError || 'Tempo esgotado aguardando QR Code do WhatsApp Web. Tente novamente.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro ao gerar QR Code direto' });
+  }
+});
+
+// Native WhatsApp Web (Baileys): Request 8-digit Pairing Code by phone number
+app.post('/api/whatsapp/native/pairing-code', async (req: Request, res: Response) => {
+  try {
+    const cleanPhone = String(req.body?.phoneNumber || '').replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Informe o número completo com DDI + DDD (ex: 5519999999999).' });
+    }
+    await startNativeWhatsApp({ forceFresh: true, pairingPhone: cleanPhone });
+
+    const startMs = Date.now();
+    while (Date.now() - startMs < 12000) {
+      if (nativeStatus === 'connected') {
+        return res.json({
+          success: true,
+          connected: true,
+          ownerJid: nativeOwnerJid
+        });
+      }
+      if (nativePairingCode) {
+        return res.json({
+          success: true,
+          connected: false,
+          pairingCode: nativePairingCode
+        });
+      }
+      if (nativeStatus === 'disconnected' && nativeLastError) {
+        return res.status(500).json({ error: nativeLastError });
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    return res.json({
+      success: false,
+      error: nativeLastError || 'Não foi possível obter o código de pareamento a tempo.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro ao gerar código de pareamento' });
+  }
+});
+
+// Native WhatsApp Web (Baileys): Status polling
+app.get('/api/whatsapp/native/status', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    status: nativeStatus,
+    isPaired: nativeStatus === 'connected',
+    ownerJid: nativeOwnerJid,
+    qrDataUrl: nativeQrDataUrl,
+    pairingCode: nativePairingCode,
+    lastError: nativeLastError,
+    recentLogs: recentBotLogs.slice(0, 10)
+  });
+});
+
+// Native WhatsApp Web (Baileys): Disconnect
+app.post('/api/whatsapp/native/disconnect', async (_req: Request, res: Response) => {
+  nativeManualStop = true;
+  try {
+    if (nativeSocket) {
+      await nativeSocket.logout().catch(() => {});
+    }
+  } catch (_) {}
+  await stopNativeSocket();
+  clearNativeAuthDir();
+  nativeStatus = 'disconnected';
+  nativeOwnerJid = null;
+  nativeQrRaw = null;
+  nativeQrDataUrl = null;
+  nativePairingCode = null;
+  res.json({ success: true });
+});
+
+// Unified Send Message route (uses Native Socket if connected, or Evolution API)
+app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
+  try {
+    const { phone, message } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ error: 'Telefone e mensagem são obrigatórios.' });
+    }
+    const result = await sendWhatsAppMessage(String(phone), String(message), cachedStoreConfig);
+    addBotLog({
+      from: String(phone).replace(/\D/g, ''),
+      incomingText: 'Disparo Manual / Notificação',
+      replyText: String(message),
+      status: 'sent'
+    });
+    res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Falha ao enviar mensagem' });
+  }
 });
 
 // Connect or get QR Code from Evolution API via server proxy (avoids browser CORS & network drops)
@@ -402,7 +779,7 @@ app.post('/api/evolution/connect', async (req: Request, res: Response) => {
       success: false,
       needsVersionConfig,
       variableName: 'CONFIG_SESSION_PHONE_VERSION',
-      variableValue: '2.3000.1032750324',
+      variableValue: '2.3000.1043857760',
       message: needsVersionConfig
         ? 'A Evolution API no Render está ativa, mas a Meta (WhatsApp) exige a variável CONFIG_SESSION_PHONE_VERSION para liberar o QR Code.'
         : 'Instância em inicialização no Render. Aguarde alguns instantes.',
@@ -692,6 +1069,10 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor Supreme rodando na porta ${PORT}`);
     console.log(`🤖 Webhook WhatsApp pronto em: http://0.0.0.0:${PORT}/api/webhook/whatsapp`);
+    if (fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
+      console.log('🔄 [WhatsApp Native] Sessão salva encontrada! Reconectando automaticamente...');
+      startNativeWhatsApp().catch((e) => console.warn('[WhatsApp Native] Falha ao reconectar:', e?.message));
+    }
   });
 }
 
