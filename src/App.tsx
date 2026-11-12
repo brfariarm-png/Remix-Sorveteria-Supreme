@@ -1976,7 +1976,13 @@ export default function App() {
 
   // Filtered menu items
   const filteredMenuItems = useMemo(() => {
+    const excludedIds = ['cascao-duplo', 'banana-split', 'sundae-sensacao', 'gelato-supreme'];
     return menuItems.filter((item) => {
+      if (excludedIds.includes(item.id)) return false;
+      const lowerName = item.name.toLowerCase();
+      if (lowerName.includes('cascão trufado') || lowerName.includes('cascao trufado') || lowerName.includes('taça sorvete premium') || lowerName.includes('taca sorvete premium') || lowerName.includes('banana split supreme') || lowerName.includes('grand sundae especial')) {
+        return false;
+      }
       let itemCat = item.category || '';
       // Normalization of legacy or alternative categories
       if (itemCat === 'sorvete' || itemCat === 'sundae' || itemCat === 'copos-especiais') {

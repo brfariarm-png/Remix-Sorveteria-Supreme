@@ -405,7 +405,13 @@ export default function AdminPDV({
   // Filtering Menu Items
   const filteredProducts = useMemo(() => {
     const list = menuItems && menuItems.length > 0 ? menuItems : MENU_ITEMS;
+    const excludedIds = ['cascao-duplo', 'banana-split', 'sundae-sensacao', 'gelato-supreme'];
     return list.filter((item) => {
+      if (excludedIds.includes(item.id)) return false;
+      const lowerName = item.name.toLowerCase();
+      if (lowerName.includes('cascão trufado') || lowerName.includes('cascao trufado') || lowerName.includes('taça sorvete premium') || lowerName.includes('taca sorvete premium') || lowerName.includes('banana split supreme') || lowerName.includes('grand sundae especial')) {
+        return false;
+      }
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             item.description.toLowerCase().includes(searchTerm.toLowerCase());

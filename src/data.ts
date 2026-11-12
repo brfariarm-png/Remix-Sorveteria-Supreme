@@ -38,21 +38,18 @@ export const MENU_ITEMS: MenuItem[] = [
     customizable: true
   },
   {
-    id: 'gelato-supreme',
-    name: 'Taça Sorvete Premium',
-    description: 'Três bolas de sorvete premium à sua escolha, servidas com cobertura quente de chocolate, chantilly artesanal, canudinhos wafer e raspas de chocolate belga.',
-    price: 28.90,
+    id: 'copo-banoffee',
+    name: 'Copo Banoffee',
+    description: 'Deliciosa combinação de banana fresca fatiada, doce de leite artesanal cremoso, chantilly e farofa crocante de biscoito.',
+    price: 20.00,
     category: 'copos_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
-    popular: true
-  },
-  {
-    id: 'cascao-duplo',
-    name: 'Cascão Trufado Duplo',
-    description: 'Cascão gigante crocante, com borda trufada de chocolate, duas bolas de sorvete artesanal (escolha seus sabores) e finalizado com confetes coloridos.',
-    price: 16.50,
-    category: 'copos_especiais',
-    image: '/assets/images/supreme_acai_cup_1781179584520.jpg'
+    tags: ['Especial', 'Tamanho Único'],
+    popular: true,
+    customizable: true,
+    sizeMode: 'single',
+    singleSizeLabel: '400ml',
+    singleSizePrice: 20.00
   },
   {
     id: 'milkshake-nutella',
@@ -70,23 +67,6 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Sorvete de chocolate cremoso batido com calda de caramelo e abundante Ovomaltine crocante, finalizado com calda de chocolate belga nas laterais.',
     price: 21.90,
     category: 'milkshake_especiais',
-    image: '/assets/images/supreme_acai_cup_1781179584520.jpg'
-  },
-  {
-    id: 'sundae-sensacao',
-    name: 'Grand Sundae Especial',
-    description: 'Taça gigante com duas bolas de sorvete de baunilha, uma bola de sorvete de morango, bolo de chocolate picado, muita calda quente, farofa de amendoim e cereja.',
-    price: 29.90,
-    category: 'copos_especiais',
-    image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
-    tags: ['Especial do Chefe']
-  },
-  {
-    id: 'banana-split',
-    name: 'Banana Split Supreme',
-    description: 'A clássica sobremesa: uma banana aberta ao meio servindo three bolas de sorvete (morango, baunilha e chocolate), caldas de caramelo, chocolate e morango, chantilly, canudos wafer e cerejas.',
-    price: 32.90,
-    category: 'copos_especiais',
     image: '/assets/images/supreme_acai_cup_1781179584520.jpg'
   }
 ];
