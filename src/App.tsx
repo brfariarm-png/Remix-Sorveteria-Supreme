@@ -1611,8 +1611,33 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: formattedPhone, message })
         });
-        const data = await res.json();
-        if (res.ok && data.success) {
+        const isJson = res.headers.get('content-type')?.includes('application/json');
+        if (isJson) {
+          const data = await res.json();
+          if (res.ok && data.success) {
+            if (showSuccessToast) {
+              setNotificationToast({
+                title: '📱 WhatsApp Enviado!',
+                message: `Mensagem automática enviada para ${order.details?.customerName || formattedPhone}.`
+              });
+            }
+            return;
+          }
+          throw new Error(data.error || 'WhatsApp não conectado');
+        }
+
+        // Running on Vercel (no Express /api/whatsapp/send-message): call Render Evolution API directly
+        const evoUrl = (storeSettings.whatsappEvolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/+$/, '');
+        const evoInst = (storeSettings.whatsappEvolutionInstance || 'supreme-bot').trim() || 'supreme-bot';
+        const evoTok = (storeSettings.whatsappEvolutionToken || 'Rmfa1100@').trim() || 'Rmfa1100@';
+        const fullEvoUrl = evoUrl.startsWith('http') ? evoUrl : `https://${evoUrl}`;
+
+        const evoRes = await fetch(`${fullEvoUrl}/message/sendText/${evoInst}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: evoTok },
+          body: JSON.stringify({ number: formattedPhone, text: message })
+        });
+        if (evoRes.ok) {
           if (showSuccessToast) {
             setNotificationToast({
               title: '📱 WhatsApp Enviado!',
@@ -1621,7 +1646,8 @@ export default function App() {
           }
           return;
         }
-        throw new Error(data.error || 'WhatsApp não conectado');
+        const evoErr = await evoRes.text();
+        throw new Error(`WhatsApp não conectado no Render (${evoRes.status}): ${evoErr}`);
       } catch (err: any) {
         console.warn('Falha ao enviar via API WhatsApp:', err?.message || err);
         if (showSuccessToast) {
@@ -2181,6 +2207,10 @@ export default function App() {
         return next;
       });
       alert(`⚠️ Seu pedido foi realizado com sucesso, mas não pôde ser sincronizado online com o painel por uma restrição do Firebase (domínio não autorizado ou falta de login no projeto).\n\nSalvamos o pedido com segurança no seu aparelho para você poder acompanhar!\n\nSe você é o proprietário fazendo testes, por favor, verifique se ativou os logins do "Google" e "Anônimo" e colocou o domínio "${window.location.hostname}" no Console do seu Firebase.`);
+    }
+
+    if (storeSettings.whatsappConnectionProvider === 'native' || storeSettings.whatsappConnectionProvider === 'evolution') {
+      dispatchOrderWhatsApp(newOrder, 'waiting', false).catch(() => {});
     }
 
     setCart([]); // Clear cart

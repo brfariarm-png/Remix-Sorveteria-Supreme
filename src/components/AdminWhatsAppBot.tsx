@@ -41,9 +41,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     storeSettings.whatsappConnectionProvider || 'simulator'
   );
   
-  const [evolutionUrl, setEvolutionUrl] = useState(storeSettings.whatsappEvolutionUrl || '');
-  const [evolutionInstance, setEvolutionInstance] = useState(storeSettings.whatsappEvolutionInstance || '');
-  const [evolutionToken, setEvolutionToken] = useState(storeSettings.whatsappEvolutionToken || '');
+  const [evolutionUrl, setEvolutionUrl] = useState(storeSettings.whatsappEvolutionUrl || 'https://supreme-bot-2bm0.onrender.com');
+  const [evolutionInstance, setEvolutionInstance] = useState(storeSettings.whatsappEvolutionInstance || 'supreme-bot');
+  const [evolutionToken, setEvolutionToken] = useState(storeSettings.whatsappEvolutionToken || 'Rmfa1100@');
   
   const [zapiInstanceId, setZapiInstanceId] = useState(storeSettings.whatsappZapiInstanceId || '');
   const [zapiToken, setZapiToken] = useState(storeSettings.whatsappZapiToken || '');
@@ -51,6 +51,11 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [wppconnectUrl, setWppconnectUrl] = useState(storeSettings.whatsappWppconnectUrl || '');
   const [wppconnectInstance, setWppconnectInstance] = useState(storeSettings.whatsappWppconnectInstance || '');
   const [wppconnectToken, setWppconnectToken] = useState(storeSettings.whatsappWppconnectToken || '');
+  const [hasLocalBackend, setHasLocalBackend] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const h = window.location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h.includes('ais-dev-') || h.includes('ais-pre-');
+  });
 
   const [qrError, setQrError] = useState('');
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -90,35 +95,173 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [pairingCodeResult, setPairingCodeResult] = useState<string | null>(null);
   const [requestingPairingCode, setRequestingPairingCode] = useState(false);
 
+  const getEffectiveEvolutionCreds = () => {
+    let url = (evolutionUrl || storeSettings.whatsappEvolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/+$/, '');
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    const instance = (evolutionInstance || storeSettings.whatsappEvolutionInstance || 'supreme-bot').trim() || 'supreme-bot';
+    const token = (evolutionToken || storeSettings.whatsappEvolutionToken || 'Rmfa1100@').trim() || 'Rmfa1100@';
+    return { url, instance, token };
+  };
+
+  const getPublicWebhookUrl = () => {
+    const base = typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : 'https://sorveteriasupreme.vercel.app';
+    return `${base}/api/webhook/whatsapp`;
+  };
+
+  const directEvolutionSetupWebhook = async () => {
+    const { url, instance, token } = getEffectiveEvolutionCreds();
+    const webhookDestination = getPublicWebhookUrl();
+    const webhookPayload = {
+      enabled: true,
+      url: webhookDestination,
+      webhook_by_events: false,
+      webhook_base64: false,
+      events: ['MESSAGES_UPSERT', 'SEND_MESSAGE', 'CONNECTION_UPDATE'],
+      webhook: {
+        enabled: true,
+        url: webhookDestination,
+        byEvents: false,
+        base64: false,
+        events: ['MESSAGES_UPSERT', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
+      }
+    };
+    const res = await fetch(`${url}/webhook/set/${instance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: token },
+      body: JSON.stringify(webhookPayload)
+    });
+    if (!res.ok) {
+      const errTxt = await res.text();
+      throw new Error(`Erro ao ativar webhook no Render (${res.status}): ${errTxt}`);
+    }
+    return webhookDestination;
+  };
+
+  const runDirectEvolutionDiagnostic = async () => {
+    const { url, instance, token } = getEffectiveEvolutionCreds();
+    let online = false;
+    let version = '';
+    try {
+      const r = await fetch(`${url}/`);
+      if (r.ok) {
+        const j = await r.json();
+        online = true;
+        version = j.version || '';
+      }
+    } catch (_) {}
+
+    let instanceExists = false;
+    let instanceState = 'close';
+    let isPaired = false;
+    let ownerJid: string | null = null;
+    let tokenValid = false;
+    try {
+      const r = await fetch(`${url}/instance/fetchInstances`, { headers: { apikey: token } });
+      if (r.ok) {
+        tokenValid = true;
+        const list = await r.json();
+        const found = (Array.isArray(list) ? list : []).find((i: any) => i.name === instance || i.instance?.instanceName === instance);
+        if (found) {
+          instanceExists = true;
+          instanceState = found.connectionStatus || found.instance?.status || 'close';
+          ownerJid = found.ownerJid || null;
+          isPaired = Boolean(ownerJid) || instanceState === 'open';
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const sr = await fetch(`${url}/instance/connectionState/${instance}`, { headers: { apikey: token } });
+      if (sr.ok) {
+        const sd = await sr.json();
+        const st = sd?.instance?.state || sd?.state;
+        if (st === 'open' || st === 'CONNECTED') {
+          isPaired = true;
+          instanceState = 'open';
+        }
+      }
+    } catch (_) {}
+
+    let webhookActive = false;
+    let webhookUrlFound: string | null = null;
+    try {
+      const wr = await fetch(`${url}/webhook/find/${instance}`, { headers: { apikey: token } });
+      if (wr.ok) {
+        const wd = await wr.json();
+        webhookActive = wd?.enabled === true || wd?.webhook?.enabled === true;
+        webhookUrlFound = wd?.url || wd?.webhook?.url || null;
+      }
+    } catch (_) {}
+
+    return {
+      success: true,
+      evolutionOnline: online,
+      evolutionVersion: version,
+      evolutionUrl: url,
+      instanceName: instance,
+      tokenValid,
+      instanceExists,
+      instanceState,
+      isPaired,
+      ownerJid,
+      webhookActive,
+      webhookUrl: webhookUrlFound,
+      nativeStatus: isPaired ? 'connected' : 'disconnected',
+      nativeIsPaired: isPaired,
+      nativeOwnerJid: ownerJid ? ownerJid.split(':')[0].split('@')[0] : null
+    };
+  };
+
   // Function to load diagnostic
   const loadDiagnostic = async () => {
     setLoadingDiagnostic(true);
     try {
       const res = await fetch('/api/evolution/diagnostic');
-      const data = await res.json();
-      if (data.success) {
-        setEvolutionDiagnostic(data);
-        setNativeOwnerJid(data.nativeOwnerJid || null);
-        if (connectionProvider === 'native') {
-          if (data.nativeIsPaired) {
-            setQrCodeStatus('connected');
-            setPairingCodeResult(null);
-            localStorage.setItem('whatsapp_qr_status', 'connected');
-          } else {
-            setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
-            if (!data.nativeIsPaired) {
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (res.ok && isJson) {
+        setHasLocalBackend(true);
+        const data = await res.json();
+        if (data.success) {
+          setEvolutionDiagnostic(data);
+          setNativeOwnerJid(data.nativeOwnerJid || null);
+          if (connectionProvider === 'native') {
+            if (data.nativeIsPaired) {
+              setQrCodeStatus('connected');
+              setPairingCodeResult(null);
+              localStorage.setItem('whatsapp_qr_status', 'connected');
+            } else {
+              setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
+              if (!data.nativeIsPaired) {
+                localStorage.removeItem('whatsapp_qr_status');
+              }
+            }
+          } else if (connectionProvider === 'evolution') {
+            if (data.isPaired) {
+              setQrCodeStatus('connected');
+              localStorage.setItem('whatsapp_qr_status', 'connected');
+            } else {
+              setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
               localStorage.removeItem('whatsapp_qr_status');
             }
           }
-        } else if (connectionProvider === 'evolution') {
-          if (data.isPaired) {
-            setQrCodeStatus('connected');
-            localStorage.setItem('whatsapp_qr_status', 'connected');
-          } else {
-            setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
-            localStorage.removeItem('whatsapp_qr_status');
-          }
+          return;
         }
+      }
+
+      // Running on static host (e.g. Vercel sorveteriasupreme.vercel.app) -> use direct Render Evolution HTTPS
+      setHasLocalBackend(false);
+      const directData = await runDirectEvolutionDiagnostic();
+      setEvolutionDiagnostic(directData);
+      setNativeOwnerJid(directData.nativeOwnerJid || null);
+      if (directData.isPaired) {
+        setQrCodeStatus('connected');
+        setPairingCodeResult(null);
+        localStorage.setItem('whatsapp_qr_status', 'connected');
+      } else {
+        setQrCodeStatus(prev => (prev === 'waiting' || prev === 'generating' ? prev : 'disconnected'));
+        localStorage.removeItem('whatsapp_qr_status');
       }
     } catch (e) {
       console.warn('Diagnostic fetch error:', e);
@@ -158,15 +301,32 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const refreshServerLogs = async () => {
     try {
       const res = await fetch('/api/whatsapp/native/status');
-      const data = await res.json();
-      if (data.success) {
-        if (Array.isArray(data.recentLogs)) {
-          setServerLogs(data.recentLogs);
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (res.ok && isJson) {
+        setHasLocalBackend(true);
+        const data = await res.json();
+        if (data.success) {
+          if (Array.isArray(data.recentLogs)) {
+            setServerLogs(data.recentLogs);
+          }
+          if (data.ownerJid) {
+            setNativeOwnerJid(data.ownerJid);
+          }
+          if (connectionProvider === 'native' && data.isPaired) {
+            setQrCodeStatus('connected');
+          }
         }
-        if (data.ownerJid) {
-          setNativeOwnerJid(data.ownerJid);
-        }
-        if (connectionProvider === 'native' && data.isPaired) {
+        return;
+      }
+
+      // Vercel / external host: poll Render Evolution state directly
+      setHasLocalBackend(false);
+      const { url, instance, token } = getEffectiveEvolutionCreds();
+      const sr = await fetch(`${url}/instance/connectionState/${instance}`, { headers: { apikey: token } });
+      if (sr.ok) {
+        const sd = await sr.json();
+        const st = sd?.instance?.state || sd?.state;
+        if (st === 'open' || st === 'CONNECTED') {
           setQrCodeStatus('connected');
         }
       }
@@ -200,35 +360,55 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
     const pollInterval = setInterval(async () => {
       try {
-        if (connectionProvider === 'native') {
+        if (hasLocalBackend && connectionProvider === 'native') {
           const res = await fetch('/api/whatsapp/native/status');
-          const data = await res.json();
-          if (data.isPaired) {
-            setNativeOwnerJid(data.ownerJid || null);
-            setQrCodeStatus('connected');
-            setPairingCodeResult(null);
-            setQrCodePayload('');
-            localStorage.setItem('whatsapp_qr_status', 'connected');
-            playBellSound();
-            loadDiagnostic();
-          } else if (data.qrDataUrl && !pairingCodeResult) {
-            setQrCodePayload(prev => (prev !== data.qrDataUrl ? data.qrDataUrl : prev));
+          if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+            const data = await res.json();
+            if (data.isPaired) {
+              setNativeOwnerJid(data.ownerJid || null);
+              setQrCodeStatus('connected');
+              setPairingCodeResult(null);
+              setQrCodePayload('');
+              localStorage.setItem('whatsapp_qr_status', 'connected');
+              playBellSound();
+              loadDiagnostic();
+            } else if (data.qrDataUrl && !pairingCodeResult) {
+              setQrCodePayload(prev => (prev !== data.qrDataUrl ? data.qrDataUrl : prev));
+            }
+            return;
           }
-        } else if (connectionProvider === 'evolution') {
+        }
+
+        if (hasLocalBackend && connectionProvider === 'evolution') {
           const res = await fetch('/api/evolution/diagnostic');
-          const data = await res.json();
-          if (data.isPaired) {
-            setEvolutionDiagnostic(data);
-            setQrCodeStatus('connected');
-            localStorage.setItem('whatsapp_qr_status', 'connected');
-            playBellSound();
+          if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+            const data = await res.json();
+            if (data.isPaired) {
+              setEvolutionDiagnostic(data);
+              setQrCodeStatus('connected');
+              localStorage.setItem('whatsapp_qr_status', 'connected');
+              playBellSound();
+            }
+            return;
           }
+        }
+
+        // Direct Render polling (used on https://sorveteriasupreme.vercel.app)
+        const directData = await runDirectEvolutionDiagnostic();
+        if (directData.isPaired) {
+          setEvolutionDiagnostic(directData);
+          setNativeOwnerJid(directData.nativeOwnerJid || null);
+          setQrCodeStatus('connected');
+          setPairingCodeResult(null);
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          directEvolutionSetupWebhook().catch(() => {});
+          playBellSound();
         }
       } catch (_) {}
     }, 2500);
 
     return () => clearInterval(pollInterval);
-  }, [qrCodeStatus, connectionProvider, pairingCodeResult]);
+  }, [qrCodeStatus, connectionProvider, pairingCodeResult, hasLocalBackend]);
 
   // Custom chatbot messages & links states
   const [welcomeMsg, setWelcomeMsg] = useState(storeSettings.whatsappBotWelcomeMessage || `Olá! Seja muito bem-vindo ao assistente automático da *${storeSettings.name}*! 🍨\n\nSou o *${storeSettings.whatsappBotName || 'Supreme Bot Premium 💜'}*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`);
@@ -385,37 +565,50 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setActivatingWebhook(true);
     setWebhookActiveResult(null);
     try {
-      if (connectionProvider === 'native') {
+      if (hasLocalBackend && connectionProvider === 'native') {
         await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'native' });
         const statusRes = await fetch('/api/whatsapp/native/status');
-        const statusData = await statusRes.json();
-        if (statusData.isPaired) {
-          setNativeOwnerJid(statusData.ownerJid || null);
-          setQrCodeStatus('connected');
-          setWebhookActiveResult({
-            success: true,
-            message: `Robô Automático Ativo no WhatsApp Direto (+${statusData.ownerJid || 'conectado'})!`
-          });
-        } else {
-          setWebhookActiveResult({
-            success: false,
-            message: 'Motor Direto salvo e ativado, mas falta escanear o QR Code na aba "Conexão & QR Code Real".'
-          });
-          setActiveTab('config');
+        if (statusRes.ok && statusRes.headers.get('content-type')?.includes('application/json')) {
+          const statusData = await statusRes.json();
+          if (statusData.isPaired) {
+            setNativeOwnerJid(statusData.ownerJid || null);
+            setQrCodeStatus('connected');
+            setWebhookActiveResult({
+              success: true,
+              message: `Robô Automático Ativo no WhatsApp Direto (+${statusData.ownerJid || 'conectado'})!`
+            });
+          } else {
+            setWebhookActiveResult({
+              success: false,
+              message: 'Motor Direto salvo e ativado, mas falta escanear o QR Code na aba "Conexão & QR Code Real".'
+            });
+            setActiveTab('config');
+          }
+          return;
         }
+      }
+
+      if (!hasLocalBackend) {
+        const destUrl = await directEvolutionSetupWebhook();
+        await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'evolution' });
+        setConnectionProvider('evolution');
+        setWebhookActiveResult({
+          success: true,
+          message: 'Robô Automático 24/7 Ativado com Sucesso no WhatsApp!',
+          url: destUrl
+        });
+        loadDiagnostic();
         return;
       }
 
-      if (!evolutionUrl) {
-        throw new Error('Preencha a URL da Evolution API na aba "Conexão & QR Code".');
-      }
+      const { url, instance, token } = getEffectiveEvolutionCreds();
       const res = await fetch('/api/bot/setup-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          evolutionUrl,
-          evolutionInstance: evolutionInstance || 'supreme-bot',
-          evolutionToken: evolutionToken || storeSettings.whatsappEvolutionToken || 'Rmfa1100@',
+          evolutionUrl: url,
+          evolutionInstance: instance,
+          evolutionToken: token,
           publicAppUrl: window.location.origin
         })
       });
@@ -443,36 +636,57 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const handleCheckWebhookStatus = async () => {
     setCheckingWebhookStatus(true);
     try {
-      if (connectionProvider === 'native') {
+      if (hasLocalBackend && connectionProvider === 'native') {
         const res = await fetch('/api/whatsapp/native/status');
-        const data = await res.json();
-        if (data.isPaired) {
-          setNativeOwnerJid(data.ownerJid || null);
-          setQrCodeStatus('connected');
+        if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+          const data = await res.json();
+          if (data.isPaired) {
+            setNativeOwnerJid(data.ownerJid || null);
+            setQrCodeStatus('connected');
+            setWebhookActiveResult({
+              success: true,
+              message: `WhatsApp Direto Conectado (+${data.ownerJid || 'pareado'}) e respondendo mensagens automaticamente!`
+            });
+          } else {
+            setWebhookActiveResult({
+              success: false,
+              message: 'WhatsApp Direto ainda não pareado. Gere e escaneie o QR Code na aba "Conexão & QR Code Real".'
+            });
+          }
+          await refreshServerLogs();
+          return;
+        }
+      }
+
+      if (!hasLocalBackend) {
+        const { url, instance, token } = getEffectiveEvolutionCreds();
+        const wr = await fetch(`${url}/webhook/find/${instance}`, { headers: { apikey: token } });
+        const wd = await wr.json();
+        const active = wd?.enabled === true || wd?.webhook?.enabled === true;
+        const wUrl = wd?.url || wd?.webhook?.url || null;
+        if (active) {
           setWebhookActiveResult({
             success: true,
-            message: `WhatsApp Direto Conectado (+${data.ownerJid || 'pareado'}) e respondendo mensagens automaticamente!`
+            message: 'Webhook Ativo e Operando no WhatsApp!',
+            url: wUrl
           });
         } else {
           setWebhookActiveResult({
             success: false,
-            message: 'WhatsApp Direto ainda não pareado. Gere e escaneie o QR Code na aba "Conexão & QR Code Real".'
+            message: 'Webhook ainda não está ativado na Evolution API. Clique no botão Ativar Robô 24h.'
           });
         }
-        await refreshServerLogs();
         return;
       }
 
-      if (!evolutionUrl) {
-        throw new Error('Preencha a URL da Evolution API na aba "Conexão & QR Code".');
-      }
+      const { url, instance, token } = getEffectiveEvolutionCreds();
       const res = await fetch('/api/bot/check-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          evolutionUrl,
-          evolutionInstance: evolutionInstance || 'supreme-bot',
-          evolutionToken: evolutionToken || storeSettings.whatsappEvolutionToken || 'Rmfa1100@'
+          evolutionUrl: url,
+          evolutionInstance: instance,
+          evolutionToken: token
         })
       });
       const data = await res.json();
@@ -614,7 +828,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     try {
-      if (connectionProvider === 'native') {
+      if (hasLocalBackend && connectionProvider === 'native') {
         const res = await fetch('/api/whatsapp/send-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -643,16 +857,13 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         });
         refreshServerLogs();
       }
-      else if (connectionProvider === 'evolution') {
-        if (!evolutionUrl || !evolutionInstance || !evolutionToken) {
-          throw new Error('Configure a URL, Instância e API Key da Evolution API na aba "Conexão & QR Code".');
-        }
-        const cleanUrl = evolutionUrl.replace(/\/$/, '');
-        const res = await fetch(`${cleanUrl}/message/sendText/${evolutionInstance}`, {
+      else if (connectionProvider === 'evolution' || (!hasLocalBackend && connectionProvider === 'native')) {
+        const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
+        const res = await fetch(`${cleanUrl}/message/sendText/${cleanInst}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': evolutionToken
+            'apikey': cleanTok
           },
           body: JSON.stringify({
             number: cleanNumber,
@@ -875,7 +1086,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
     setCheckingStatus(true);
     try {
-      if (connectionProvider === 'native') {
+      if (hasLocalBackend && connectionProvider === 'native') {
         const res = await fetch('/api/whatsapp/native/status');
         const data = await res.json();
         if (data.isPaired) {
@@ -891,21 +1102,23 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           loadDiagnostic();
           alert('❌ Aparelho ainda não pareado na Conexão Direta. Escaneie o QR Code gerado.');
         }
-      } else if (connectionProvider === 'evolution') {
-        const cleanUrl = evolutionUrl.replace(/\/$/, '');
-        const res = await fetch(`${cleanUrl}/instance/connectionState/${evolutionInstance}`, {
+      } else if (connectionProvider === 'evolution' || (!hasLocalBackend && connectionProvider === 'native')) {
+        const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
+        const res = await fetch(`${cleanUrl}/instance/connectionState/${cleanInst}`, {
           method: 'GET',
-          headers: { 'apikey': evolutionToken }
+          headers: { 'apikey': cleanTok }
         });
         const data = await res.json();
         if (data && (data.instance?.state === 'open' || data.instance?.status === 'connected')) {
           setQrCodeStatus('connected');
           localStorage.setItem('whatsapp_qr_status', 'connected');
-          alert("✓ Seu WhatsApp continua conectado e online na Evolution API!");
+          directEvolutionSetupWebhook().catch(() => {});
+          loadDiagnostic();
+          alert("✓ Seu WhatsApp está conectado e online na Evolution API!");
         } else {
           setQrCodeStatus('disconnected');
           localStorage.removeItem('whatsapp_qr_status');
-          alert("❌ Aparelho desconectado ou em sincronização na Evolution API.");
+          alert("❌ Aparelho ainda não conectou. Escaneie o QR Code no WhatsApp do celular e tente novamente.");
         }
       } else if (connectionProvider === 'zapi') {
         const res = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/status`);
@@ -1098,14 +1311,108 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
-  // Request 8-digit pairing code directly via Native WhatsApp Web (Baileys)
+  const connectDirectViaRenderEvolution = async (pairingPhone?: string) => {
+    const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
+
+    // 1. Check current state
+    try {
+      const stateRes = await fetch(`${cleanUrl}/instance/connectionState/${cleanInst}`, {
+        headers: { apikey: cleanTok }
+      });
+      if (stateRes.ok) {
+        const stateData = await stateRes.json();
+        const st = stateData?.instance?.state || stateData?.state;
+        if (st === 'open' || st === 'CONNECTED') {
+          directEvolutionSetupWebhook().catch(() => {});
+          setQrCodeStatus('connected');
+          localStorage.setItem('whatsapp_qr_status', 'connected');
+          loadDiagnostic();
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Ensure instance exists
+    try {
+      await fetch(`${cleanUrl}/instance/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cleanTok },
+        body: JSON.stringify({
+          instanceName: cleanInst,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS'
+        })
+      });
+    } catch (_) {}
+
+    // 3. Request QR Code / Pairing Code directly from Render
+    const cleanPhone = (pairingPhone || '').replace(/\D/g, '');
+    const querySuffix = cleanPhone.length >= 10 ? `?number=${cleanPhone}` : '';
+    let qrFound: string | null = null;
+    let pairingFound: string | null = null;
+    let lastData: any = null;
+
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      const connRes = await fetch(`${cleanUrl}/instance/connect/${cleanInst}${querySuffix}`, {
+        headers: { apikey: cleanTok }
+      });
+      const data = await connRes.json();
+      lastData = data;
+      if (data?.status === 'open' || data?.instance?.state === 'open') {
+        directEvolutionSetupWebhook().catch(() => {});
+        setQrCodeStatus('connected');
+        localStorage.setItem('whatsapp_qr_status', 'connected');
+        loadDiagnostic();
+        return;
+      }
+      if (data?.pairingCode) {
+        pairingFound = data.pairingCode;
+        break;
+      }
+      const qr = data?.base64 || data?.qrcode?.base64 || data?.code || data?.qrcode?.code;
+      if (qr) {
+        qrFound = qr;
+        break;
+      }
+      if (attempt < 4) await new Promise(r => setTimeout(r, 1400));
+    }
+
+    // Configure Vercel webhook on Render automatically so messages reply 24/7 once scanned
+    directEvolutionSetupWebhook().catch(() => {});
+
+    if (pairingFound) {
+      setPairingCodeResult(pairingFound);
+      setQrCodePayload('');
+      setQrCodeStatus('waiting');
+      setQrTimer(120);
+      return;
+    }
+    if (qrFound) {
+      setPairingCodeResult(null);
+      setQrCodePayload(qrFound);
+      setQrCodeStatus('waiting');
+      setQrTimer(120);
+      return;
+    }
+    if (lastData?.count === 0 || lastData?.qrcode?.count === 0) {
+      throw new Error('CONFIG_VERSION_REQUIRED: O servidor Render aguardando CONFIG_SESSION_PHONE_VERSION = 2.3000.1043857760.');
+    }
+    throw new Error(lastData?.message || 'Não foi possível gerar o QR Code no servidor Render. Tente novamente.');
+  };
+
+  // Request 8-digit pairing code directly via Native WhatsApp Web (Baileys) or Render QR on Vercel
   const handleRequestNativePairingCode = async () => {
     setQrError('');
     setRequestingPairingCode(true);
     setPairingCodeResult(null);
     setQrCodeStatus('generating');
-    setQrProgressMsg('Gerando código de 8 dígitos direto no WhatsApp...');
+    setQrProgressMsg(hasLocalBackend ? 'Gerando código de 8 dígitos direto no WhatsApp...' : 'Conectando ao servidor Render para gerar pareamento...');
     try {
+      if (!hasLocalBackend) {
+        await connectDirectViaRenderEvolution(pairingCodeInputNumber);
+        return;
+      }
+
       await fetch('/api/bot/sync-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1127,6 +1434,12 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: pairingCodeInputNumber })
       });
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (!isJson) {
+        setHasLocalBackend(false);
+        await connectDirectViaRenderEvolution(pairingCodeInputNumber);
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Falha ao gerar código de pareamento');
@@ -1153,12 +1466,25 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
-  // One-click switch from broken Render Evolution API to Direct Native QR Code
+  // One-click switch from broken Render Evolution API to Direct Native QR Code (or Direct Render QR on Vercel)
   const handleSwitchToNativeAndConnect = async () => {
-    setConnectionProvider('native');
     setQrError('');
     setPairingCodeResult(null);
     setQrCodeStatus('generating');
+    if (!hasLocalBackend) {
+      setConnectionProvider('evolution');
+      setQrProgressMsg('Conectando ao servidor Render 24h e gerando QR Code...');
+      await handleSaveSettings({ whatsappConnectionProvider: 'evolution' });
+      try {
+        await connectDirectViaRenderEvolution();
+      } catch (err: any) {
+        setQrError(err.message || 'Erro ao gerar QR Code no Render');
+        setQrCodeStatus('disconnected');
+      }
+      return;
+    }
+
+    setConnectionProvider('native');
     setQrProgressMsg('Ativando conexão direta no servidor e gerando QR Code...');
     await handleSaveSettings({ whatsappConnectionProvider: 'native' });
     try {
@@ -1192,6 +1518,18 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const handleGenerateQr = async () => {
     setQrError('');
     setPairingCodeResult(null);
+    if (!hasLocalBackend && (connectionProvider === 'native' || connectionProvider === 'evolution')) {
+      setQrCodeStatus('generating');
+      setQrProgressMsg('Conectando ao servidor Render 24h e gerando QR Code...');
+      try {
+        await connectDirectViaRenderEvolution();
+      } catch (err: any) {
+        setQrError(err.message || 'Erro ao conectar à Evolution API');
+        setQrCodeStatus('disconnected');
+      }
+      return;
+    }
+
     if (connectionProvider === 'native') {
       setQrCodeStatus('generating');
       setQrProgressMsg('Gerando QR Code oficial direto do WhatsApp Web...');
@@ -1217,6 +1555,13 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ forceFresh: true })
         });
+        const isJson = res.headers.get('content-type')?.includes('application/json');
+        if (!isJson) {
+          setHasLocalBackend(false);
+          setQrProgressMsg('Conectando ao servidor Render 24h e gerando QR Code...');
+          await connectDirectViaRenderEvolution();
+          return;
+        }
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.error || 'Erro ao iniciar conexão direta');
@@ -1252,19 +1597,22 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       setQrCodeStatus('generating');
       setQrProgressMsg('Conectando ao servidor Evolution API...');
       try {
-        if (!evolutionUrl) {
-          throw new Error('Preencha a URL da Evolution API na aba de Ajustes de Conexão!');
-        }
-
+        const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
         const res = await fetch('/api/evolution/connect', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            evolutionUrl: evolutionUrl.trim(),
-            evolutionInstance: (evolutionInstance || 'supreme-bot').trim(),
-            evolutionToken: evolutionToken.trim()
+            evolutionUrl: cleanUrl,
+            evolutionInstance: cleanInst,
+            evolutionToken: cleanTok
           })
         });
+        const isJson = res.headers.get('content-type')?.includes('application/json');
+        if (!isJson) {
+          setHasLocalBackend(false);
+          await connectDirectViaRenderEvolution();
+          return;
+        }
 
         const data = await res.json();
 
@@ -1357,10 +1705,17 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
   const handleDisconnectQr = async () => {
     if (confirm("Deseja desconectar este aparelho de WhatsApp do robô?")) {
-      if (connectionProvider === 'native') {
+      if (hasLocalBackend && connectionProvider === 'native') {
         await fetch('/api/whatsapp/native/disconnect', { method: 'POST' }).catch(() => {});
         setNativeOwnerJid(null);
         setPairingCodeResult(null);
+      } else if (!hasLocalBackend || connectionProvider === 'evolution') {
+        const { url, instance, token } = getEffectiveEvolutionCreds();
+        await fetch(`${url}/instance/logout/${instance}`, {
+          method: 'DELETE',
+          headers: { apikey: token }
+        }).catch(() => {});
+        setNativeOwnerJid(null);
       }
       setQrCodeStatus('disconnected');
       setQrCodePayload('');
@@ -2533,7 +2888,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                         </button>
                       </div>
 
-                      {connectionProvider === 'native' ? (
+                      {hasLocalBackend && connectionProvider === 'native' ? (
                         <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
                           <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
                             <span className="text-slate-500">Motor Direto:</span>
@@ -2582,7 +2937,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                               className="w-full py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1.5"
                             >
                               <Zap className="w-3.5 h-3.5" />
-                              ⚡ Conectar Agora com QR Code Direto (Sem Render)
+                              {hasLocalBackend
+                                ? '⚡ Conectar Agora com QR Code Direto (Sem Render)'
+                                : '⚡ Gerar QR Code Agora no Site (Render + Webhook 24h)'}
                             </button>
                           )}
                         </div>

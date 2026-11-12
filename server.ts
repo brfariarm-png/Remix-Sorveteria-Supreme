@@ -36,7 +36,22 @@ interface BotLog {
   details?: string;
 }
 
-const recentBotLogs: BotLog[] = [];
+const BOT_LOGS_FILE = path.resolve(__dirname, '.wa_bot_logs.json');
+let recentBotLogs: BotLog[] = [];
+try {
+  if (fs.existsSync(BOT_LOGS_FILE)) {
+    const parsed = JSON.parse(fs.readFileSync(BOT_LOGS_FILE, 'utf8'));
+    if (Array.isArray(parsed)) {
+      recentBotLogs = parsed.slice(0, 50);
+    }
+  }
+} catch (_) {}
+
+function persistBotLogs() {
+  try {
+    fs.writeFileSync(BOT_LOGS_FILE, JSON.stringify(recentBotLogs.slice(0, 50), null, 2));
+  } catch (_) {}
+}
 
 function addBotLog(log: Omit<BotLog, 'id' | 'timestamp'>) {
   const newLog: BotLog = {
@@ -48,6 +63,7 @@ function addBotLog(log: Omit<BotLog, 'id' | 'timestamp'>) {
   if (recentBotLogs.length > 50) {
     recentBotLogs.pop();
   }
+  persistBotLogs();
   return newLog;
 }
 
@@ -181,6 +197,8 @@ function trackSentMessageId(id?: string | null, msgProto?: any) {
   }
 }
 
+let nativeConnectedAtMs = 0;
+
 function unwrapWhatsAppMessage(msgContent: any): any {
   let current = msgContent;
   for (let i = 0; i < 6 && current; i++) {
@@ -196,6 +214,10 @@ function unwrapWhatsAppMessage(msgContent: any): any {
       current = current.editedMessage.message;
     } else if (current.documentWithCaptionMessage?.message) {
       current = current.documentWithCaptionMessage.message;
+    } else if (current.deviceSentMessage?.message) {
+      current = current.deviceSentMessage.message;
+    } else if (current.associatedChildMessage?.message) {
+      current = current.associatedChildMessage.message;
     } else if (current.protocolMessage?.editedMessage) {
       current = current.protocolMessage.editedMessage;
     } else {
@@ -306,6 +328,7 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
       printQRInTerminal: false,
       connectTimeoutMs: 25000,
       defaultQueryTimeoutMs: 25000,
+      keepAliveIntervalMs: 20000,
       syncFullHistory: false,
       markOnlineOnConnect: true,
       getMessage: async (key) => {
@@ -339,6 +362,7 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
 
       if (connection === 'open') {
         nativeStatus = 'connected';
+        nativeConnectedAtMs = Date.now();
         nativeQrRaw = null;
         nativeQrDataUrl = null;
         nativePairingCode = null;
@@ -391,11 +415,15 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
       if (type !== 'notify' && type !== 'append') return;
+      console.log(`[WhatsApp Native] Evento messages.upsert recebido (type=${type}, qtd=${messages.length})`);
       for (const msg of messages) {
         try {
           const msgId = msg.key.id;
           if (msgId && (sentBotMessageIds.has(msgId) || repliedInboundMsgIds.has(msgId))) continue;
-          if (!msg.message) continue;
+          if (!msg.message) {
+            console.log(`[WhatsApp Native] Mensagem sem payload (stub=${msg.messageStubType || 'none'}, jid=${msg.key.remoteJid})`);
+            continue;
+          }
 
           const remoteJid = msg.key.remoteJid || '';
           if (
@@ -407,16 +435,21 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
             continue;
           }
 
-          // Ignore old history sync messages (older than 15 minutes)
-          const msgTs = Number(msg.messageTimestamp || 0);
-          if (msgTs > 0 && Date.now() / 1000 - msgTs > 900) continue;
-
+          const remoteJidAlt = (msg.key as any)?.remoteJidAlt as string | undefined;
           const senderPn = (msg.key as any)?.senderPn as string | undefined;
-          const cleanSender = (senderPn || remoteJid).split(':')[0].split('@')[0];
-          const ownNum = (sock.user?.id || '').split(':')[0].split('@')[0];
-          const ownLid = (sock.user?.lid || '').split(':')[0].split('@')[0];
+          const cleanSender = (remoteJidAlt || senderPn || remoteJid).split(':')[0].split('@')[0];
+          const ownNum = (sock.user?.id || state.creds?.me?.id || '').split(':')[0].split('@')[0];
+          const ownLid = (sock.user?.lid || (state.creds?.me as any)?.lid || '').split(':')[0].split('@')[0];
           const remoteBase = remoteJid.split(':')[0].split('@')[0];
-          const isSelfChat = Boolean(remoteBase && (remoteBase === ownNum || remoteBase === ownLid));
+          const isSelfChat = Boolean(
+            (remoteBase && (remoteBase === ownNum || remoteBase === ownLid)) ||
+            (cleanSender && cleanSender === ownNum)
+          );
+
+          // Skip initial history-sync append bursts in first 8s after connect, but NEVER drop live 'notify' messages due to clock skew
+          if (type === 'append' && !isSelfChat && nativeConnectedAtMs > 0 && Date.now() - nativeConnectedAtMs < 8000) {
+            continue;
+          }
 
           // Ignore manual human replies sent from the store phone to customers, but allow self-chat testing
           if (msg.key.fromMe && !isSelfChat) continue;
@@ -434,7 +467,18 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
             content?.templateButtonReplyMessage?.selectedDisplayText ||
             '';
 
-          if (!incomingText.trim()) continue;
+          const hasCustomerMedia = Boolean(
+            content?.imageMessage ||
+            content?.videoMessage ||
+            content?.audioMessage ||
+            content?.stickerMessage ||
+            content?.documentMessage ||
+            content?.locationMessage ||
+            content?.contactMessage
+          );
+
+          const effectiveText = incomingText.trim() || (hasCustomerMedia && !msg.key.fromMe ? 'Oi' : '');
+          if (!effectiveText) continue;
 
           if (cachedStoreConfig.botEnabled === false) {
             console.log(`[WhatsApp Native] Robô pausado nas configurações; ignorando mensagem de +${cleanSender}.`);
@@ -450,26 +494,38 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
           }
 
           const pushName = msg.pushName || 'Cliente';
-          console.log(`[WhatsApp Native] (${type}) Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
+          console.log(`[WhatsApp Native] (${type}) Mensagem recebida de ${remoteJid} (+${cleanSender}, ${pushName}): "${effectiveText}"`);
 
-          const replyText = processIncomingMessage(incomingText, pushName, cleanSender);
+          const replyText = processIncomingMessage(effectiveText, pushName, cleanSender || remoteJid);
+
+          // For @lid accounts, prefer PN JID (remoteJidAlt / senderPn) when available, then fallback to remoteJid
+          const replyTargets = remoteJid.endsWith('@lid')
+            ? [remoteJidAlt, senderPn, remoteJid]
+            : [remoteJid, remoteJidAlt, senderPn];
+          const uniqueTargets = Array.from(new Set(replyTargets.filter((t): t is string => Boolean(t))));
+
           let sent: any = null;
-          try {
-            sent = await sock.sendMessage(remoteJid, { text: replyText });
-          } catch (primaryErr) {
-            if (senderPn && senderPn !== remoteJid) {
-              sent = await sock.sendMessage(senderPn, { text: replyText });
-            } else {
-              throw primaryErr;
+          let lastSendErr: any = null;
+          let sentToJid = uniqueTargets[0];
+          for (const targetJid of uniqueTargets) {
+            try {
+              sent = await sock.sendMessage(targetJid, { text: replyText });
+              sentToJid = targetJid;
+              break;
+            } catch (targetErr) {
+              lastSendErr = targetErr;
             }
+          }
+          if (!sent) {
+            throw lastSendErr || new Error('Falha ao entregar resposta ao destinatário.');
           }
           trackSentMessageId(sent?.key?.id, sent?.message);
 
-          console.log(`[WhatsApp Native] Resposta automática enviada para ${remoteJid}`);
+          console.log(`[WhatsApp Native] Resposta automática enviada para ${sentToJid}`);
           addBotLog({
             from: cleanSender,
             pushName,
-            incomingText,
+            incomingText: effectiveText,
             replyText,
             status: 'sent'
           });
