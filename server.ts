@@ -1097,7 +1097,6 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
       webhook_base64: false,
       events: [
         'MESSAGES_UPSERT',
-        'SEND_MESSAGE',
         'CONNECTION_UPDATE'
       ],
       webhook: {
@@ -1107,7 +1106,6 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
         base64: false,
         events: [
           'MESSAGES_UPSERT',
-          'SEND_MESSAGE',
           'CONNECTION_UPDATE'
         ]
       }
@@ -1154,46 +1152,61 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 
   try {
     const payload = req.body;
-    const event = (payload?.event || payload?.type || '').toLowerCase();
+    const event = String(payload?.event || payload?.type || '').toLowerCase();
 
     // Check if it's messages.upsert
-    if (!event.includes('messages.upsert') && !event.includes('message')) {
+    if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
       return;
     }
 
     const rawData = payload?.data;
-    const data = Array.isArray(rawData) ? rawData[0] : rawData;
+    const data = Array.isArray(rawData)
+      ? rawData[0]
+      : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
     if (!data) return;
 
     const key = data?.key;
-    // CRITICAL: ignore messages sent by the bot itself to prevent infinite echo loops
-    if (key?.fromMe) {
+    const remoteJid = String(key?.remoteJid || '');
+    if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
       return;
     }
 
-    // Extract sender phone number (e.g., 5519998765432@s.whatsapp.net)
-    const remoteJid = key?.remoteJid || '';
-    if (!remoteJid || remoteJid.includes('@g.us')) {
-      // Ignore group messages
+    const senderDigits = String(payload?.sender || '').split(':')[0].split('@')[0].replace(/\D/g, '');
+    const remoteAlt = String(key?.remoteJidAlt || key?.senderPn || key?.participantAlt || data?.remoteJidAlt || data?.senderPn || '');
+    const cleanAltDigits = remoteAlt.split(':')[0].split('@')[0].replace(/\D/g, '');
+    const cleanRemoteDigits = remoteJid.split(':')[0].split('@')[0].replace(/\D/g, '');
+    const isSelfChat = Boolean(
+      key?.fromMe &&
+      senderDigits &&
+      (cleanRemoteDigits === senderDigits || cleanAltDigits === senderDigits)
+    );
+
+    if (key?.fromMe && !isSelfChat) {
       return;
     }
 
-    const cleanSender = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+    const cleanSender = cleanAltDigits.length >= 10 ? cleanAltDigits : (cleanRemoteDigits.length >= 10 && !remoteJid.endsWith('@lid') ? cleanRemoteDigits : remoteJid);
     const pushName = data?.pushName || 'Cliente';
 
     // Extract text from message payload across Baileys variations
-    const incomingText = 
-      data?.message?.conversation ||
-      data?.message?.extendedTextMessage?.text ||
-      data?.message?.imageMessage?.caption ||
-      data?.message?.videoMessage?.caption ||
-      data?.message?.buttonsResponseMessage?.selectedDisplayText ||
-      data?.message?.buttonsResponseMessage?.selectedButtonId ||
-      data?.message?.listResponseMessage?.title ||
-      data?.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+    const content = unwrapWhatsAppMessage(data?.message);
+    const incomingText =
+      content?.conversation ||
+      content?.extendedTextMessage?.text ||
+      content?.imageMessage?.caption ||
+      content?.videoMessage?.caption ||
+      content?.buttonsResponseMessage?.selectedDisplayText ||
+      content?.buttonsResponseMessage?.selectedButtonId ||
+      content?.listResponseMessage?.title ||
+      content?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+      content?.templateButtonReplyMessage?.selectedDisplayText ||
       '';
 
     if (!incomingText.trim()) {
+      return;
+    }
+
+    if (key?.fromMe && /supreme bot premium|rastreador de pedidos supreme|localização & horários supreme|conectando à nossa equipe/i.test(incomingText)) {
       return;
     }
 
@@ -1205,7 +1218,7 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
     }
 
     // Generate the bot response (welcome message + options)
-    const replyText = processIncomingMessage(incomingText, pushName);
+    const replyText = processIncomingMessage(incomingText, pushName, cleanSender);
 
     // Send reply via Evolution API
     try {

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "log-1794531158787-nbo70",
+    "timestamp": "00:52:38",
+    "from": "5519000000000",
+    "pushName": "Cliente",
+    "incomingText": "oi",
+    "replyText": "Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano",
+    "status": "error",
+    "details": "Evolution API erro 400: {\"status\":400,\"error\":\"Bad Request\",\"response\":{\"message\":[{\"jid\":\"5519000000000@s.whatsapp.net\",\"exists\":false,\"number\":\"5519000000000\"}]}}"
+  },
+  {
+    "id": "log-1794527206896-oljx5",
+    "timestamp": "23:46:46",
+    "from": "5519974118672",
+    "incomingText": "Pareamento WhatsApp Direto",
+    "replyText": "Aparelho conectado diretamente (+5519974118672)",
+    "status": "sent"
+  },
+  {
+    "id": "log-1794527145009-0fsng",
+    "timestamp": "23:45:45",
+    "from": "Sistema",
+    "incomingText": "Configuração de Webhook 24h",
+    "replyText": "Webhook ativado apontando para: https://ais-dev-yhf54sfjf6of4ko46v7bn3-576759142795.us-west2.run.app/api/webhook/whatsapp",
+    "status": "sent"
+  },
+  {
+    "id": "log-1794526063939-54195",
+    "timestamp": "23:27:43",
+    "from": "5519974118672",
+    "incomingText": "Pareamento WhatsApp Direto",
+    "replyText": "Aparelho conectado diretamente (+5519974118672)",
+    "status": "sent"
+  },
+  {
+    "id": "log-1794525803026-9nx49",
+    "timestamp": "23:23:23",
+    "from": "5519974118672",
+    "incomingText": "Pareamento WhatsApp Direto",
+    "replyText": "Aparelho conectado diretamente (+5519974118672)",
+    "status": "sent"
+  },
+  {
+    "id": "log-1794525771853-xh9hv",
+    "timestamp": "23:22:51",
+    "from": "5519974118672",
+    "incomingText": "Pareamento WhatsApp Direto",
+    "replyText": "Aparelho conectado diretamente (+5519974118672)",
+    "status": "sent"
+  }
+]

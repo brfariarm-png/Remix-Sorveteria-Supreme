@@ -6,6 +6,31 @@ const greetedContacts = new Map<string, number>();
 const processedMsgIds = new Set<string>();
 const GREET_TTL_MS = 6 * 60 * 60 * 1000;
 
+interface WebhookLogItem {
+  id: string;
+  timestamp: string;
+  from: string;
+  incomingText: string;
+  replyText: string;
+  status: 'sent' | 'error' | 'ignored';
+  details?: string;
+}
+
+const recentWebhookLogs: WebhookLogItem[] = [];
+function pushWebhookLog(entry: Omit<WebhookLogItem, 'id' | 'timestamp'>) {
+  recentWebhookLogs.unshift({
+    ...entry,
+    id: `wh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    timestamp: new Date().toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  });
+  if (recentWebhookLogs.length > 20) recentWebhookLogs.length = 20;
+}
+
 interface StoreBotConfig {
   botEnabled: boolean;
   botName: string;
@@ -38,6 +63,9 @@ const DEFAULT_CONFIG: StoreBotConfig = {
   openHours: '13:00 às 20:00'
 };
 
+let cachedConfig: StoreBotConfig | null = null;
+let cachedConfigAt = 0;
+
 function readFsString(fields: any, key: string): string | undefined {
   const val = fields?.[key]?.stringValue;
   return typeof val === 'string' && val.trim() ? val : undefined;
@@ -49,12 +77,15 @@ function readFsBool(fields: any, key: string): boolean | undefined {
 }
 
 async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
+  if (cachedConfig && Date.now() - cachedConfigAt < 30000) {
+    return cachedConfig;
+  }
   try {
-    const res = await fetch(FIRESTORE_CONFIG_URL, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) return DEFAULT_CONFIG;
+    const res = await fetch(FIRESTORE_CONFIG_URL, { signal: AbortSignal.timeout(2500) });
+    if (!res.ok) return cachedConfig || DEFAULT_CONFIG;
     const json: any = await res.json();
     const fields = json?.fields;
-    if (!fields) return DEFAULT_CONFIG;
+    if (!fields) return cachedConfig || DEFAULT_CONFIG;
 
     const rawMenuLink = readFsString(fields, 'whatsappBotMenuLink');
     const cleanMenuLink = rawMenuLink && !rawMenuLink.includes('.run.app')
@@ -64,7 +95,7 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
     const openTime = readFsString(fields, 'openTime') || '13:00';
     const closeTime = readFsString(fields, 'closeTime') || '20:00';
 
-    return {
+    cachedConfig = {
       botEnabled: readFsBool(fields, 'whatsappBotEnabled') !== false,
       botName: readFsString(fields, 'whatsappBotName') || DEFAULT_CONFIG.botName,
       storeName: readFsString(fields, 'name') || DEFAULT_CONFIG.storeName,
@@ -79,8 +110,10 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
       address: readFsString(fields, 'address') || DEFAULT_CONFIG.address,
       openHours: `${openTime} às ${closeTime}`
     };
+    cachedConfigAt = Date.now();
+    return cachedConfig;
   } catch {
-    return DEFAULT_CONFIG;
+    return cachedConfig || DEFAULT_CONFIG;
   }
 }
 
@@ -106,6 +139,18 @@ function unwrapMessage(msgContent: any): any {
     }
   }
   return current;
+}
+
+function isBotGeneratedEcho(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes('supreme bot premium') ||
+    lower.includes('rastreador de pedidos supreme') ||
+    lower.includes('localização & horários supreme') ||
+    lower.includes('conectando à nossa equipe') ||
+    lower.includes('cardápio digital') ||
+    lower.includes('escolha uma das opções abaixo enviando o número')
+  );
 }
 
 function buildBotReply(userText: string, pushName: string, senderKey: string, cfg: StoreBotConfig): string {
@@ -138,6 +183,59 @@ function buildBotReply(userText: string, pushName: string, senderKey: string, cf
   return cfg.welcomeMsg.replace('{nome}', pushName);
 }
 
+function normalizeBrVariants(digits: string): string[] {
+  const list: string[] = [];
+  if (!digits) return list;
+  list.push(digits);
+  // Toggle Brazilian 9th digit if number starts with 55 + 2-digit DDD
+  if (digits.startsWith('55') && digits.length === 13 && digits[4] === '9') {
+    list.push(`55${digits.slice(2, 4)}${digits.slice(5)}`);
+  } else if (digits.startsWith('55') && digits.length === 12) {
+    list.push(`55${digits.slice(2, 4)}9${digits.slice(4)}`);
+  }
+  return list;
+}
+
+function buildSendCandidates(key: any, data: any): { targets: string[]; displaySender: string } {
+  const pnFields = [
+    key?.remoteJidAlt,
+    key?.senderPn,
+    key?.participantAlt,
+    data?.remoteJidAlt,
+    data?.senderPn,
+    key?.remoteJid
+  ]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+
+  const targets: string[] = [];
+  let displaySender = '';
+
+  for (const jid of pnFields) {
+    if (jid.endsWith('@s.whatsapp.net') || jid.endsWith('@c.us')) {
+      const digits = jid.split(':')[0].split('@')[0].replace(/\D/g, '');
+      if (digits.length >= 10) {
+        if (!displaySender) displaySender = digits;
+        for (const variant of normalizeBrVariants(digits)) {
+          if (!targets.includes(variant)) targets.push(variant);
+        }
+      }
+    }
+  }
+
+  const rawRemote = String(key?.remoteJid || '').trim();
+  if (rawRemote) {
+    if (!displaySender) {
+      displaySender = rawRemote.split(':')[0].split('@')[0].replace(/\D/g, '') || rawRemote;
+    }
+    if (!targets.includes(rawRemote)) {
+      targets.push(rawRemote);
+    }
+  }
+
+  return { targets, displaySender };
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -151,7 +249,8 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json({
       ok: true,
       service: 'Supreme WhatsApp Webhook (Vercel)',
-      clientUrl: 'https://sorveteriasupreme.vercel.app'
+      clientUrl: 'https://sorveteriasupreme.vercel.app',
+      recentLogs: recentWebhookLogs.slice(0, 15)
     });
   }
 
@@ -163,15 +262,41 @@ export default async function handler(req: any, res: any) {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const event = String(payload?.event || payload?.type || '').toLowerCase();
 
-    if (!event.includes('messages.upsert') && !event.includes('message')) {
-      return res.status(200).json({ received: true, ignored: 'non-message-event' });
+    // Only react to incoming messages.upsert events (ignore send.message / connection.update)
+    if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
+      return res.status(200).json({ received: true, ignored: 'non-upsert-event', event });
     }
 
     const rawData = payload?.data;
-    const data = Array.isArray(rawData) ? rawData[0] : rawData;
+    const data = Array.isArray(rawData)
+      ? rawData[0]
+      : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
     const key = data?.key;
-    if (!data || !key || key.fromMe) {
-      return res.status(200).json({ received: true, ignored: 'empty-or-fromMe' });
+    if (!data || !key) {
+      return res.status(200).json({ received: true, ignored: 'empty-key' });
+    }
+
+    const remoteJid = String(key.remoteJid || '');
+    if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
+      return res.status(200).json({ received: true, ignored: 'group-or-broadcast' });
+    }
+
+    const cfg = await loadStoreConfigFromFirestore();
+
+    const payloadSenderDigits = String(payload?.sender || '').split(':')[0].split('@')[0].replace(/\D/g, '');
+    const configPhoneDigits = cfg.phone.replace(/\D/g, '');
+    const remoteAltDigits = String(key.remoteJidAlt || key.senderPn || '').split(':')[0].split('@')[0].replace(/\D/g, '');
+    const remoteBaseDigits = remoteJid.split(':')[0].split('@')[0].replace(/\D/g, '');
+
+    const isSelfChat = Boolean(
+      key.fromMe && (
+        (payloadSenderDigits && (remoteBaseDigits === payloadSenderDigits || remoteAltDigits === payloadSenderDigits)) ||
+        (configPhoneDigits && (remoteBaseDigits.endsWith(configPhoneDigits.slice(-8)) || remoteAltDigits.endsWith(configPhoneDigits.slice(-8))))
+      )
+    );
+
+    if (key.fromMe && !isSelfChat) {
+      return res.status(200).json({ received: true, ignored: 'fromMe-outbound' });
     }
 
     const msgId = key.id;
@@ -185,15 +310,6 @@ export default async function handler(req: any, res: any) {
         if (first) processedMsgIds.delete(first);
       }
     }
-
-    const remoteJid = String(key.remoteJid || '');
-    if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
-      return res.status(200).json({ received: true, ignored: 'group-or-broadcast' });
-    }
-
-    const targetJid = String(key.remoteJidAlt || key.senderPn || remoteJid);
-    const cleanSender = targetJid.split(':')[0].split('@')[0].replace(/\D/g, '');
-    const pushName = String(data?.pushName || 'Cliente');
 
     const content = unwrapMessage(data?.message);
     const incomingText =
@@ -216,42 +332,104 @@ export default async function handler(req: any, res: any) {
       content?.documentMessage
     );
 
-    const effectiveText = incomingText.trim() || (hasMedia ? 'Oi' : '');
+    const effectiveText = incomingText.trim() || (hasMedia && !key.fromMe ? 'Oi' : '');
     if (!effectiveText) {
       return res.status(200).json({ received: true, ignored: 'no-text' });
     }
 
-    const cfg = await loadStoreConfigFromFirestore();
+    // Prevent echo loop in self-chat tests
+    if (key.fromMe && isBotGeneratedEcho(effectiveText)) {
+      return res.status(200).json({ received: true, ignored: 'self-echo-prevented' });
+    }
+
     if (!cfg.botEnabled) {
+      pushWebhookLog({
+        from: remoteBaseDigits || remoteJid,
+        incomingText: effectiveText,
+        replyText: '',
+        status: 'ignored',
+        details: 'Bot pausado nas configurações'
+      });
       return res.status(200).json({ received: true, ignored: 'bot-disabled' });
     }
 
-    const replyText = buildBotReply(effectiveText, pushName, cleanSender || remoteJid, cfg);
-    const evolutionUrl = cfg.evolutionUrl.startsWith('http') ? cfg.evolutionUrl : `https://${cfg.evolutionUrl}`;
-    const sendTarget = cleanSender.length >= 10 ? cleanSender : targetJid;
+    const pushName = String(data?.pushName || 'Cliente');
+    const { targets, displaySender } = buildSendCandidates(key, data);
+    const replyText = buildBotReply(effectiveText, pushName, displaySender || remoteJid, cfg);
 
-    const sendRes = await fetch(`${evolutionUrl}/message/sendText/${cfg.evolutionInstance}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': cfg.evolutionToken
-      },
-      body: JSON.stringify({
-        number: sendTarget,
-        text: replyText
-      }),
-      signal: AbortSignal.timeout(8000)
+    const baseEvoUrl = (cfg.evolutionUrl || String(payload?.server_url || '')).trim().replace(/\/+$/, '');
+    const evolutionUrl = baseEvoUrl.startsWith('http') ? baseEvoUrl : `https://${baseEvoUrl}`;
+    const instanceName = String(payload?.instance || cfg.evolutionInstance || 'supreme-bot').trim();
+    const apiKeys = Array.from(new Set([
+      cfg.evolutionToken,
+      typeof payload?.apikey === 'string' ? payload.apikey.trim() : ''
+    ].filter(Boolean)));
+
+    let finalOk = false;
+    let finalStatus = 0;
+    let finalResult = '';
+    let usedTarget = targets[0] || remoteJid;
+
+    for (const target of targets) {
+      for (const apiKey of apiKeys) {
+        try {
+          const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': apiKey
+            },
+            body: JSON.stringify({
+              number: target,
+              text: replyText
+            }),
+            signal: AbortSignal.timeout(5500)
+          });
+
+          finalStatus = sendRes.status;
+          finalResult = await sendRes.text();
+          usedTarget = target;
+
+          if (sendRes.ok) {
+            finalOk = true;
+            break;
+          }
+          // Retry with next apiKey only on 401/403
+          if (sendRes.status !== 401 && sendRes.status !== 403) {
+            break;
+          }
+        } catch (fetchErr: any) {
+          finalStatus = 504;
+          finalResult = fetchErr?.message || 'Timeout/erro ao contatar Evolution API';
+          break;
+        }
+      }
+      if (finalOk) break;
+    }
+
+    pushWebhookLog({
+      from: displaySender || usedTarget,
+      incomingText: effectiveText,
+      replyText: finalOk ? replyText : '',
+      status: finalOk ? 'sent' : 'error',
+      details: finalOk ? `Respondido para ${usedTarget}` : `HTTP ${finalStatus}: ${finalResult.slice(0, 160)}`
     });
 
-    const sendResult = await sendRes.text();
     return res.status(200).json({
       received: true,
-      replied: sendRes.ok,
-      to: sendTarget,
-      status: sendRes.status,
-      result: sendResult.slice(0, 300)
+      replied: finalOk,
+      to: usedTarget,
+      status: finalStatus,
+      result: finalResult.slice(0, 300)
     });
   } catch (err: any) {
+    pushWebhookLog({
+      from: 'Webhook',
+      incomingText: 'Erro ao processar evento',
+      replyText: '',
+      status: 'error',
+      details: err?.message || 'Webhook processing error'
+    });
     return res.status(200).json({
       received: true,
       error: err?.message || 'Webhook processing error'

@@ -136,13 +136,13 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       url: webhookDestination,
       webhook_by_events: false,
       webhook_base64: false,
-      events: ['MESSAGES_UPSERT', 'SEND_MESSAGE', 'CONNECTION_UPDATE'],
+      events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
       webhook: {
         enabled: true,
         url: webhookDestination,
         byEvents: false,
         base64: false,
-        events: ['MESSAGES_UPSERT', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
       }
     };
     const res = await fetch(`${url}/webhook/set/${instance}`, {
@@ -337,7 +337,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         return;
       }
 
-      // Vercel / external host: poll Render Evolution state directly
+      // Vercel / external host: poll Render Evolution state + Vercel webhook logs
       setHasLocalBackend(false);
       const { url, instance, token } = getEffectiveEvolutionCreds();
       const sr = await fetch(`${url}/instance/connectionState/${instance}`, { headers: { apikey: token } });
@@ -348,6 +348,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           setQrCodeStatus('connected');
         }
       }
+      try {
+        const whRes = await fetch('/api/webhook/whatsapp');
+        if (whRes.ok && whRes.headers.get('content-type')?.includes('application/json')) {
+          const whData = await whRes.json();
+          if (Array.isArray(whData.recentLogs) && whData.recentLogs.length > 0) {
+            setServerLogs(whData.recentLogs);
+          }
+        }
+      } catch (_) {}
     } catch (_) {}
   };
 
@@ -747,9 +756,25 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           phone: testPhone
         })
       });
-      const data = await res.json();
-      if (data.replyText) {
-        setSimulatedReply(data.replyText);
+      if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+        const data = await res.json();
+        if (data.replyText) {
+          setSimulatedReply(data.replyText);
+          return;
+        }
+      }
+      // Fallback for static Vercel host
+      const clean = text.trim().toLowerCase();
+      if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio')) {
+        setSimulatedReply(menuMsg.replace('{menu_link}', menuLink).replace('[LINK_CARDAPIO]', menuLink));
+      } else if (clean === '2' || clean.includes('rastrear') || clean.includes('pedido')) {
+        setSimulatedReply(`🔍 *RASTREADOR DE PEDIDOS SUPREME*\n\nAcompanhe seu pedido ao vivo em:\n👉 ${menuLink}?track=true`);
+      } else if (clean === '3' || clean.includes('horario') || clean.includes('horário') || clean.includes('endereco') || clean.includes('endereço')) {
+        setSimulatedReply(`📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 ${storeSettings.address}\n⏰ ${storeSettings.openTime || '13:00'} às ${storeSettings.closeTime || '21:00'}`);
+      } else if (clean === '4' || clean.includes('atendente') || clean.includes('humano')) {
+        setSimulatedReply(supportMsg.replace('{telefone}', whatsappPhone).replace('[TELEFONE]', whatsappPhone));
+      } else {
+        setSimulatedReply(welcomeMsg.replace('{nome}', 'Cliente Teste'));
       }
     } catch (e: any) {
       console.error(e);
