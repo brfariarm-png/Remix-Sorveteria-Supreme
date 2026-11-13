@@ -198,6 +198,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         if (st === 'open' || st === 'CONNECTED') {
           isPaired = true;
           instanceState = 'open';
+        } else if (st) {
+          isPaired = false;
+          instanceState = st;
         }
       }
     } catch (_) {}
@@ -745,8 +748,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setTestingLiveWebhook(true);
     setWebhookActiveResult(null);
     try {
-      const { url } = getEffectiveEvolutionCreds();
-      await fetch(`${url}/`).catch(() => {});
+      await fetch(getApiUrl('/api/webhook/whatsapp?wakeup=1')).catch(() => {});
       const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
       const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
       const res = await fetch(getApiUrl('/api/webhook/whatsapp'), {

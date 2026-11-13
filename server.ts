@@ -605,7 +605,7 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
     const res = await fetch(`${cleanUrl}/message/sendText/${cleanInstance}`, {
@@ -702,6 +702,25 @@ app.get('/api/evolution/diagnostic', async (_req: Request, res: Response) => {
         }
       } else if (instRes.status === 401 || instRes.status === 403) {
         tokenValid = false;
+      }
+    } catch (_) {}
+
+    // Live in-memory socket check (overrides stale Postgres fetchInstances status)
+    try {
+      const stateRes = await fetch(`${cleanUrl}/instance/connectionState/${cleanInstance}`, {
+        method: 'GET',
+        headers: { 'apikey': cleanToken }
+      });
+      if (stateRes.ok) {
+        const stateData = await stateRes.json();
+        const st = stateData?.instance?.state || stateData?.state;
+        if (st === 'open' || st === 'CONNECTED') {
+          isPaired = true;
+          instanceState = 'open';
+        } else if (st) {
+          isPaired = false;
+          instanceState = st;
+        }
       }
     } catch (_) {}
 
@@ -1145,10 +1164,56 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
   }
 });
 
+// HEALTH / WAKEUP HEARTBEAT & LOGS FOR WEBHOOK
+app.get('/api/webhook/whatsapp', async (req: Request, res: Response) => {
+  const wantWakeup = req.query.wakeup === '1' || req.query.wakeup === 'true' || req.query.heartbeat === '1' || req.query.heartbeat === 'true';
+  let renderStatus: string | undefined;
+  let instanceState: string | undefined;
+
+  if (wantWakeup && cachedStoreConfig.evolutionUrl) {
+    try {
+      const evoBase = cachedStoreConfig.evolutionUrl.trim().replace(/\/+$/, '');
+      const fullEvo = evoBase.startsWith('http') ? evoBase : `https://${evoBase}`;
+      const pingRes = await fetch(`${fullEvo}/`, { signal: AbortSignal.timeout(12000) });
+      renderStatus = pingRes.ok ? 'awake' : `http_${pingRes.status}`;
+      if (pingRes.ok && cachedStoreConfig.evolutionInstance) {
+        try {
+          const stRes = await fetch(`${fullEvo}/instance/connectionState/${cachedStoreConfig.evolutionInstance}`, {
+            headers: { apikey: cachedStoreConfig.evolutionToken },
+            signal: AbortSignal.timeout(6000)
+          });
+          if (stRes.ok) {
+            const stJson: any = await stRes.json();
+            instanceState = stJson?.instance?.state || stJson?.state || undefined;
+          }
+        } catch {}
+      }
+    } catch (e: any) {
+      renderStatus = `error:${e?.message || 'timeout'}`;
+    }
+  }
+
+  res.json({
+    ok: true,
+    service: 'Supreme WhatsApp Webhook (Server)',
+    ...(renderStatus ? { renderStatus } : {}),
+    ...(instanceState ? { instanceState } : {}),
+    recentLogs: recentBotLogs.slice(0, 15)
+  });
+});
+
 // MAIN WEBHOOK RECEIVER: Evolution API calls this on incoming WhatsApp messages
 app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
-  // Always acknowledge webhook immediately with 200 OK so Evolution API doesn't retry
-  res.status(200).json({ received: true });
+  const isAdminTest = String(req.body?.data?.key?.id || '').startsWith('ADMIN_TEST_');
+  const finishEarly = (ignored: string) => {
+    if (isAdminTest && !res.headersSent) {
+      res.status(200).json({ received: true, replied: false, ignored });
+    }
+  };
+  // Always acknowledge live Evolution webhooks immediately with 200 OK so Evolution API doesn't retry
+  if (!isAdminTest) {
+    res.status(200).json({ received: true });
+  }
 
   try {
     const payload = req.body;
@@ -1156,19 +1221,19 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 
     // Check if it's messages.upsert
     if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
-      return;
+      return finishEarly('non-upsert-event');
     }
 
     const rawData = payload?.data;
     const data = Array.isArray(rawData)
       ? rawData[0]
       : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
-    if (!data) return;
+    if (!data) return finishEarly('empty-data');
 
     const key = data?.key;
     const remoteJid = String(key?.remoteJid || '');
     if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
-      return;
+      return finishEarly('group-or-broadcast');
     }
 
     const senderDigits = String(payload?.sender || '').split(':')[0].split('@')[0].replace(/\D/g, '');
@@ -1182,7 +1247,7 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
     );
 
     if (key?.fromMe && !isSelfChat) {
-      return;
+      return finishEarly('fromMe-outbound');
     }
 
     const cleanSender = cleanAltDigits.length >= 10 ? cleanAltDigits : (cleanRemoteDigits.length >= 10 && !remoteJid.endsWith('@lid') ? cleanRemoteDigits : remoteJid);
@@ -1203,11 +1268,11 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
       '';
 
     if (!incomingText.trim()) {
-      return;
+      return finishEarly('no-text');
     }
 
     if (key?.fromMe && /supreme bot premium|rastreador de pedidos supreme|localização & horários supreme|conectando à nossa equipe/i.test(incomingText)) {
-      return;
+      return finishEarly('self-echo-prevented');
     }
 
     console.log(`[WhatsApp Bot] Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
@@ -1231,6 +1296,9 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
         replyText,
         status: 'sent'
       });
+      if (isAdminTest) {
+        return res.status(200).json({ received: true, replied: true, to: cleanSender, status: 200, result: 'OK' });
+      }
     } catch (sendErr: any) {
       console.error(`[WhatsApp Bot] Falha ao enviar resposta para +${cleanSender}:`, sendErr);
       addBotLog({
@@ -1241,9 +1309,21 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
         status: 'error',
         details: sendErr.message || String(sendErr)
       });
+      if (isAdminTest) {
+        return res.status(200).json({
+          received: true,
+          replied: false,
+          to: cleanSender,
+          status: 504,
+          result: sendErr.message || String(sendErr)
+        });
+      }
     }
   } catch (err: any) {
     console.error('[WhatsApp Bot] Erro no processamento do webhook:', err);
+    if (isAdminTest && !res.headersSent) {
+      return res.status(200).json({ received: true, replied: false, status: 500, error: err?.message || 'Erro interno' });
+    }
   }
 });
 

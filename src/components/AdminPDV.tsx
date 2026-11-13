@@ -300,7 +300,7 @@ export default function AdminPDV({
 
   // Add standard product directly to PDV cart
   const handleAddDirect = (item: MenuItem) => {
-    const finalPrice = item.sizeMode === 'single' ? (item.singleSizePrice ?? item.price) : item.price;
+    const finalPrice = getMenuItemDisplayPrice(item);
     const finalItem = { ...item, price: finalPrice };
 
     setPdvCart((prev) => {

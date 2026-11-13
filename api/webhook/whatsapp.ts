@@ -249,13 +249,28 @@ export default async function handler(req: any, res: any) {
     const query = req.query || {};
     const wantWakeup = query.wakeup === '1' || query.wakeup === 'true' || query.heartbeat === '1' || query.heartbeat === 'true';
     let renderStatus: string | undefined;
+    let instanceState: string | undefined;
     if (wantWakeup) {
       try {
         const cfg = await loadStoreConfigFromFirestore();
         const evoBase = (cfg.evolutionUrl || DEFAULT_CONFIG.evolutionUrl).trim().replace(/\/+$/, '');
         const fullEvo = evoBase.startsWith('http') ? evoBase : `https://${evoBase}`;
-        const pingRes = await fetch(`${fullEvo}/`, { signal: AbortSignal.timeout(10000) });
+        const pingRes = await fetch(`${fullEvo}/`, { signal: AbortSignal.timeout(12000) });
         renderStatus = pingRes.ok ? 'awake' : `http_${pingRes.status}`;
+        if (pingRes.ok) {
+          try {
+            const stateRes = await fetch(`${fullEvo}/instance/connectionState/${cfg.evolutionInstance}`, {
+              headers: { apikey: cfg.evolutionToken },
+              signal: AbortSignal.timeout(6000)
+            });
+            if (stateRes.ok) {
+              const stateJson: any = await stateRes.json();
+              instanceState = stateJson?.instance?.state || stateJson?.state || undefined;
+            }
+          } catch {
+            // Non-fatal
+          }
+        }
       } catch (e: any) {
         renderStatus = `error:${e?.message || 'timeout'}`;
       }
@@ -265,6 +280,7 @@ export default async function handler(req: any, res: any) {
       service: 'Supreme WhatsApp Webhook (Vercel)',
       clientUrl: 'https://sorveteriasupreme.vercel.app',
       ...(renderStatus ? { renderStatus } : {}),
+      ...(instanceState ? { instanceState } : {}),
       recentLogs: recentWebhookLogs.slice(0, 15)
     });
   }
@@ -427,43 +443,75 @@ export default async function handler(req: any, res: any) {
     let usedTarget = targets[0] || remoteJid;
     let timedOut = false;
 
-    for (const target of targets) {
+    // Pre-check live Baileys socket state so offline/connecting instances fail fast instead of hanging sendText into a 504 timeout
+    let liveSocketState: string | null = null;
+    const probeState = async (): Promise<string | null> => {
       for (const apiKey of apiKeys) {
         try {
-          const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': apiKey
-            },
-            body: JSON.stringify({
-              number: target,
-              text: replyText
-            }),
-            signal: AbortSignal.timeout(12000)
+          const stRes = await fetch(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
+            headers: { apikey: apiKey },
+            signal: AbortSignal.timeout(6000)
           });
-
-          finalStatus = sendRes.status;
-          finalResult = await sendRes.text();
-          usedTarget = target;
-
-          if (sendRes.ok) {
-            finalOk = true;
-            break;
+          if (stRes.ok) {
+            const stJson: any = await stRes.json();
+            return stJson?.instance?.state || stJson?.state || null;
           }
-          // Retry with next apiKey only on 401/403
-          if (sendRes.status !== 401 && sendRes.status !== 403) {
-            break;
-          }
-        } catch (fetchErr: any) {
-          finalStatus = 504;
-          finalResult = fetchErr?.message || 'Timeout/erro ao contatar Evolution API';
-          timedOut = true;
+          if (stRes.status !== 401 && stRes.status !== 403) break;
+        } catch {
           break;
         }
       }
-      // Do not multiply 504 timeouts across fallback JID variants; only retry alternate JIDs on 400/404 exists:false
-      if (finalOk || timedOut) break;
+      return null;
+    };
+
+    liveSocketState = await probeState();
+    if (liveSocketState === 'connecting') {
+      await new Promise((r) => setTimeout(r, 2000));
+      liveSocketState = await probeState();
+    }
+
+    if (liveSocketState && liveSocketState !== 'open' && liveSocketState !== 'CONNECTED') {
+      finalStatus = 503;
+      finalResult = `Instância "${instanceName}" está em estado "${liveSocketState}" no Render (reconectando ou desconectada do WhatsApp). Reconecte via QR Code / Reiniciar Instância no painel.`;
+    } else {
+      for (const target of targets) {
+        for (const apiKey of apiKeys) {
+          try {
+            const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': apiKey
+              },
+              body: JSON.stringify({
+                number: target,
+                text: replyText
+              }),
+              signal: AbortSignal.timeout(20000)
+            });
+
+            finalStatus = sendRes.status;
+            finalResult = await sendRes.text();
+            usedTarget = target;
+
+            if (sendRes.ok) {
+              finalOk = true;
+              break;
+            }
+            // Retry with next apiKey only on 401/403
+            if (sendRes.status !== 401 && sendRes.status !== 403) {
+              break;
+            }
+          } catch (fetchErr: any) {
+            finalStatus = 504;
+            finalResult = fetchErr?.message || 'Timeout/erro ao contatar Evolution API';
+            timedOut = true;
+            break;
+          }
+        }
+        // Do not multiply 504 timeouts across fallback JID variants; only retry alternate JIDs on 400/404 exists:false
+        if (finalOk || timedOut) break;
+      }
     }
 
     pushWebhookLog({
