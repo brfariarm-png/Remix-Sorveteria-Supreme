@@ -356,6 +356,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         const st = sd?.instance?.state || sd?.state;
         if (st === 'open' || st === 'CONNECTED') {
           setQrCodeStatus('connected');
+        } else if (st) {
+          setQrCodeStatus((prev) => (prev === 'waiting' || prev === 'generating' || prev === 'connecting' ? prev : 'disconnected'));
         }
       }
       try {
@@ -755,7 +757,17 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setTestingLiveWebhook(true);
     setWebhookActiveResult(null);
     try {
-      await fetch(getApiUrl('/api/webhook/whatsapp?wakeup=1')).catch(() => {});
+      const wakeupRes = await fetch(getApiUrl('/api/webhook/whatsapp?wakeup=1')).catch(() => null);
+      const wakeupData = wakeupRes && wakeupRes.ok ? await wakeupRes.json().catch(() => null) : null;
+      if (wakeupData?.instanceState && wakeupData.instanceState !== 'open' && wakeupData.instanceState !== 'CONNECTED') {
+        setWebhookActiveResult({
+          success: false,
+          message: `⚠️ A instância "${evolutionInstance || 'supreme-loja'}" no Render está em estado "${wakeupData.instanceState}" (desconectada/reconectando). Vá na aba "Conexão & QR Code Real" e clique em "Celular Desconectado? Forçar Novo QR Code".`
+        });
+        await loadDiagnostic();
+        return;
+      }
+
       const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
       const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
       const res = await fetch(getApiUrl('/api/webhook/whatsapp'), {
@@ -763,7 +775,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event: 'messages.upsert',
-          instance: evolutionInstance || 'supreme-bot',
+          instance: evolutionInstance || 'supreme-loja',
           data: {
             key: {
               remoteJid: `${formattedNum}@s.whatsapp.net`,
@@ -965,6 +977,17 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }
       else if (connectionProvider === 'evolution' || (!hasLocalBackend && connectionProvider === 'native')) {
         const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
+        const stRes = await fetch(`${cleanUrl}/instance/connectionState/${cleanInst}`, {
+          headers: { 'apikey': cleanTok },
+          signal: AbortSignal.timeout(6000)
+        }).catch(() => null);
+        if (stRes?.ok) {
+          const stJson = await stRes.json().catch(() => null);
+          const st = stJson?.instance?.state || stJson?.state;
+          if (st && st !== 'open' && st !== 'CONNECTED') {
+            throw new Error(`Instância "${cleanInst}" está em estado "${st}" no Render. Vá em "Conexão & QR Code Real" e gere um novo QR Code.`);
+          }
+        }
         const res = await fetch(`${cleanUrl}/message/sendText/${cleanInst}`, {
           method: 'POST',
           headers: {
@@ -973,10 +996,13 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           },
           body: JSON.stringify({
             number: cleanNumber,
-            text: messageText
-          })
+            text: messageText,
+            delay: 0,
+            linkPreview: false
+          }),
+          signal: AbortSignal.timeout(18000)
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data.message || `Erro HTTP ${res.status}`);
         }
@@ -2528,6 +2554,17 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       <span className="text-[9.5px] text-slate-400 font-semibold mt-1 block">
                         Exemplo Monte Mor / Campinas: 5519987654321
                       </span>
+                      {(() => {
+                        const targetDigits = testPhone.replace(/\D/g, '');
+                        const ownerDigits = (nativeOwnerJid || evolutionDiagnostic?.ownerJid || storeSettings.phone || '').split(':')[0].split('@')[0].replace(/\D/g, '');
+                        const isSameAsStore = targetDigits.length >= 8 && ownerDigits.length >= 8 && targetDigits.slice(-8) === ownerDigits.slice(-8);
+                        if (!isSameAsStore) return null;
+                        return (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 font-bold mt-1.5 block leading-snug">
+                            ⚠️ Este é o mesmo número conectado no robô. Para evitar travamento de autoenvio na Evolution API, informe um 2º número (celular pessoal/cliente) para testar!
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <div>

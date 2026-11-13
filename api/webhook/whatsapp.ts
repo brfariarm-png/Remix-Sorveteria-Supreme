@@ -470,9 +470,19 @@ export default async function handler(req: any, res: any) {
       liveSocketState = await probeState();
     }
 
+    const isSelfTargetNumber = (target: string): boolean => {
+      const targetDigits = String(target || '').split(':')[0].split('@')[0].replace(/\D/g, '');
+      const storeDigits = cfg.phone.replace(/\D/g, '');
+      return Boolean(
+        targetDigits.length >= 8 &&
+        storeDigits.length >= 8 &&
+        targetDigits.slice(-8) === storeDigits.slice(-8)
+      );
+    };
+
     if (liveSocketState && liveSocketState !== 'open' && liveSocketState !== 'CONNECTED') {
       finalStatus = 503;
-      finalResult = `Instância "${instanceName}" está em estado "${liveSocketState}" no Render (reconectando ou desconectada do WhatsApp). Reconecte via QR Code / Reiniciar Instância no painel.`;
+      finalResult = `Instância "${instanceName}" está em estado "${liveSocketState}" no Render (reconectando ou desconectada do WhatsApp). Reconecte via QR Code / "Forçar Novo QR Code" no painel.`;
     } else {
       for (const target of targets) {
         for (const apiKey of apiKeys) {
@@ -485,9 +495,11 @@ export default async function handler(req: any, res: any) {
               },
               body: JSON.stringify({
                 number: target,
-                text: replyText
+                text: replyText,
+                delay: 0,
+                linkPreview: false
               }),
-              signal: AbortSignal.timeout(20000)
+              signal: AbortSignal.timeout(18000)
             });
 
             finalStatus = sendRes.status;
@@ -503,9 +515,25 @@ export default async function handler(req: any, res: any) {
               break;
             }
           } catch (fetchErr: any) {
-            finalStatus = 504;
-            finalResult = fetchErr?.message || 'Timeout/erro ao contatar Evolution API';
+            usedTarget = target;
             timedOut = true;
+            const errMsg = String(fetchErr?.message || '');
+            const isTimeout = fetchErr?.name === 'TimeoutError' || fetchErr?.name === 'AbortError' || /abort|timeout/i.test(errMsg);
+            const afterState = await probeState();
+
+            if (afterState && afterState !== 'open' && afterState !== 'CONNECTED') {
+              finalStatus = 503;
+              finalResult = `Instância "${instanceName}" desconectou no Render (estado atual: "${afterState}"). Clique em "Celular Desconectado? Forçar Novo QR Code" para escanear novamente.`;
+            } else if (isTimeout && isSelfTargetNumber(target)) {
+              finalStatus = 504;
+              finalResult = `Render Evolution API travou (>18s) ao tentar enviar para o próprio número conectado (+${target}). Em Evolution v2.3.7 isso ocorre quando a sessão precisa de novo QR Code (401) ou no autoenvio; teste informando outro celular em "Número de Telefone Destino" ou clique em "Forçar Novo QR Code".`;
+            } else if (isTimeout) {
+              finalStatus = 504;
+              finalResult = `Render Evolution API (/message/sendText/${instanceName}) não respondeu em 18s para +${target}. Sessão Baileys possivelmente travada (erro 401) — clique em "Celular Desconectado? Forçar Novo QR Code".`;
+            } else {
+              finalStatus = 502;
+              finalResult = errMsg || 'Erro de rede ao contatar Evolution API no Render';
+            }
             break;
           }
         }
@@ -519,7 +547,7 @@ export default async function handler(req: any, res: any) {
       incomingText: effectiveText,
       replyText: finalOk ? replyText : '',
       status: finalOk ? 'sent' : 'error',
-      details: finalOk ? `Respondido para ${usedTarget}` : `HTTP ${finalStatus}: ${finalResult.slice(0, 160)}`
+      details: finalOk ? `Respondido para ${usedTarget}` : `HTTP ${finalStatus}: ${finalResult.slice(0, 220)}`
     });
 
     return res.status(200).json({

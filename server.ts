@@ -604,8 +604,27 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
     throw new Error('Nenhum canal de WhatsApp conectado (conecte via QR Code Direto ou Evolution API).');
   }
 
+  // Pre-check live socket state on Render so connecting/closed instances fail fast
+  try {
+    const stRes = await fetch(`${cleanUrl}/instance/connectionState/${cleanInstance}`, {
+      headers: { apikey: cleanToken },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (stRes.ok) {
+      const stJson: any = await stRes.json();
+      const liveState = stJson?.instance?.state || stJson?.state;
+      if (liveState && liveState !== 'open' && liveState !== 'CONNECTED') {
+        const err: any = new Error(`Instância "${cleanInstance}" está em estado "${liveState}" no Render (reconectando ou desconectada do WhatsApp). Clique em "Forçar Novo QR Code".`);
+        err.status = 503;
+        throw err;
+      }
+    }
+  } catch (preErr: any) {
+    if (preErr?.status === 503) throw preErr;
+  }
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), 18000);
 
   try {
     const res = await fetch(`${cleanUrl}/message/sendText/${cleanInstance}`, {
@@ -617,14 +636,18 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
       signal: controller.signal,
       body: JSON.stringify({
         number: cleanNumber,
-        text: messageText
+        text: messageText,
+        delay: 0,
+        linkPreview: false
       })
     });
 
     clearTimeout(timeoutId);
     const responseText = await res.text();
     if (!res.ok) {
-      throw new Error(`Evolution API erro ${res.status}: ${responseText}`);
+      const err: any = new Error(`Evolution API erro ${res.status}: ${responseText}`);
+      err.status = res.status;
+      throw err;
     }
 
     let data = null;
@@ -632,8 +655,10 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
     return data;
   } catch (err: any) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
-      throw new Error('Timeout de 8s na Evolution API (o WhatsApp ainda não está pareado/conectado na Evolution API)');
+    if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+      const timeoutErr: any = new Error(`Render Evolution API (/message/sendText/${cleanInstance}) não respondeu em 18s para +${cleanNumber}. O socket Baileys no Render pode estar travado (401) — tente testar com outro celular ou clique em "Forçar Novo QR Code".`);
+      timeoutErr.status = 504;
+      throw timeoutErr;
     }
     throw err;
   }
@@ -1408,7 +1433,7 @@ app.post(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: 
           received: true,
           replied: false,
           to: cleanSender,
-          status: 504,
+          status: sendErr?.status || 504,
           result: sendErr.message || String(sendErr)
         });
       }
