@@ -526,10 +526,10 @@ export default async function handler(req: any, res: any) {
               finalResult = `Instância "${instanceName}" desconectou no Render (estado atual: "${afterState}"). Clique em "Celular Desconectado? Forçar Novo QR Code" para escanear novamente.`;
             } else if (isTimeout && isSelfTargetNumber(target)) {
               finalStatus = 504;
-              finalResult = `Render Evolution API travou (>18s) ao tentar enviar para o próprio número conectado (+${target}). Em Evolution v2.3.7 isso ocorre quando a sessão precisa de novo QR Code (401) ou no autoenvio; teste informando outro celular em "Número de Telefone Destino" ou clique em "Forçar Novo QR Code".`;
+              finalResult = `Render Evolution API travou (>18s) no autoenvio para +${target}. Em Evolution v2.3.7 no Render, teste com outro celular e verifique no Render > Environment se CACHE_REDIS_ENABLED=false e CACHE_LOCAL_ENABLED=true.`;
             } else if (isTimeout) {
               finalStatus = 504;
-              finalResult = `Render Evolution API (/message/sendText/${instanceName}) não respondeu em 18s para +${target}. Sessão Baileys possivelmente travada (erro 401) — clique em "Celular Desconectado? Forçar Novo QR Code".`;
+              finalResult = `Render Evolution API (/message/sendText/${instanceName}) travou >18s para +${target} mesmo com sessão aberta. No Render > Environment defina CACHE_REDIS_ENABLED=false e CACHE_LOCAL_ENABLED=true (ou use Servidor Bot Externo / Z-API).`;
             } else {
               finalStatus = 502;
               finalResult = errMsg || 'Erro de rede ao contatar Evolution API no Render';

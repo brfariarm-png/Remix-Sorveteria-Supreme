@@ -656,7 +656,7 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError' || err.name === 'TimeoutError') {
-      const timeoutErr: any = new Error(`Render Evolution API (/message/sendText/${cleanInstance}) não respondeu em 18s para +${cleanNumber}. O socket Baileys no Render pode estar travado (401) — tente testar com outro celular ou clique em "Forçar Novo QR Code".`);
+      const timeoutErr: any = new Error(`Render Evolution API (/message/sendText/${cleanInstance}) travou >18s para +${cleanNumber} mesmo conectada. No Render > Environment defina CACHE_REDIS_ENABLED=false e CACHE_LOCAL_ENABLED=true (ou use Conexão Direta / Z-API).`);
       timeoutErr.status = 504;
       throw timeoutErr;
     }

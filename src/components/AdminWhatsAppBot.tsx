@@ -3867,6 +3867,12 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       <div className="p-1.5 bg-slate-950 rounded border border-slate-800">
                         <span className="text-purple-300 font-bold">SERVER_PORT</span> = <span className="text-emerald-300">8080</span>
                       </div>
+                      <div className="p-1.5 bg-slate-950 rounded border border-slate-800">
+                        <span className="text-purple-300 font-bold">CACHE_REDIS_ENABLED</span> = <span className="text-emerald-300">false</span>
+                      </div>
+                      <div className="p-1.5 bg-slate-950 rounded border border-slate-800">
+                        <span className="text-purple-300 font-bold">CACHE_LOCAL_ENABLED</span> = <span className="text-emerald-300">true</span>
+                      </div>
                     </div>
                     <p className="text-slate-400 text-[9.5px] pt-1">
                       Salve as alterações. O Render reiniciará e ficará verde (<strong className="text-emerald-400">Live</strong>)!
