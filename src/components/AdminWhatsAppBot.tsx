@@ -124,12 +124,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   };
 
   const getPublicWebhookUrl = () => {
-    const base = typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : 'https://sorveteriasupreme.vercel.app';
+    const origin = typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+    const isTempHost = !origin || origin.includes('.run.app') || origin.includes('localhost') || origin.includes('127.0.0.1');
+    const base = isTempHost ? getClientBaseUrl() : origin;
     return `${base}/api/webhook/whatsapp`;
   };
 
-  const directEvolutionSetupWebhook = async () => {
+  const directEvolutionSetupWebhook = async (overrideInstance?: string) => {
     const { url, instance, token } = getEffectiveEvolutionCreds();
+    const targetInst = (overrideInstance || instance || 'supreme-bot').trim();
     const webhookDestination = getPublicWebhookUrl();
     const webhookPayload = {
       enabled: true,
@@ -145,7 +148,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
       }
     };
-    const res = await fetch(`${url}/webhook/set/${instance}`, {
+    const res = await fetch(`${url}/webhook/set/${targetInst}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: token },
       body: JSON.stringify(webhookPayload)
@@ -438,7 +441,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }, 2500);
 
     return () => clearInterval(pollInterval);
-  }, [qrCodeStatus, connectionProvider, pairingCodeResult, hasLocalBackend]);
+  }, [qrCodeStatus, connectionProvider, pairingCodeResult, hasLocalBackend, evolutionInstance]);
 
   // Custom chatbot messages & links states
   const [welcomeMsg, setWelcomeMsg] = useState(storeSettings.whatsappBotWelcomeMessage || `Olá! Seja muito bem-vindo ao assistente automático da *${storeSettings.name}*! 🍨\n\nSou o *${storeSettings.whatsappBotName || 'Supreme Bot Premium 💜'}*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`);
@@ -640,7 +643,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           evolutionUrl: url,
           evolutionInstance: instance,
           evolutionToken: token,
-          publicAppUrl: window.location.origin
+          publicAppUrl: getPublicWebhookUrl().replace(/\/api\/webhook\/whatsapp$/, '')
         })
       });
       const data = await res.json();
@@ -1450,40 +1453,143 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       });
     } catch (_) {}
 
-    // 3. Request QR Code / Pairing Code directly from Render
+    // 3. Request QR Code / Pairing Code directly from Render (with auto-recovery if stale session returns count:0)
     const cleanPhone = (pairingPhone || '').replace(/\D/g, '');
     const querySuffix = cleanPhone.length >= 10 ? `?number=${cleanPhone}` : '';
     let qrFound: string | null = null;
     let pairingFound: string | null = null;
     let lastData: any = null;
 
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      const connRes = await fetch(`${cleanUrl}/instance/connect/${cleanInst}${querySuffix}`, {
-        headers: { apikey: cleanTok }
-      });
-      const data = await connRes.json();
-      lastData = data;
-      if (data?.status === 'open' || data?.instance?.state === 'open') {
-        directEvolutionSetupWebhook().catch(() => {});
-        setQrCodeStatus('connected');
-        localStorage.setItem('whatsapp_qr_status', 'connected');
-        loadDiagnostic();
-        return;
+    const tryPollConnect = async (maxTries: number) => {
+      for (let attempt = 1; attempt <= maxTries; attempt++) {
+        const connRes = await fetch(`${cleanUrl}/instance/connect/${cleanInst}${querySuffix}`, {
+          headers: { apikey: cleanTok }
+        });
+        const data = await connRes.json();
+        lastData = data;
+        if (data?.status === 'open' || data?.instance?.state === 'open') {
+          return 'OPEN' as const;
+        }
+        if (data?.pairingCode) {
+          pairingFound = data.pairingCode;
+          return 'FOUND' as const;
+        }
+        const qr = data?.base64 || data?.qrcode?.base64 || data?.code || data?.qrcode?.code;
+        if (qr) {
+          qrFound = qr;
+          return 'FOUND' as const;
+        }
+        if (attempt < maxTries) await new Promise(r => setTimeout(r, 1400));
       }
-      if (data?.pairingCode) {
-        pairingFound = data.pairingCode;
-        break;
+      return 'EMPTY' as const;
+    };
+
+    let activeInst = cleanInst;
+    let pollOutcome = await tryPollConnect(2);
+    if (pollOutcome === 'EMPTY') {
+      // Stale/corrupted Baileys session (401 lock) loops with count:0 -> flush cleanly with short timeouts
+      setQrProgressMsg('Sessão anterior travada (401) no Render. Limpando para gerar novo QR Code...');
+      try {
+        await fetch(`${cleanUrl}/instance/logout/${cleanInst}`, {
+          method: 'DELETE',
+          headers: { apikey: cleanTok },
+          signal: AbortSignal.timeout(5000)
+        });
+        await new Promise(r => setTimeout(r, 1000));
+      } catch (_) {}
+      pollOutcome = await tryPollConnect(1);
+
+      if (pollOutcome === 'EMPTY') {
+        try {
+          await fetch(`${cleanUrl}/instance/delete/${cleanInst}`, {
+            method: 'DELETE',
+            headers: { apikey: cleanTok },
+            signal: AbortSignal.timeout(5000)
+          });
+          await new Promise(r => setTimeout(r, 1200));
+          const recreateRes = await fetch(`${cleanUrl}/instance/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: cleanTok },
+            body: JSON.stringify({
+              instanceName: cleanInst,
+              qrcode: true,
+              integration: 'WHATSAPP-BAILEYS'
+            }),
+            signal: AbortSignal.timeout(8000)
+          });
+          if (recreateRes.ok) {
+            const recreated = await recreateRes.json();
+            const createdQr = recreated?.qrcode?.base64 || recreated?.qrcode?.code || recreated?.base64 || recreated?.code;
+            if (createdQr && !querySuffix) {
+              qrFound = createdQr;
+              pollOutcome = 'FOUND';
+            }
+          }
+        } catch (_) {}
+
+        if (pollOutcome === 'EMPTY') {
+          pollOutcome = await tryPollConnect(2);
+        }
       }
-      const qr = data?.base64 || data?.qrcode?.base64 || data?.code || data?.qrcode?.code;
-      if (qr) {
-        qrFound = qr;
-        break;
+
+      // If Evolution v2.3.x refuses to delete/reset the 401-locked instance, auto-provision a clean active instance
+      if (pollOutcome === 'EMPTY') {
+        const fallbackInst = cleanInst === 'supreme-bot' ? 'supreme-loja' : `${cleanInst.replace(/-v\d+$/, '')}-v2`;
+        setQrProgressMsg(`Instância "${cleanInst}" travada no Render. Ativando instância limpa "${fallbackInst}"...`);
+        try {
+          await fetch(`${cleanUrl}/instance/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: cleanTok },
+            body: JSON.stringify({
+              instanceName: fallbackInst,
+              qrcode: true,
+              integration: 'WHATSAPP-BAILEYS'
+            }),
+            signal: AbortSignal.timeout(8000)
+          }).catch(() => {});
+
+          const fbConn = await fetch(`${cleanUrl}/instance/connect/${fallbackInst}${querySuffix}`, {
+            headers: { apikey: cleanTok },
+            signal: AbortSignal.timeout(8000)
+          });
+          if (fbConn.ok) {
+            const fbData = await fbConn.json();
+            lastData = fbData;
+            if (fbData?.status === 'open' || fbData?.instance?.state === 'open') {
+              activeInst = fallbackInst;
+              pollOutcome = 'OPEN';
+            } else if (fbData?.pairingCode) {
+              pairingFound = fbData.pairingCode;
+              activeInst = fallbackInst;
+              pollOutcome = 'FOUND';
+            } else {
+              const fbQr = fbData?.base64 || fbData?.qrcode?.base64 || fbData?.code || fbData?.qrcode?.code;
+              if (fbQr) {
+                qrFound = fbQr;
+                activeInst = fallbackInst;
+                pollOutcome = 'FOUND';
+              }
+            }
+          }
+        } catch (_) {}
+
+        if (activeInst !== cleanInst) {
+          setEvolutionInstance(activeInst);
+          await onUpdateSettings({ whatsappEvolutionInstance: activeInst }).catch(() => {});
+        }
       }
-      if (attempt < 4) await new Promise(r => setTimeout(r, 1400));
+    }
+
+    if (pollOutcome === 'OPEN') {
+      directEvolutionSetupWebhook(activeInst).catch(() => {});
+      setQrCodeStatus('connected');
+      localStorage.setItem('whatsapp_qr_status', 'connected');
+      loadDiagnostic();
+      return;
     }
 
     // Configure Vercel webhook on Render automatically so messages reply 24/7 once scanned
-    directEvolutionSetupWebhook().catch(() => {});
+    directEvolutionSetupWebhook(activeInst).catch(() => {});
 
     if (pairingFound) {
       setPairingCodeResult(pairingFound);
@@ -1499,10 +1605,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       setQrTimer(120);
       return;
     }
-    if (lastData?.count === 0 || lastData?.qrcode?.count === 0) {
-      throw new Error('CONFIG_VERSION_REQUIRED: O servidor Render aguardando CONFIG_SESSION_PHONE_VERSION = 2.3000.1043857760.');
-    }
-    throw new Error(lastData?.message || 'Não foi possível gerar o QR Code no servidor Render. Tente novamente.');
+    throw new Error(lastData?.message || 'Não foi possível gerar o QR Code no servidor Render. Tente clicar em "Recriar Instância Limpa" ou aguarde 20s.');
   };
 
   // Request 8-digit pairing code directly via Native WhatsApp Web (Baileys) or Render QR on Vercel
@@ -1728,16 +1831,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           return;
         }
 
+        if (data.instance && data.instance !== cleanInst) {
+          setEvolutionInstance(data.instance);
+          await onUpdateSettings({ whatsappEvolutionInstance: data.instance }).catch(() => {});
+        }
+
         if (data.qrCode) {
           setQrCodePayload(data.qrCode);
           setQrCodeStatus('waiting');
           setQrTimer(120);
-          return;
-        }
-
-        if (data.needsVersionConfig) {
-          setQrError('CONFIG_VERSION_REQUIRED: A Evolution API no Render está ativa, mas a Meta (WhatsApp) exige a variável CONFIG_SESSION_PHONE_VERSION para liberar o QR Code.');
-          setQrCodeStatus('disconnected');
           return;
         }
 

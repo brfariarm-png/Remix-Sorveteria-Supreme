@@ -987,37 +987,129 @@ app.post('/api/evolution/connect', async (req: Request, res: Response) => {
       });
     } catch (_) {}
 
-    // 4. Poll /instance/connect/:instance for QR Code
+    // 4. Poll /instance/connect/:instance for QR Code (with stale-session auto-recovery)
     let qrPayloadFound: string | null = null;
     let lastResponse: any = null;
 
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      try {
-        const connRes = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
-          headers: { 'apikey': workingKey },
-          signal: AbortSignal.timeout(8000)
-        });
-        const data: any = await connRes.json();
-        lastResponse = data;
-
-        if (data.status === 'open' || data.instance?.state === 'open') {
-          return res.json({
-            success: true,
-            connected: true,
-            message: 'WhatsApp conectado com sucesso!'
+    const pollConnectQr = async (tries: number) => {
+      for (let attempt = 1; attempt <= tries; attempt++) {
+        try {
+          const connRes = await fetch(`${cleanUrl}/instance/connect/${cleanInstance}`, {
+            headers: { 'apikey': workingKey },
+            signal: AbortSignal.timeout(8000)
           });
-        }
+          const data: any = await connRes.json();
+          lastResponse = data;
 
-        const qr = data.base64 || (data.qrcode && data.qrcode.base64) || data.code || (data.qrcode && data.qrcode.code) || data.pairingCode;
-        if (qr) {
-          qrPayloadFound = qr;
-          break;
-        }
+          if (data.status === 'open' || data.instance?.state === 'open') {
+            return 'OPEN' as const;
+          }
 
-        if (attempt < 4) {
-          await new Promise(r => setTimeout(r, 1500));
-        }
+          const qr = data.base64 || (data.qrcode && data.qrcode.base64) || data.code || (data.qrcode && data.qrcode.code) || data.pairingCode;
+          if (qr) {
+            qrPayloadFound = qr;
+            return 'FOUND' as const;
+          }
+
+          if (attempt < tries) {
+            await new Promise(r => setTimeout(r, 1400));
+          }
+        } catch (_) {}
+      }
+      return 'EMPTY' as const;
+    };
+
+    let activeInstance = cleanInstance;
+    let outcome = await pollConnectQr(2);
+    if (outcome === 'EMPTY') {
+      console.log(`[Evolution Connect] Sessão "${cleanInstance}" retornou vazio/count:0. Limpando sessão antiga...`);
+      try {
+        await fetch(`${cleanUrl}/instance/logout/${cleanInstance}`, {
+          method: 'DELETE',
+          headers: { 'apikey': workingKey },
+          signal: AbortSignal.timeout(5000)
+        });
+        await new Promise(r => setTimeout(r, 1000));
       } catch (_) {}
+      outcome = await pollConnectQr(1);
+
+      if (outcome === 'EMPTY') {
+        try {
+          await fetch(`${cleanUrl}/instance/delete/${cleanInstance}`, {
+            method: 'DELETE',
+            headers: { 'apikey': workingKey },
+            signal: AbortSignal.timeout(5000)
+          });
+          await new Promise(r => setTimeout(r, 1200));
+          const recreateRes = await fetch(`${cleanUrl}/instance/create`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': workingKey
+            },
+            body: JSON.stringify({
+              instanceName: cleanInstance,
+              qrcode: true,
+              integration: 'WHATSAPP-BAILEYS'
+            }),
+            signal: AbortSignal.timeout(8000)
+          });
+          if (recreateRes.ok) {
+            const recreated: any = await recreateRes.json();
+            const qr = recreated?.qrcode?.base64 || recreated?.qrcode?.code || recreated?.base64 || recreated?.code;
+            if (qr) {
+              qrPayloadFound = qr;
+              outcome = 'FOUND';
+            }
+          }
+        } catch (_) {}
+
+        if (outcome === 'EMPTY') {
+          outcome = await pollConnectQr(2);
+        }
+      }
+
+      if (outcome === 'EMPTY') {
+        const fallbackInst = cleanInstance === 'supreme-bot' ? 'supreme-loja' : `${cleanInstance.replace(/-v\d+$/, '')}-v2`;
+        console.log(`[Evolution Connect] Instância "${cleanInstance}" travada em 401. Alternando para "${fallbackInst}"...`);
+        try {
+          await fetch(`${cleanUrl}/instance/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': workingKey },
+            body: JSON.stringify({ instanceName: fallbackInst, qrcode: true, integration: 'WHATSAPP-BAILEYS' }),
+            signal: AbortSignal.timeout(8000)
+          }).catch(() => {});
+
+          const fbRes = await fetch(`${cleanUrl}/instance/connect/${fallbackInst}`, {
+            headers: { 'apikey': workingKey },
+            signal: AbortSignal.timeout(8000)
+          });
+          if (fbRes.ok) {
+            const fbData: any = await fbRes.json();
+            lastResponse = fbData;
+            if (fbData.status === 'open' || fbData.instance?.state === 'open') {
+              activeInstance = fallbackInst;
+              outcome = 'OPEN';
+            } else {
+              const fbQr = fbData.base64 || fbData.qrcode?.base64 || fbData.code || fbData.qrcode?.code || fbData.pairingCode;
+              if (fbQr) {
+                qrPayloadFound = fbQr;
+                activeInstance = fallbackInst;
+                outcome = 'FOUND';
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (outcome === 'OPEN') {
+      return res.json({
+        success: true,
+        connected: true,
+        instance: activeInstance,
+        message: 'WhatsApp conectado com sucesso!'
+      });
     }
 
     if (qrPayloadFound) {
@@ -1025,7 +1117,7 @@ app.post('/api/evolution/connect', async (req: Request, res: Response) => {
         success: true,
         connected: false,
         qrCode: qrPayloadFound,
-        instance: cleanInstance
+        instance: activeInstance
       });
     }
 
@@ -1034,12 +1126,10 @@ app.post('/api/evolution/connect', async (req: Request, res: Response) => {
     return res.json({
       success: false,
       needsVersionConfig,
-      variableName: 'CONFIG_SESSION_PHONE_VERSION',
-      variableValue: '2.3000.1043857760',
       message: needsVersionConfig
-        ? 'A Evolution API no Render está ativa, mas a Meta (WhatsApp) exige a variável CONFIG_SESSION_PHONE_VERSION para liberar o QR Code.'
+        ? 'Instância anterior travada em 401 no Render. Clique novamente em "Gerar QR Code" ou use o botão "Recriar Instância Limpa".'
         : 'Instância em inicialização no Render. Aguarde alguns instantes.',
-      simulatedFallbackQr: `supreme_wa_pairing_code_${cleanInstance}_${Date.now()}`
+      simulatedFallbackQr: `supreme_wa_pairing_code_${activeInstance}_${Date.now()}`
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Erro ao conectar à Evolution API' });
@@ -1104,8 +1194,12 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
     cachedStoreConfig.evolutionInstance = cleanInstance;
     cachedStoreConfig.evolutionToken = cleanToken;
 
-    // The webhook destination is this server's endpoint
-    const appHost = publicAppUrl || `${req.protocol}://${req.get('host')}`;
+    // The webhook destination is the persistent production Vercel endpoint (never temporary .run.app / localhost previews)
+    const rawHost = publicAppUrl || `${req.protocol}://${req.get('host')}`;
+    const isTempPreview = rawHost.includes('.run.app') || rawHost.includes('localhost') || rawHost.includes('127.0.0.1');
+    const appHost = isTempPreview
+      ? (cachedStoreConfig.menuLink && !cachedStoreConfig.menuLink.includes('.run.app') ? cachedStoreConfig.menuLink : 'https://sorveteriasupreme.vercel.app')
+      : rawHost;
     const webhookDestination = `${appHost.replace(/\/$/, '')}/api/webhook/whatsapp`;
 
     // Call Evolution API /webhook/set/{instance} with both flat and nested payloads

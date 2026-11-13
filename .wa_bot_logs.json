@@ -1,5 +1,29 @@
 [
   {
+    "id": "log-1794571034345-gh70t",
+    "timestamp": "11:57:14",
+    "from": "Sistema",
+    "incomingText": "Configuração de Webhook 24h",
+    "replyText": "Webhook ativado apontando para: https://ais-dev-yhf54sfjf6of4ko46v7bn3-576759142795.us-west2.run.app/api/webhook/whatsapp",
+    "status": "sent"
+  },
+  {
+    "id": "log-1794571030654-zujec",
+    "timestamp": "11:57:10",
+    "from": "Sistema",
+    "incomingText": "Configuração de Webhook 24h",
+    "replyText": "Webhook ativado apontando para: https://ais-dev-yhf54sfjf6of4ko46v7bn3-576759142795.us-west2.run.app/api/webhook/whatsapp",
+    "status": "sent"
+  },
+  {
+    "id": "log-1794571023253-4jlem",
+    "timestamp": "11:57:03",
+    "from": "Sistema",
+    "incomingText": "Configuração de Webhook 24h",
+    "replyText": "Webhook ativado apontando para: https://ais-dev-yhf54sfjf6of4ko46v7bn3-576759142795.us-west2.run.app/api/webhook/whatsapp",
+    "status": "sent"
+  },
+  {
     "id": "log-1794531158787-nbo70",
     "timestamp": "00:52:38",
     "from": "5519000000000",
