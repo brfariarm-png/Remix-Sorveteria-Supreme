@@ -51,11 +51,29 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [wppconnectUrl, setWppconnectUrl] = useState(storeSettings.whatsappWppconnectUrl || '');
   const [wppconnectInstance, setWppconnectInstance] = useState(storeSettings.whatsappWppconnectInstance || '');
   const [wppconnectToken, setWppconnectToken] = useState(storeSettings.whatsappWppconnectToken || '');
+  const [customBackendUrl, setCustomBackendUrl] = useState(storeSettings.whatsappBackendUrl || '');
   const [hasLocalBackend, setHasLocalBackend] = useState<boolean>(() => {
+    if (storeSettings.whatsappBackendUrl?.trim()) return true;
     if (typeof window === 'undefined') return true;
     const h = window.location.hostname;
     return h === 'localhost' || h === '127.0.0.1' || h.includes('ais-dev-') || h.includes('ais-pre-');
   });
+
+  useEffect(() => {
+    if (storeSettings.whatsappBackendUrl !== undefined) {
+      setCustomBackendUrl(storeSettings.whatsappBackendUrl || '');
+      if (storeSettings.whatsappBackendUrl.trim()) {
+        setHasLocalBackend(true);
+      }
+    }
+  }, [storeSettings.whatsappBackendUrl]);
+
+  const getApiUrl = (route: string) => {
+    const raw = (customBackendUrl || '').trim().replace(/\/+$/, '');
+    if (!raw) return route;
+    const base = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+    return `${base}${route}`;
+  };
 
   const [qrError, setQrError] = useState('');
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -218,7 +236,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const loadDiagnostic = async () => {
     setLoadingDiagnostic(true);
     try {
-      const res = await fetch('/api/evolution/diagnostic');
+      const res = await fetch(getApiUrl('/api/evolution/diagnostic'));
       const isJson = res.headers.get('content-type')?.includes('application/json');
       if (res.ok && isJson) {
         setHasLocalBackend(true);
@@ -272,7 +290,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
   useEffect(() => {
     loadDiagnostic();
-  }, [connectionProvider]);
+  }, [connectionProvider, storeSettings.whatsappBackendUrl]);
 
   // Internal WhatsApp Device Linking QR Code states
   const [qrCodeStatus, setQrCodeStatus] = useState<'disconnected' | 'generating' | 'waiting' | 'connecting' | 'connected'>('disconnected');
@@ -300,7 +318,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
   const refreshServerLogs = async () => {
     try {
-      const res = await fetch('/api/whatsapp/native/status');
+      const res = await fetch(getApiUrl('/api/whatsapp/native/status'));
       const isJson = res.headers.get('content-type')?.includes('application/json');
       if (res.ok && isJson) {
         setHasLocalBackend(true);
@@ -337,7 +355,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     refreshServerLogs();
     const timer = setInterval(refreshServerLogs, 5000);
     return () => clearInterval(timer);
-  }, [connectionProvider]);
+  }, [connectionProvider, storeSettings.whatsappBackendUrl]);
 
   // Countdown timer logic for QR Code expiration
   useEffect(() => {
@@ -361,7 +379,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     const pollInterval = setInterval(async () => {
       try {
         if (hasLocalBackend && connectionProvider === 'native') {
-          const res = await fetch('/api/whatsapp/native/status');
+          const res = await fetch(getApiUrl('/api/whatsapp/native/status'));
           if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
             const data = await res.json();
             if (data.isPaired) {
@@ -380,7 +398,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         }
 
         if (hasLocalBackend && connectionProvider === 'evolution') {
-          const res = await fetch('/api/evolution/diagnostic');
+          const res = await fetch(getApiUrl('/api/evolution/diagnostic'));
           if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
             const data = await res.json();
             if (data.isPaired) {
@@ -519,6 +537,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         whatsappBotMenuLink: menuLink,
         whatsappBotSupportMessage: supportMsg,
         whatsappConnectionProvider: override?.whatsappConnectionProvider || connectionProvider,
+        whatsappBackendUrl: customBackendUrl.trim().replace(/\/+$/, ''),
         whatsappEvolutionUrl: evolutionUrl,
         whatsappEvolutionInstance: evolutionInstance,
         whatsappEvolutionToken: evolutionToken,
@@ -531,7 +550,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       await onUpdateSettings(payload);
       
       // Sync to backend bot server
-      fetch('/api/bot/sync-config', {
+      fetch(getApiUrl('/api/bot/sync-config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -567,7 +586,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     try {
       if (hasLocalBackend && connectionProvider === 'native') {
         await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'native' });
-        const statusRes = await fetch('/api/whatsapp/native/status');
+        const statusRes = await fetch(getApiUrl('/api/whatsapp/native/status'));
         if (statusRes.ok && statusRes.headers.get('content-type')?.includes('application/json')) {
           const statusData = await statusRes.json();
           if (statusData.isPaired) {
@@ -602,7 +621,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }
 
       const { url, instance, token } = getEffectiveEvolutionCreds();
-      const res = await fetch('/api/bot/setup-webhook', {
+      const res = await fetch(getApiUrl('/api/bot/setup-webhook'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -637,7 +656,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setCheckingWebhookStatus(true);
     try {
       if (hasLocalBackend && connectionProvider === 'native') {
-        const res = await fetch('/api/whatsapp/native/status');
+        const res = await fetch(getApiUrl('/api/whatsapp/native/status'));
         if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
           const data = await res.json();
           if (data.isPaired) {
@@ -680,7 +699,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }
 
       const { url, instance, token } = getEffectiveEvolutionCreds();
-      const res = await fetch('/api/bot/check-webhook', {
+      const res = await fetch(getApiUrl('/api/bot/check-webhook'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -719,7 +738,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setSimulatingCustomerMsg(true);
     setSimulatedReply(null);
     try {
-      const res = await fetch('/api/bot/simulate-message', {
+      const res = await fetch(getApiUrl('/api/bot/simulate-message'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -747,7 +766,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       localStorage.setItem('whatsapp_qr_status', 'connected');
     } else if (connectionProvider === 'native') {
       try {
-        const res = await fetch('/api/whatsapp/native/status');
+        const res = await fetch(getApiUrl('/api/whatsapp/native/status'));
         const data = await res.json();
         if (data.isPaired) {
           setNativeOwnerJid(data.ownerJid || null);
@@ -829,7 +848,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
     try {
       if (hasLocalBackend && connectionProvider === 'native') {
-        const res = await fetch('/api/whatsapp/send-message', {
+        const res = await fetch(getApiUrl('/api/whatsapp/send-message'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -957,9 +976,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }
       else {
         // If native WhatsApp is actually paired on the server even while UI is on simulator, use it!
-        const nativeRes = await fetch('/api/whatsapp/native/status').then(r => r.json()).catch(() => null);
+        const nativeRes = await fetch(getApiUrl('/api/whatsapp/native/status')).then(r => r.json()).catch(() => null);
         if (nativeRes?.isPaired) {
-          const res = await fetch('/api/whatsapp/send-message', {
+          const res = await fetch(getApiUrl('/api/whatsapp/send-message'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone: cleanNumber, message: messageText })
@@ -1087,20 +1106,26 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setCheckingStatus(true);
     try {
       if (hasLocalBackend && connectionProvider === 'native') {
-        const res = await fetch('/api/whatsapp/native/status');
-        const data = await res.json();
-        if (data.isPaired) {
-          setNativeOwnerJid(data.ownerJid || null);
-          setQrCodeStatus('connected');
-          setPairingCodeResult(null);
-          localStorage.setItem('whatsapp_qr_status', 'connected');
-          loadDiagnostic();
-          alert(`✓ Seu WhatsApp está conectado e online (+${data.ownerJid || 'pareado'})!`);
+        const res = await fetch(getApiUrl('/api/whatsapp/native/status'));
+        const isJson = res.headers.get('content-type')?.includes('application/json');
+        if (res.ok && isJson) {
+          const data = await res.json();
+          if (data.isPaired) {
+            setNativeOwnerJid(data.ownerJid || null);
+            setQrCodeStatus('connected');
+            setPairingCodeResult(null);
+            localStorage.setItem('whatsapp_qr_status', 'connected');
+            loadDiagnostic();
+            alert(`✓ Seu WhatsApp está conectado e online (+${data.ownerJid || 'pareado'})!`);
+          } else {
+            setQrCodeStatus('disconnected');
+            localStorage.removeItem('whatsapp_qr_status');
+            loadDiagnostic();
+            alert('❌ Aparelho ainda não pareado na Conexão Direta. Escaneie o QR Code gerado.');
+          }
         } else {
           setQrCodeStatus('disconnected');
-          localStorage.removeItem('whatsapp_qr_status');
-          loadDiagnostic();
-          alert('❌ Aparelho ainda não pareado na Conexão Direta. Escaneie o QR Code gerado.');
+          alert('❌ Servidor Bot Direto não respondeu neste domínio. Configure a URL do Servidor Bot Externo ou use Evolution API.');
         }
       } else if (connectionProvider === 'evolution' || (!hasLocalBackend && connectionProvider === 'native')) {
         const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
@@ -1413,7 +1438,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         return;
       }
 
-      await fetch('/api/bot/sync-config', {
+      await fetch(getApiUrl('/api/bot/sync-config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1429,7 +1454,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         })
       }).catch(() => {});
 
-      const res = await fetch('/api/whatsapp/native/pairing-code', {
+      const res = await fetch(getApiUrl('/api/whatsapp/native/pairing-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: pairingCodeInputNumber })
@@ -1488,7 +1513,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setQrProgressMsg('Ativando conexão direta no servidor e gerando QR Code...');
     await handleSaveSettings({ whatsappConnectionProvider: 'native' });
     try {
-      const res = await fetch('/api/whatsapp/native/connect', {
+      const res = await fetch(getApiUrl('/api/whatsapp/native/connect'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ forceFresh: true })
@@ -1534,7 +1559,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       setQrCodeStatus('generating');
       setQrProgressMsg('Gerando QR Code oficial direto do WhatsApp Web...');
       try {
-        await fetch('/api/bot/sync-config', {
+        await fetch(getApiUrl('/api/bot/sync-config'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1550,7 +1575,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           })
         }).catch(() => {});
 
-        const res = await fetch('/api/whatsapp/native/connect', {
+        const res = await fetch(getApiUrl('/api/whatsapp/native/connect'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ forceFresh: true })
@@ -1598,7 +1623,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       setQrProgressMsg('Conectando ao servidor Evolution API...');
       try {
         const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
-        const res = await fetch('/api/evolution/connect', {
+        const res = await fetch(getApiUrl('/api/evolution/connect'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1706,7 +1731,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const handleDisconnectQr = async () => {
     if (confirm("Deseja desconectar este aparelho de WhatsApp do robô?")) {
       if (hasLocalBackend && connectionProvider === 'native') {
-        await fetch('/api/whatsapp/native/disconnect', { method: 'POST' }).catch(() => {});
+        await fetch(getApiUrl('/api/whatsapp/native/disconnect'), { method: 'POST' }).catch(() => {});
         setNativeOwnerJid(null);
         setPairingCodeResult(null);
       } else if (!hasLocalBackend || connectionProvider === 'evolution') {
@@ -2630,11 +2655,30 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
                   {/* Provider Settings */}
                   {connectionProvider === 'native' && (
-                    <div className="space-y-2 border-l-2 border-emerald-500 pl-3 py-2 bg-emerald-50/40 rounded-r-xl">
+                    <div className="space-y-3 border-l-2 border-emerald-500 pl-3 py-2 bg-emerald-50/40 rounded-r-xl">
                       <h5 className="text-[11px] font-black text-emerald-950 uppercase">Motor WhatsApp Web Integrado</h5>
                       <p className="text-[10.5px] text-emerald-900 font-medium leading-relaxed">
-                        Conecta diretamente no WhatsApp sem precisar configurar variáveis no Render. Clique em <strong>"Gerar QR Code Oficial"</strong> no painel ao lado para escanear com seu celular e ativar respostas automáticas imediatamente.
+                        Conecta diretamente no WhatsApp sem precisar da Evolution API. Clique em <strong>"Gerar QR Code Oficial"</strong> no painel ao lado para escanear com seu celular e ativar respostas automáticas imediatamente.
                       </p>
+                      <div className="space-y-1 pt-1">
+                        <label className="block text-[9.5px] font-black uppercase tracking-wide text-emerald-900">
+                          URL do Servidor Bot Externo (para conectar na Vercel 24h)
+                        </label>
+                        <input
+                          type="url"
+                          value={customBackendUrl}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomBackendUrl(val);
+                            if (val.trim()) setHasLocalBackend(true);
+                          }}
+                          placeholder="Ex: https://sorveteria-supreme-bot.onrender.com (opcional)"
+                          className="w-full p-2.5 rounded-xl border border-emerald-200 bg-white outline-none text-xs font-mono text-slate-750 focus:border-emerald-500"
+                        />
+                        <p className="text-[9px] text-emerald-800 leading-tight font-medium">
+                          Deixe em branco no Google AI Studio. Se usar pelo site Vercel, publique este projeto no Render (<code className="bg-emerald-100 px-1 rounded">npm start</code>) e cole a URL acima para usar este mesmo motor na Vercel.
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -2929,6 +2973,12 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                               </span>
                             </div>
                           </div>
+
+                          {!evolutionDiagnostic?.isPaired && evolutionDiagnostic?.evolutionOnline && evolutionDiagnostic?.evolutionVersion?.startsWith('2.1') && (
+                            <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-950 font-semibold leading-relaxed">
+                              ⚠️ <strong>Por que escaneia o QR Code e não conclui?</strong> O seu Render está rodando a imagem antiga <strong>Evolution API v{evolutionDiagnostic.evolutionVersion}</strong>, que trava em <em>"Conectando"</em> com o WhatsApp atual. Troque a imagem no Render para <code className="bg-amber-100 px-1 rounded">evoapicloud/evolution-api:latest</code> (ou suba este repositório no Render com <code className="bg-amber-100 px-1 rounded">npm start</code> e cole a URL em Conexão Direta).
+                            </div>
+                          )}
 
                           {!evolutionDiagnostic?.isPaired && (
                             <button

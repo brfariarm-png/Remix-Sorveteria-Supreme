@@ -152,6 +152,7 @@ export interface StoreSettings {
   whatsappBotSupportMessage?: string;
   whatsappBotMenuLink?: string;
   whatsappConnectionProvider?: 'native' | 'simulator' | 'evolution' | 'zapi' | 'wppconnect';
+  whatsappBackendUrl?: string;
   whatsappEvolutionUrl?: string;
   whatsappEvolutionInstance?: string;
   whatsappEvolutionToken?: string;

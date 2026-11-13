@@ -534,6 +534,7 @@ export default function App() {
             ? data.whatsappBotMenuLink
             : (prev.whatsappBotMenuLink && !prev.whatsappBotMenuLink.includes('.run.app') ? prev.whatsappBotMenuLink : 'https://sorveteriasupreme.vercel.app'),
           whatsappConnectionProvider: data.whatsappConnectionProvider ?? prev.whatsappConnectionProvider ?? 'simulator',
+          whatsappBackendUrl: data.whatsappBackendUrl ?? prev.whatsappBackendUrl ?? '',
           whatsappEvolutionUrl: data.whatsappEvolutionUrl ?? prev.whatsappEvolutionUrl,
           whatsappEvolutionInstance: data.whatsappEvolutionInstance ?? prev.whatsappEvolutionInstance,
           whatsappEvolutionToken: data.whatsappEvolutionToken ?? prev.whatsappEvolutionToken,
@@ -587,13 +588,20 @@ export default function App() {
 
   // Keep WhatsApp Bot server awake and paired across all tabs while the app is open
   useEffect(() => {
+    const rawBackend = (storeSettings.whatsappBackendUrl || '').trim().replace(/\/+$/, '');
+    const h = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isLocalHost = h === 'localhost' || h === '127.0.0.1' || h.includes('ais-dev-') || h.includes('ais-pre-');
+    if (!rawBackend && !isLocalHost) return;
+    const apiBase = rawBackend
+      ? (rawBackend.startsWith('http://') || rawBackend.startsWith('https://') ? rawBackend : `https://${rawBackend}`)
+      : '';
     const pingBot = () => {
-      fetch('/api/whatsapp/native/status').catch(() => {});
+      fetch(`${apiBase}/api/whatsapp/native/status`).catch(() => {});
     };
     pingBot();
     const heartbeat = setInterval(pingBot, 25000);
     return () => clearInterval(heartbeat);
-  }, []);
+  }, [storeSettings.whatsappBackendUrl]);
 
   // 2b. Load dynamic menu from Firestore
   useEffect(() => {
@@ -1606,7 +1614,11 @@ export default function App() {
     const provider = storeSettings.whatsappConnectionProvider || 'simulator';
     if (provider === 'native' || provider === 'evolution') {
       try {
-        const res = await fetch('/api/whatsapp/send-message', {
+        const rawBackend = (storeSettings.whatsappBackendUrl || '').trim().replace(/\/+$/, '');
+        const apiBase = rawBackend
+          ? (rawBackend.startsWith('http://') || rawBackend.startsWith('https://') ? rawBackend : `https://${rawBackend}`)
+          : '';
+        const res = await fetch(`${apiBase}/api/whatsapp/send-message`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: formattedPhone, message })
@@ -1863,6 +1875,7 @@ export default function App() {
           whatsappBotSupportMessage: settings.whatsappBotSupportMessage || '',
           whatsappBotMenuLink: settings.whatsappBotMenuLink || '',
           whatsappConnectionProvider: settings.whatsappConnectionProvider || 'simulator',
+          whatsappBackendUrl: settings.whatsappBackendUrl || '',
           whatsappEvolutionUrl: settings.whatsappEvolutionUrl || '',
           whatsappEvolutionInstance: settings.whatsappEvolutionInstance || '',
           whatsappEvolutionToken: settings.whatsappEvolutionToken || '',
