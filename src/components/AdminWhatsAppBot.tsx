@@ -32,7 +32,11 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [activeTab, setActiveTab] = useState<'quickrun' | 'simulator' | 'config' | 'guides'>('quickrun');
   const [botEnabled, setBotEnabled] = useState(storeSettings.whatsappBotEnabled !== false);
   const [whatsappPhone, setWhatsappPhone] = useState(storeSettings.phone || '');
-  const [webhookUrl, setWebhookUrl] = useState(storeSettings.whatsappWebhookUrl || 'https://api.empresa.com/v1/webhook');
+  const [webhookUrl, setWebhookUrl] = useState(
+    (storeSettings.whatsappWebhookUrl && !String(storeSettings.whatsappWebhookUrl).includes('api.empresa.com'))
+      ? storeSettings.whatsappWebhookUrl
+      : 'https://sorveteriasupreme.vercel.app/api/webhook/whatsapp'
+  );
   const [apiSecret, setApiSecret] = useState(storeSettings.whatsappApiKey || 'sk_supreme_prod_xyz789');
   const [botName, setBotName] = useState(storeSettings.whatsappBotName || 'Supreme Bot Premium 💜');
   
@@ -1133,50 +1137,85 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
 
   // Test Webhook Trigger
   const handleTestWebhook = async () => {
-    if (!webhookUrl) {
-      alert('Informe a URL do webhook nas configurações.');
-      return;
+    const rawUrl = (webhookUrl || '').trim();
+    const isPlaceholder = !rawUrl || rawUrl.includes('api.empresa.com');
+    const targetUrl = isPlaceholder ? getApiUrl('/api/webhook/whatsapp') : rawUrl;
+    if (isPlaceholder) {
+      setWebhookUrl(getPublicWebhookUrl());
     }
     const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const isOwnBotWebhook = targetUrl.includes('/api/webhook/whatsapp');
+    const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
+    const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
+
     try {
-      const samplePayload = {
-        event: 'order.created',
-        storeName: storeSettings.name,
-        orderId: orders[0]?.id || 'DEMO-123456',
-        customer: {
-          name: orders[0]?.details?.customerName || 'Cliente Exemplo',
-          phone: testPhone
-        },
-        total: orders[0]?.total || 32.50,
-        status: 'waiting',
-        timestamp: new Date().toISOString()
-      };
-      const res = await fetch(webhookUrl, {
+      const samplePayload = isOwnBotWebhook
+        ? {
+            event: 'messages.upsert',
+            instance: evolutionInstance || 'supreme-loja',
+            data: {
+              key: {
+                remoteJid: `${formattedNum}@s.whatsapp.net`,
+                fromMe: false,
+                id: `ADMIN_TEST_${Date.now()}`
+              },
+              pushName: orders[0]?.details?.customerName || 'Cliente Teste',
+              message: { conversation: 'oi' }
+            }
+          }
+        : {
+            event: 'order.created',
+            storeName: storeSettings.name,
+            orderId: orders[0]?.id || 'DEMO-123456',
+            customer: {
+              name: orders[0]?.details?.customerName || 'Cliente Exemplo',
+              phone: testPhone
+            },
+            total: orders[0]?.total || 32.50,
+            status: 'waiting',
+            timestamp: new Date().toISOString()
+          };
+
+      const res = await fetch(targetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(samplePayload)
       });
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await res.json().catch(() => null) : null;
+
+      if (!res.ok || (data && data.replied === false && data.status && data.status >= 400)) {
+        const errDetail = data?.result || data?.error || data?.ignored || `HTTP ${data?.status || res.status}`;
+        throw new Error(errDetail);
+      }
+
+      const okMsg = data?.replied
+        ? `✓ Webhook respondeu e enviou mensagem para +${data.to || formattedNum} (HTTP ${res.status})`
+        : `✓ Webhook disparado com sucesso! Resposta HTTP: ${res.status}`;
+
       setTestLogs(prev => [
         {
           id: `webhook-${Date.now()}`,
           time: timeStr,
-          text: `✓ Webhook disparado com sucesso! Resposta HTTP: ${res.status}`,
+          text: okMsg,
           type: 'success'
         },
         ...prev
       ]);
-      alert(`✓ Webhook disparado com sucesso! (HTTP ${res.status})`);
+      setDispatchFeedback({ type: 'success', message: okMsg });
+      refreshServerLogs().catch(() => {});
     } catch (e: any) {
+      const errMsg = `Erro ao disparar webhook: ${e.message || e}`;
       setTestLogs(prev => [
         {
           id: `wh-err-${Date.now()}`,
           time: timeStr,
-          text: `⚠️ Erro no webhook: ${e.message || e}`,
+          text: `⚠️ ${errMsg}`,
           type: 'error'
         },
         ...prev
       ]);
-      alert(`Erro ao disparar webhook: ${e.message || e}`);
+      setDispatchFeedback({ type: 'error', message: errMsg });
     }
   };
 
