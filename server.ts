@@ -1296,8 +1296,8 @@ app.get('/api/webhook/whatsapp', async (req: Request, res: Response) => {
   });
 });
 
-// MAIN WEBHOOK RECEIVER: Evolution API calls this on incoming WhatsApp messages
-app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
+// MAIN WEBHOOK RECEIVER: Evolution API calls this on incoming WhatsApp messages (supports webhookByEvents subpath too)
+app.post(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: Request, res: Response) => {
   const isAdminTest = String(req.body?.data?.key?.id || '').startsWith('ADMIN_TEST_');
   const finishEarly = (ignored: string) => {
     if (isAdminTest && !res.headersSent) {

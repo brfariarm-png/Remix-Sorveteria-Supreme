@@ -30,6 +30,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/webhook/whatsapp/(.*)",
+      "destination": "/api/webhook/whatsapp"
+    },
+    {
       "source": "/((?!api/|assets/|icon-|logo|manifest|sw\\.js|apple-touch-icon|favicon|.*\\..*$).*)",
       "destination": "/index.html"
     }
