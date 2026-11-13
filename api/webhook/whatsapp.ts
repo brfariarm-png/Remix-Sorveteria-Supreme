@@ -264,6 +264,15 @@ export default async function handler(req: any, res: any) {
 
     // Only react to incoming messages.upsert events (ignore send.message / connection.update)
     if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
+      if (event && event !== 'ping.test') {
+        pushWebhookLog({
+          from: String(payload?.instance || 'Evolution'),
+          incomingText: `Evento: ${event}`,
+          replyText: '',
+          status: 'ignored',
+          details: 'Evento ignorado (apenas messages.upsert dispara resposta)'
+        });
+      }
       return res.status(200).json({ received: true, ignored: 'non-upsert-event', event });
     }
 
@@ -271,13 +280,27 @@ export default async function handler(req: any, res: any) {
     const data = Array.isArray(rawData)
       ? rawData[0]
       : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
-    const key = data?.key;
+    const key = data?.key || payload?.key;
     if (!data || !key) {
+      pushWebhookLog({
+        from: 'Evolution',
+        incomingText: 'messages.upsert sem key',
+        replyText: '',
+        status: 'ignored',
+        details: 'Payload recebido sem key'
+      });
       return res.status(200).json({ received: true, ignored: 'empty-key' });
     }
 
     const remoteJid = String(key.remoteJid || '');
     if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
+      pushWebhookLog({
+        from: remoteJid || 'Desconhecido',
+        incomingText: 'Mensagem de grupo/status',
+        replyText: '',
+        status: 'ignored',
+        details: 'Grupos e status são ignorados'
+      });
       return res.status(200).json({ received: true, ignored: 'group-or-broadcast' });
     }
 
@@ -285,7 +308,10 @@ export default async function handler(req: any, res: any) {
 
     const payloadSenderDigits = String(payload?.sender || '').split(':')[0].split('@')[0].replace(/\D/g, '');
     const configPhoneDigits = cfg.phone.replace(/\D/g, '');
-    const remoteAltDigits = String(key.remoteJidAlt || key.senderPn || '').split(':')[0].split('@')[0].replace(/\D/g, '');
+    const remoteAltDigits = String(key.remoteJidAlt || key.senderPn || key.participantAlt || key.participant || data?.remoteJidAlt || data?.senderPn || '')
+      .split(':')[0]
+      .split('@')[0]
+      .replace(/\D/g, '');
     const remoteBaseDigits = remoteJid.split(':')[0].split('@')[0].replace(/\D/g, '');
 
     const isSelfChat = Boolean(
@@ -294,22 +320,6 @@ export default async function handler(req: any, res: any) {
         (configPhoneDigits && (remoteBaseDigits.endsWith(configPhoneDigits.slice(-8)) || remoteAltDigits.endsWith(configPhoneDigits.slice(-8))))
       )
     );
-
-    if (key.fromMe && !isSelfChat) {
-      return res.status(200).json({ received: true, ignored: 'fromMe-outbound' });
-    }
-
-    const msgId = key.id;
-    if (msgId) {
-      if (processedMsgIds.has(msgId)) {
-        return res.status(200).json({ received: true, ignored: 'duplicate' });
-      }
-      processedMsgIds.add(msgId);
-      if (processedMsgIds.size > 500) {
-        const first = processedMsgIds.values().next().value;
-        if (first) processedMsgIds.delete(first);
-      }
-    }
 
     const content = unwrapMessage(data?.message);
     const incomingText =
@@ -333,7 +343,38 @@ export default async function handler(req: any, res: any) {
     );
 
     const effectiveText = incomingText.trim() || (hasMedia && !key.fromMe ? 'Oi' : '');
+
+    if (key.fromMe && !isSelfChat) {
+      pushWebhookLog({
+        from: remoteAltDigits || remoteBaseDigits || remoteJid,
+        incomingText: effectiveText || '(sem texto)',
+        replyText: '',
+        status: 'ignored',
+        details: `fromMe=true (enviada pelo próprio aparelho ${remoteJid}). Teste de outro número.`
+      });
+      return res.status(200).json({ received: true, ignored: 'fromMe-outbound' });
+    }
+
+    const msgId = key.id;
+    if (msgId) {
+      if (processedMsgIds.has(msgId)) {
+        return res.status(200).json({ received: true, ignored: 'duplicate' });
+      }
+      processedMsgIds.add(msgId);
+      if (processedMsgIds.size > 500) {
+        const first = processedMsgIds.values().next().value;
+        if (first) processedMsgIds.delete(first);
+      }
+    }
+
     if (!effectiveText) {
+      pushWebhookLog({
+        from: remoteAltDigits || remoteBaseDigits || remoteJid,
+        incomingText: `(tipo: ${String(data?.messageType || 'sem texto')})`,
+        replyText: '',
+        status: 'ignored',
+        details: 'Mensagem sem texto legível'
+      });
       return res.status(200).json({ received: true, ignored: 'no-text' });
     }
 

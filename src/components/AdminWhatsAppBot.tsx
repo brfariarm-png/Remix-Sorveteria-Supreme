@@ -740,6 +740,57 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   };
 
+  const [testingLiveWebhook, setTestingLiveWebhook] = useState(false);
+  const handleTestLiveWebhookEndpoint = async () => {
+    setTestingLiveWebhook(true);
+    setWebhookActiveResult(null);
+    try {
+      const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
+      const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
+      const res = await fetch(getApiUrl('/api/webhook/whatsapp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'messages.upsert',
+          instance: evolutionInstance || 'supreme-bot',
+          data: {
+            key: {
+              remoteJid: `${formattedNum}@s.whatsapp.net`,
+              fromMe: false,
+              id: `ADMIN_TEST_${Date.now()}`
+            },
+            pushName: 'Teste Admin',
+            message: { conversation: 'oi' }
+          }
+        })
+      });
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (!isJson) {
+        throw new Error(`Endpoint retornou HTTP ${res.status} sem JSON (verifique deploy na Vercel).`);
+      }
+      const data = await res.json();
+      await refreshServerLogs();
+      if (data.replied) {
+        setWebhookActiveResult({
+          success: true,
+          message: `✅ Teste Real Concluído! O Webhook recebeu "oi" e enviou as boas-vindas para +${data.to || formattedNum} pela Evolution API!`
+        });
+      } else {
+        setWebhookActiveResult({
+          success: false,
+          message: `⚠️ Webhook respondeu HTTP ${data.status || res.status}: ${data.result || data.ignored || data.error || 'Não foi possível enviar pela Evolution API.'}`
+        });
+      }
+    } catch (e: any) {
+      setWebhookActiveResult({
+        success: false,
+        message: `Erro ao testar webhook: ${e.message}`
+      });
+    } finally {
+      setTestingLiveWebhook(false);
+    }
+  };
+
   // Simulate customer sending message to bot
   const handleSimulateCustomerMessage = async (textToSimulate?: string) => {
     const text = textToSimulate || testCustomerText;
@@ -2112,6 +2163,16 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </button>
                     <button
                       type="button"
+                      onClick={handleTestLiveWebhookEndpoint}
+                      disabled={testingLiveWebhook}
+                      className="px-3.5 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-cyan-400/30 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      title="Dispara um 'oi' simulado direto no Webhook para testar a entrega real no WhatsApp"
+                    >
+                      <Send className={`w-3.5 h-3.5 ${testingLiveWebhook ? 'animate-pulse' : ''}`} />
+                      {testingLiveWebhook ? 'Testando...' : '🧪 Testar Webhook Real'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleActivateWebhookAutoBot}
                       disabled={activatingWebhook}
                       className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
@@ -2120,6 +2181,10 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       {activatingWebhook ? 'Ativando Webhook...' : '⚡ Ativar Robô no WhatsApp'}
                     </button>
                   </div>
+                </div>
+
+                <div className="bg-amber-500/15 border border-amber-400/30 rounded-2xl px-3.5 py-2.5 text-[11px] text-amber-100 leading-relaxed">
+                  <strong>Dica importante para testar:</strong> envie <strong>"oi"</strong> a partir de <strong>outro número de celular</strong> (um segundo WhatsApp). Mensagens enviadas pelo próprio celular conectado podem ser marcadas pelo WhatsApp como <code>fromMe</code> e aparecem nos logs em tempo real abaixo.
                 </div>
 
                 {webhookActiveResult && (
