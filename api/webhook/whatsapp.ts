@@ -246,10 +246,25 @@ export default async function handler(req: any, res: any) {
   }
 
   if (req.method === 'GET') {
+    const query = req.query || {};
+    const wantWakeup = query.wakeup === '1' || query.wakeup === 'true' || query.heartbeat === '1' || query.heartbeat === 'true';
+    let renderStatus: string | undefined;
+    if (wantWakeup) {
+      try {
+        const cfg = await loadStoreConfigFromFirestore();
+        const evoBase = (cfg.evolutionUrl || DEFAULT_CONFIG.evolutionUrl).trim().replace(/\/+$/, '');
+        const fullEvo = evoBase.startsWith('http') ? evoBase : `https://${evoBase}`;
+        const pingRes = await fetch(`${fullEvo}/`, { signal: AbortSignal.timeout(10000) });
+        renderStatus = pingRes.ok ? 'awake' : `http_${pingRes.status}`;
+      } catch (e: any) {
+        renderStatus = `error:${e?.message || 'timeout'}`;
+      }
+    }
     return res.status(200).json({
       ok: true,
       service: 'Supreme WhatsApp Webhook (Vercel)',
       clientUrl: 'https://sorveteriasupreme.vercel.app',
+      ...(renderStatus ? { renderStatus } : {}),
       recentLogs: recentWebhookLogs.slice(0, 15)
     });
   }
@@ -410,6 +425,7 @@ export default async function handler(req: any, res: any) {
     let finalStatus = 0;
     let finalResult = '';
     let usedTarget = targets[0] || remoteJid;
+    let timedOut = false;
 
     for (const target of targets) {
       for (const apiKey of apiKeys) {
@@ -424,7 +440,7 @@ export default async function handler(req: any, res: any) {
               number: target,
               text: replyText
             }),
-            signal: AbortSignal.timeout(5500)
+            signal: AbortSignal.timeout(12000)
           });
 
           finalStatus = sendRes.status;
@@ -442,10 +458,12 @@ export default async function handler(req: any, res: any) {
         } catch (fetchErr: any) {
           finalStatus = 504;
           finalResult = fetchErr?.message || 'Timeout/erro ao contatar Evolution API';
+          timedOut = true;
           break;
         }
       }
-      if (finalOk) break;
+      // Do not multiply 504 timeouts across fallback JID variants; only retry alternate JIDs on 400/404 exists:false
+      if (finalOk || timedOut) break;
     }
 
     pushWebhookLog({

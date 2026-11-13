@@ -23,6 +23,11 @@
       ]
     }
   ],
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/|assets/|icon-|logo|manifest|sw\\.js|apple-touch-icon|favicon|.*\\..*$).*)",
