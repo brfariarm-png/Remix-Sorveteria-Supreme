@@ -1910,25 +1910,69 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }, 1500);
   };
 
-  const handleDisconnectQr = async () => {
-    if (confirm("Deseja desconectar este aparelho de WhatsApp do robô?")) {
+  const handleForceFreshQrReset = async () => {
+    setQrError('');
+    setPairingCodeResult(null);
+    setQrCodePayload('');
+    setQrCodeStatus('generating');
+    setActiveTab('config');
+    setQrProgressMsg('Encerrando sessão fantasma e gerando novo QR Code limpo...');
+
+    try {
       if (hasLocalBackend && connectionProvider === 'native') {
         await fetch(getApiUrl('/api/whatsapp/native/disconnect'), { method: 'POST' }).catch(() => {});
         setNativeOwnerJid(null);
-        setPairingCodeResult(null);
-      } else if (!hasLocalBackend || connectionProvider === 'evolution') {
-        const { url, instance, token } = getEffectiveEvolutionCreds();
-        await fetch(`${url}/instance/logout/${instance}`, {
-          method: 'DELETE',
-          headers: { apikey: token }
-        }).catch(() => {});
-        setNativeOwnerJid(null);
+        localStorage.removeItem('whatsapp_qr_status');
+        await handleGenerateQr();
+        return;
       }
-      setQrCodeStatus('disconnected');
-      setQrCodePayload('');
+
+      const { url, instance, token } = getEffectiveEvolutionCreds();
+      await fetch(`${url}/instance/logout/${instance}`, {
+        method: 'DELETE',
+        headers: { apikey: token },
+        signal: AbortSignal.timeout(5000)
+      }).catch(() => {});
+      await fetch(`${url}/instance/delete/${instance}`, {
+        method: 'DELETE',
+        headers: { apikey: token },
+        signal: AbortSignal.timeout(5000)
+      }).catch(() => {});
+
+      setNativeOwnerJid(null);
       localStorage.removeItem('whatsapp_qr_status');
+      await new Promise(r => setTimeout(r, 1200));
+
+      if (hasLocalBackend) {
+        await handleGenerateQr();
+      } else {
+        await connectDirectViaRenderEvolution();
+      }
       loadDiagnostic();
+    } catch (err: any) {
+      setQrError(err?.message || 'Erro ao forçar novo QR Code');
+      setQrCodeStatus('disconnected');
     }
+  };
+
+  const handleDisconnectQr = async () => {
+    if (hasLocalBackend && connectionProvider === 'native') {
+      await fetch(getApiUrl('/api/whatsapp/native/disconnect'), { method: 'POST' }).catch(() => {});
+      setNativeOwnerJid(null);
+      setPairingCodeResult(null);
+    } else if (!hasLocalBackend || connectionProvider === 'evolution') {
+      const { url, instance, token } = getEffectiveEvolutionCreds();
+      await fetch(`${url}/instance/logout/${instance}`, {
+        method: 'DELETE',
+        headers: { apikey: token },
+        signal: AbortSignal.timeout(5000)
+      }).catch(() => {});
+      setNativeOwnerJid(null);
+    }
+    setQrCodeStatus('disconnected');
+    setQrCodePayload('');
+    localStorage.removeItem('whatsapp_qr_status');
+    loadDiagnostic();
   };
 
   const simulateBotResponse = (userText: string) => {
@@ -3153,7 +3197,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
                               <span className="text-slate-500">Servidor Render:</span>
                               <span className={evolutionDiagnostic?.evolutionOnline ? "text-emerald-600" : "text-amber-600"}>
-                                {evolutionDiagnostic?.evolutionOnline ? "Online (v2.1)" : "Conectando..."}
+                                {evolutionDiagnostic?.evolutionOnline
+                                  ? `Online (${evolutionDiagnostic.evolutionVersion ? `v${evolutionDiagnostic.evolutionVersion}` : 'Ativo'})`
+                                  : "Conectando..."}
                               </span>
                             </div>
                             <div className="p-1.5 bg-white rounded-lg border border-slate-150 flex items-center justify-between">
@@ -3176,7 +3222,16 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                             </div>
                           )}
 
-                          {!evolutionDiagnostic?.isPaired && (
+                          {evolutionDiagnostic?.isPaired ? (
+                            <button
+                              type="button"
+                              onClick={handleForceFreshQrReset}
+                              className="w-full py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Celular Desconectado? Forçar Novo QR Code
+                            </button>
+                          ) : (
                             <button
                               type="button"
                               onClick={handleSwitchToNativeAndConnect}
@@ -3511,6 +3566,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                           {checkingStatus ? 'Buscando...' : 'Atualizar Status da Conexão'}
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={handleForceFreshQrReset}
+                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Celular Desconectado? Gerar Novo QR Code
+                      </button>
 
                       <button
                         type="button"
