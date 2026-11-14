@@ -646,7 +646,12 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
     clearTimeout(timeoutId);
     const responseText = await res.text();
     if (!res.ok) {
-      const err: any = new Error(`Evolution API erro ${res.status}: ${responseText}`);
+      const errTxt = responseText;
+      let friendlyMsg = `Evolution API erro ${res.status}: ${errTxt}`;
+      if (/connection closed|closed|400/i.test(errTxt)) {
+        friendlyMsg = `WhatsApp está desconectado no Render (Connection Closed). Reconecte o aparelho na aba "Conexão & QR Code Real".`;
+      }
+      const err: any = new Error(friendlyMsg);
       err.status = res.status;
       throw err;
     }
