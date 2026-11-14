@@ -648,74 +648,40 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setActivatingWebhook(true);
     setWebhookActiveResult(null);
     try {
-      if (hasLocalBackend && connectionProvider === 'native') {
+      if (connectionProvider === 'native') {
         await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'native' });
-        const statusRes = await fetch(getApiUrl('/api/whatsapp/native/status'));
-        if (statusRes.ok && statusRes.headers.get('content-type')?.includes('application/json')) {
-          const statusData = await statusRes.json();
-          if (statusData.isPaired) {
-            setNativeOwnerJid(statusData.ownerJid || null);
-            setQrCodeStatus('connected');
-            setWebhookActiveResult({
-              success: true,
-              message: `Robô Automático Ativo no WhatsApp Direto (+${statusData.ownerJid || 'conectado'})!`
-            });
-          } else {
-            setWebhookActiveResult({
-              success: false,
-              message: 'Motor Direto salvo e ativado, mas falta escanear o QR Code na aba "Conexão & QR Code Real".'
-            });
-            setActiveTab('config');
+        try {
+          const statusRes = await fetch(getApiUrl('/api/whatsapp/native/status'));
+          if (statusRes.ok && statusRes.headers.get('content-type')?.includes('application/json')) {
+            const statusData = await statusRes.json();
+            if (statusData.isPaired) {
+              setNativeOwnerJid(statusData.ownerJid || null);
+              setQrCodeStatus('connected');
+              setWebhookActiveResult({
+                success: true,
+                message: `Robô Automático Ativo no WhatsApp Direto (+${statusData.ownerJid || 'conectado'})!`
+              });
+              return;
+            }
           }
-          return;
-        }
-      }
-
-      if (!hasLocalBackend) {
-        const destUrl = await directEvolutionSetupWebhook();
-        await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'evolution' });
-        setConnectionProvider('evolution');
+        } catch (_) {}
         setWebhookActiveResult({
-          success: true,
-          message: 'Robô Automático 24/7 Ativado com Sucesso no WhatsApp!',
-          url: destUrl
+          success: false,
+          message: 'Motor Direto salvo e ativado, mas falta escanear o QR Code na aba "Conexão & QR Code Real".'
         });
-        loadDiagnostic();
+        setActiveTab('config');
         return;
       }
 
-      const { url, instance, token } = getEffectiveEvolutionCreds();
-      let data: any = null;
-      try {
-        const res = await fetch(getApiUrl('/api/bot/setup-webhook'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            evolutionUrl: url,
-            evolutionInstance: instance,
-            evolutionToken: token,
-            publicAppUrl: getPublicWebhookUrl().replace(/\/api\/webhook\/whatsapp$/, '')
-          })
-        });
-        const textRes = await res.text();
-        try {
-          data = JSON.parse(textRes);
-        } catch {
-          throw new Error(textRes || 'Falha ao configurar webhook');
-        }
-        if (!res.ok) {
-          throw new Error(data.error || textRes || 'Falha ao configurar webhook');
-        }
-      } catch (netErr: any) {
-        console.warn('Backend local falhou ou retornou erro, tentando configuração direta via Evolution API:', netErr);
-        const destUrl = await directEvolutionSetupWebhook();
-        data = { success: true, webhookUrl: destUrl };
-      }
+      const destUrl = await directEvolutionSetupWebhook();
+      await handleSaveSettings({ whatsappBotEnabled: true, whatsappConnectionProvider: 'evolution' });
+      setConnectionProvider('evolution');
       setWebhookActiveResult({
         success: true,
         message: 'Robô Automático 24/7 Ativado com Sucesso no WhatsApp!',
-        url: data.webhookUrl || getPublicWebhookUrl()
+        url: destUrl
       });
+      loadDiagnostic();
     } catch (e: any) {
       setWebhookActiveResult({
         success: false,
