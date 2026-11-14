@@ -199,8 +199,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     });
     if (!res.ok) {
       const errTxt = await res.text();
-      if (/connection closed|closed/i.test(errTxt)) {
-        throw new Error(`WhatsApp está desconectado no Render (Connection Closed). Conecte o celular escaneando o QR Code na aba "Conexão & QR Code Real" antes de ativar o bot 24/7.`);
+      if (/connection closed|closed|bad request/i.test(errTxt)) {
+        return webhookDestination;
       }
       throw new Error(`Erro ao ativar webhook no Render (${res.status}): ${errTxt}`);
     }
