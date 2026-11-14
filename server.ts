@@ -172,7 +172,7 @@ setTimeout(pingEvolutionKeepAlive, 5000);
 setInterval(pingEvolutionKeepAlive, 10 * 60 * 1000);
 
 // Protect native routes if ENABLE_NATIVE is false
-app.use('/api/whatsapp/native/*', (req: Request, res: Response, next: Function) => {
+app.use('/api/whatsapp/native', (req: Request, res: Response, next: Function) => {
   if (!ENABLE_NATIVE) {
     return res.status(410).json({ error: 'Conexão direta desativada. Use a Evolution API.' });
   }
