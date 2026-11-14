@@ -15,6 +15,15 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 import { verifyAdmin, webhookSecretOk } from './api/_lib/adminAuth';
 
+for (const level of ['log', 'info', 'warn'] as const) {
+  const original = (console as any)[level].bind(console);
+  (console as any)[level] = (...args: any[]) => {
+    const first = String(args[0] ?? '');
+    if (/Closing session|Opening session|Removing old closed session|Migrating session|SessionEntry|Session already/i.test(first)) return;
+    original(...args);
+  };
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -78,6 +87,7 @@ let cachedStoreConfig = {
   botName: 'Supreme Bot Premium 💜',
   storeName: 'Sorveteria Gourmet Supreme',
   phone: '5519974118672',
+  connectionProvider: 'evolution',
   evolutionUrl: 'https://supreme-bot-2bm0.onrender.com',
   evolutionInstance: 'supreme-bot',
   evolutionToken: 'Rmfa1100@',
@@ -103,6 +113,7 @@ async function syncStoreConfigFromDb() {
         botName: data.whatsappBotName || cachedStoreConfig.botName,
         storeName: data.name || cachedStoreConfig.storeName,
         phone: data.phone || cachedStoreConfig.phone,
+        connectionProvider: data.whatsappConnectionProvider || cachedStoreConfig.connectionProvider || 'evolution',
         evolutionUrl: (data.whatsappEvolutionUrl || cachedStoreConfig.evolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/$/, ''),
         evolutionInstance: (data.whatsappEvolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim(),
         evolutionToken: (data.whatsappEvolutionToken || cachedStoreConfig.evolutionToken || 'Rmfa1100@').trim(),
@@ -114,7 +125,7 @@ async function syncStoreConfigFromDb() {
         supportMsg: data.whatsappBotSupportMessage || cachedStoreConfig.supportMsg,
         address: data.address || cachedStoreConfig.address,
       };
-      console.log(`✅ [WhatsApp Bot] Configurações carregadas do Firestore! Evolution URL: ${cachedStoreConfig.evolutionUrl} | Instância: ${cachedStoreConfig.evolutionInstance}`);
+      console.log(`✅ [WhatsApp Bot] Configurações carregadas do Firestore! Provedor: ${cachedStoreConfig.connectionProvider} | Evolution URL: ${cachedStoreConfig.evolutionUrl}`);
     }
   } catch (err: any) {
     console.warn('⚠️ [WhatsApp Bot] Erro não impeditivo ao ler Firestore:', err?.message || err);
@@ -402,7 +413,7 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
           return;
         }
 
-        if (!nativeManualStop && nativeReconnectAttempts < 6) {
+        if (!nativeManualStop && nativeReconnectAttempts < 6 && cachedStoreConfig.connectionProvider === 'native') {
           nativeReconnectAttempts++;
           const hasCreds = Boolean(state.creds?.me?.id || state.creds?.registered || fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json')));
           if (hasCreds || statusCode === DisconnectReason.restartRequired || statusCode === 515) {
@@ -419,16 +430,13 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify' && type !== 'append') return;
-      console.log(`[WhatsApp Native] Evento messages.upsert recebido (type=${type}, qtd=${messages.length})`);
+      if (type !== 'notify') return; // Ignore append events
       for (const msg of messages) {
         try {
+          if (msg.key.fromMe) continue; // Ignore messages sent from self
           const msgId = msg.key.id;
           if (msgId && (sentBotMessageIds.has(msgId) || repliedInboundMsgIds.has(msgId))) continue;
-          if (!msg.message) {
-            console.log(`[WhatsApp Native] Mensagem sem payload (stub=${msg.messageStubType || 'none'}, jid=${msg.key.remoteJid})`);
-            continue;
-          }
+          if (!msg.message) continue;
 
           const remoteJid = msg.key.remoteJid || '';
           if (
@@ -440,24 +448,12 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
             continue;
           }
 
-          const remoteJidAlt = (msg.key as any)?.remoteJidAlt as string | undefined;
-          const senderPn = (msg.key as any)?.senderPn as string | undefined;
-          const cleanSender = (remoteJidAlt || senderPn || remoteJid).split(':')[0].split('@')[0];
+          const remoteBase = remoteJid.split(':')[0].split('@')[0];
           const ownNum = (sock.user?.id || state.creds?.me?.id || '').split(':')[0].split('@')[0];
           const ownLid = (sock.user?.lid || (state.creds?.me as any)?.lid || '').split(':')[0].split('@')[0];
-          const remoteBase = remoteJid.split(':')[0].split('@')[0];
-          const isSelfChat = Boolean(
-            (remoteBase && (remoteBase === ownNum || remoteBase === ownLid)) ||
-            (cleanSender && cleanSender === ownNum)
-          );
-
-          // Skip initial history-sync append bursts in first 8s after connect, but NEVER drop live 'notify' messages due to clock skew
-          if (type === 'append' && !isSelfChat && nativeConnectedAtMs > 0 && Date.now() - nativeConnectedAtMs < 8000) {
-            continue;
-          }
-
-          // Ignore manual human replies sent from the store phone to customers, but allow self-chat testing
-          if (msg.key.fromMe && !isSelfChat) continue;
+          if (nativeOwnerJid && remoteBase === nativeOwnerJid) continue;
+          if (ownNum && remoteBase === ownNum) continue;
+          if (ownLid && remoteBase === ownLid) continue;
 
           const content = unwrapWhatsAppMessage(msg.message);
           const incomingText =
@@ -482,53 +478,23 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
             content?.contactMessage
           );
 
-          const effectiveText = incomingText.trim() || (hasCustomerMedia && !msg.key.fromMe ? 'Oi' : '');
+          const effectiveText = incomingText.trim() || (hasCustomerMedia ? 'Oi' : '');
           if (!effectiveText) continue;
 
-          if (cachedStoreConfig.botEnabled === false) {
-            console.log(`[WhatsApp Native] Robô pausado nas configurações; ignorando mensagem de +${cleanSender}.`);
-            continue;
-          }
+          if (cachedStoreConfig.botEnabled === false) continue;
 
           if (msgId) {
             repliedInboundMsgIds.add(msgId);
-            if (repliedInboundMsgIds.size > 500) {
-              const first = repliedInboundMsgIds.values().next().value;
-              if (first) repliedInboundMsgIds.delete(first);
-            }
           }
 
           const pushName = msg.pushName || 'Cliente';
-          console.log(`[WhatsApp Native] (${type}) Mensagem recebida de ${remoteJid} (+${cleanSender}, ${pushName}): "${effectiveText}"`);
+          const replyText = processIncomingMessage(effectiveText, pushName, remoteJid);
 
-          const replyText = processIncomingMessage(effectiveText, pushName, cleanSender || remoteJid);
-
-          // For @lid accounts, prefer PN JID (remoteJidAlt / senderPn) when available, then fallback to remoteJid
-          const replyTargets = remoteJid.endsWith('@lid')
-            ? [remoteJidAlt, senderPn, remoteJid]
-            : [remoteJid, remoteJidAlt, senderPn];
-          const uniqueTargets = Array.from(new Set(replyTargets.filter((t): t is string => Boolean(t))));
-
-          let sent: any = null;
-          let lastSendErr: any = null;
-          let sentToJid = uniqueTargets[0];
-          for (const targetJid of uniqueTargets) {
-            try {
-              sent = await sock.sendMessage(targetJid, { text: replyText });
-              sentToJid = targetJid;
-              break;
-            } catch (targetErr) {
-              lastSendErr = targetErr;
-            }
-          }
-          if (!sent) {
-            throw lastSendErr || new Error('Falha ao entregar resposta ao destinatário.');
-          }
+          const sent = await sock.sendMessage(remoteJid, { text: replyText });
           trackSentMessageId(sent?.key?.id, sent?.message);
 
-          console.log(`[WhatsApp Native] Resposta automática enviada para ${sentToJid}`);
           addBotLog({
-            from: cleanSender,
+            from: remoteBase,
             pushName,
             incomingText: effectiveText,
             replyText,
@@ -536,13 +502,6 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
           });
         } catch (msgErr: any) {
           console.error('[WhatsApp Native] Erro ao responder mensagem:', msgErr?.message || msgErr);
-          addBotLog({
-            from: msg?.key?.remoteJid?.split('@')[0] || 'Desconhecido',
-            incomingText: 'Mensagem recebida',
-            replyText: '',
-            status: 'error',
-            details: msgErr?.message || String(msgErr)
-          });
         }
       }
     });
@@ -571,7 +530,7 @@ async function startNativeWhatsApp(options?: { forceFresh?: boolean; pairingPhon
   }
 }
 
-// Send Text via Native Socket (if connected) or Evolution API
+// Send Text via Native Socket (if connected and config.connectionProvider === 'native') or Evolution API
 async function sendWhatsAppMessage(targetNumber: string, messageText: string, config: typeof cachedStoreConfig) {
   const cleanNumber = normalizePhoneDigits(targetNumber);
   if (!cleanNumber || cleanNumber.length < 10) {
@@ -579,15 +538,15 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
   }
 
   // If native session is currently reconnecting after server startup, wait up to 6s for it to open
-  if (nativeStatus === 'connecting' && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
+  if (config.connectionProvider === 'native' && nativeStatus === 'connecting' && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
     const waitStart = Date.now();
     while (nativeStatus === 'connecting' && Date.now() - waitStart < 6000) {
       await new Promise((r) => setTimeout(r, 250));
     }
   }
 
-  // Priority 1: Native Baileys socket if paired and open
-  if (nativeStatus === 'connected' && nativeSocket) {
+  // Priority 1: Native Baileys socket if paired, open, AND connectionProvider === 'native'
+  if (config.connectionProvider === 'native' && nativeStatus === 'connected' && nativeSocket) {
     const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
     const result = await nativeSocket.sendMessage(jid, { text: messageText });
     trackSentMessageId(result?.key?.id, result?.message);
@@ -1536,12 +1495,16 @@ async function startServer() {
     }
   }
 
+  await syncStoreConfigFromDb();
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor Supreme rodando na porta ${PORT}`);
     console.log(`🤖 Webhook WhatsApp pronto em: http://0.0.0.0:${PORT}/api/webhook/whatsapp`);
-    if (fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
-      console.log('🔄 [WhatsApp Native] Sessão salva encontrada! Reconectando automaticamente...');
+    if (cachedStoreConfig.connectionProvider === 'native' && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
+      console.log('🔄 [WhatsApp Native] Provedor é native e sessão salva encontrada! Reconectando automaticamente...');
       startNativeWhatsApp().catch((e) => console.warn('[WhatsApp Native] Falha ao reconectar:', e?.message));
+    } else {
+      console.log(`ℹ️ [WhatsApp Native] Provedor configurado: "${cachedStoreConfig.connectionProvider || 'evolution'}". Ignorando reconexão automática do Baileys.`);
     }
   });
 }

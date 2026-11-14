@@ -298,6 +298,11 @@ export default async function handler(req: any, res: any) {
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const event = String(payload?.event || payload?.type || '').toLowerCase();
+    const msgType = String(payload?.type || payload?.data?.type || '').toLowerCase();
+
+    if (msgType.includes('append') || event.includes('append')) {
+      return res.status(200).json({ received: true, ignored: 'append-event' });
+    }
 
     // Only react to incoming messages.upsert events (ignore send.message / connection.update)
     if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {

@@ -2947,7 +2947,14 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                     </label>
                     <select
                       value={connectionProvider}
-                      onChange={(e: any) => setConnectionProvider(e.target.value)}
+                      onChange={async (e: any) => {
+                        const v = e.target.value as typeof connectionProvider;
+                        setConnectionProvider(v);
+                        await handleSaveSettings({ whatsappConnectionProvider: v });
+                        if (v !== 'native') {
+                          fetch(getApiUrl('/api/whatsapp/native/disconnect'), { method: 'POST' }).catch(() => {});
+                        }
+                      }}
                       className="w-full p-2.5 rounded-xl border border-slate-200 bg-white outline-none text-xs font-bold text-slate-750 focus:border-emerald-500 cursor-pointer"
                     >
                       <option value="native">⚡ Conexão Direta no Sistema (QR Code Instantâneo — Sem Render)</option>
@@ -2956,6 +2963,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       <option value="zapi">Z-API Gateway (Profissional Pago)</option>
                       <option value="wppconnect">WPPConnect Server (Custom API)</option>
                     </select>
+                    <p className="text-[9.5px] text-emerald-700 font-bold">
+                      Provedor salvo no servidor: <span className="uppercase">{storeSettings.whatsappConnectionProvider || 'evolution'}</span>
+                    </p>
                     <p className="text-[9.5px] text-slate-500 font-medium leading-relaxed">
                       Use <strong>"Conexão Direta no Sistema"</strong> para gerar o QR Code oficial na hora sem depender do Render, ou selecione <strong>"Evolution API"</strong> / <strong>"Z-API"</strong> / <strong>"WPPConnect"</strong> se preferir usar servidor externo.
                     </p>
