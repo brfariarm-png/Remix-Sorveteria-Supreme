@@ -12,6 +12,7 @@ import {
   Play, Pause, ArrowRight, ExternalLink, Terminal, AlertCircle, Radio
 } from 'lucide-react';
 import { Order, MenuItem } from '../types';
+import { auth } from '../firebase';
 
 interface AdminWhatsAppBotProps {
   storeSettings: any;
@@ -26,6 +27,12 @@ interface ChatMessage {
   text: string;
   time: string;
   status: 'sent' | 'delivered' | 'read';
+}
+
+async function adminAuthHeaders(): Promise<Record<string, string>> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('Entre com o Google do administrador para enviar mensagens.');
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` };
 }
 
 export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menuItems, orders }: AdminWhatsAppBotProps) {
@@ -964,7 +971,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       if (hasLocalBackend && connectionProvider === 'native') {
         const res = await fetch(getApiUrl('/api/whatsapp/send-message'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await adminAuthHeaders(),
           body: JSON.stringify({
             phone: cleanNumber,
             message: messageText
@@ -1108,7 +1115,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         if (nativeRes?.isPaired) {
           const res = await fetch(getApiUrl('/api/whatsapp/send-message'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await adminAuthHeaders(),
             body: JSON.stringify({ phone: cleanNumber, message: messageText })
           });
           const data = await res.json();
