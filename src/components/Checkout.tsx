@@ -27,6 +27,8 @@ interface CheckoutProps {
   }[];
   storePhone?: string;
   storeSettings?: any;
+  isOpen?: boolean;
+  isAdmin?: boolean;
 }
 
 // CRC16-CCITT implementation for authentic Brazilian PIX QR/Copia e Cola codes
