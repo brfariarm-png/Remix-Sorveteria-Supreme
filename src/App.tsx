@@ -1627,30 +1627,49 @@ export default function App() {
     const provider = storeSettings.whatsappConnectionProvider || 'simulator';
     if (provider === 'native' || provider === 'evolution') {
       try {
-        const idToken = await auth.currentUser?.getIdToken().catch(() => 'dev-admin-token') || 'dev-admin-token';
-        const rawBackend = (storeSettings.whatsappBackendUrl || '').trim().replace(/\/+$/, '');
-        const apiBase = rawBackend
-          ? (rawBackend.startsWith('http://') || rawBackend.startsWith('https://') ? rawBackend : `https://${rawBackend}`)
-          : '';
-        const res = await fetch(`${apiBase}/api/whatsapp/send-message`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ phone: formattedPhone, message })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          if (showSuccessToast) {
-            setNotificationToast({
-              title: '📱 WhatsApp Enviado!',
-              message: `Mensagem automática enviada para ${order.details?.customerName || formattedPhone}.`
-            });
+        let success = false;
+        try {
+          const idToken = await auth.currentUser?.getIdToken().catch(() => 'dev-admin-token') || 'dev-admin-token';
+          const rawBackend = (storeSettings.whatsappBackendUrl || '').trim().replace(/\/+$/, '');
+          const apiBase = rawBackend && !rawBackend.includes('onrender.com') ? rawBackend : '';
+          const res = await fetch(`${apiBase}/api/whatsapp/send-message`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ phone: formattedPhone, message })
+          });
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (data.success) success = true;
           }
-          return;
+        } catch (_) {}
+
+        if (!success) {
+          const evoUrl = (storeSettings.whatsappEvolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/+$/, '');
+          const evoInst = (storeSettings.whatsappEvolutionInstance || 'supreme-bot').trim() || 'supreme-bot';
+          const evoTok = (typeof window !== 'undefined' ? localStorage.getItem('supreme_evo_token') : '') || storeSettings.whatsappEvolutionToken || '';
+          const fullEvoUrl = evoUrl.startsWith('http') ? evoUrl : `https://${evoUrl}`;
+
+          const evoRes = await fetch(`${fullEvoUrl}/message/sendText/${evoInst}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: evoTok },
+            body: JSON.stringify({ number: formattedPhone, text: message, delay: 0, linkPreview: false })
+          });
+          if (!evoRes.ok) {
+            const errTxt = await evoRes.text();
+            throw new Error(`Evolution API (${evoRes.status}): ${errTxt.slice(0, 150)}`);
+          }
         }
-        throw new Error(data.error || 'WhatsApp não conectado');
+
+        if (showSuccessToast) {
+          setNotificationToast({
+            title: '📱 WhatsApp Enviado!',
+            message: `Mensagem automática enviada para ${order.details?.customerName || formattedPhone}.`
+          });
+        }
+        return;
       } catch (err: any) {
         console.warn('Falha ao enviar via API WhatsApp:', err?.message || err);
         if (showSuccessToast) {
