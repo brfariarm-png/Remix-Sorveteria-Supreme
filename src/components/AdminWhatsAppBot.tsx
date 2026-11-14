@@ -741,21 +741,15 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       }
 
       const { url, instance, token } = getEffectiveEvolutionCreds();
-      const res = await fetch(getApiUrl('/api/bot/check-webhook'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          evolutionUrl: url,
-          evolutionInstance: instance,
-          evolutionToken: token
-        })
-      });
-      const data = await res.json();
-      if (data.active) {
+      const wr = await fetch(`${url}/webhook/find/${instance}`, { headers: { apikey: token } });
+      const wd = await wr.json();
+      const active = wd?.enabled === true || wd?.webhook?.enabled === true;
+      const wUrl = wd?.url || wd?.webhook?.url || null;
+      if (active) {
         setWebhookActiveResult({
           success: true,
           message: 'Webhook Ativo e Operando no WhatsApp!',
-          url: data.webhookUrl
+          url: wUrl
         });
       } else {
         setWebhookActiveResult({
