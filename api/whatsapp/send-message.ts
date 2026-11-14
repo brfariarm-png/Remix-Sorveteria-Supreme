@@ -2,6 +2,38 @@ import { verifyAdmin } from '../_lib/adminAuth';
 
 // Envio de mensagem de WhatsApp (status do pedido). Só o administrador logado pode usar.
 // O token da Evolution API fica apenas nas variáveis de ambiente da Vercel (EVOLUTION_TOKEN).
+const PROJECT_ID = 'gen-lang-client-0657249394';
+const DATABASE_ID = 'ai-studio-remixsorveterias-394250e3-c97c-4dba-be9b-43921c0168c3';
+const FIRESTORE_CONFIG_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/settings/store_config`;
+
+async function loadConfig() {
+  let url = process.env.EVOLUTION_URL || 'https://supreme-bot-2bm0.onrender.com';
+  let instance = process.env.EVOLUTION_INSTANCE || 'supreme-bot';
+  let token = process.env.EVOLUTION_TOKEN || 'Rmfa1100@';
+
+  try {
+    const res = await fetch(FIRESTORE_CONFIG_URL, { signal: AbortSignal.timeout(2500) });
+    if (res.ok) {
+      const json: any = await res.json();
+      const fields = json?.fields;
+      if (fields) {
+        const dbUrl = fields?.whatsappEvolutionUrl?.stringValue?.trim();
+        const dbInst = fields?.whatsappEvolutionInstance?.stringValue?.trim();
+        const dbTok = fields?.whatsappEvolutionToken?.stringValue?.trim();
+        if (dbUrl) url = dbUrl;
+        if (dbInst) instance = dbInst;
+        if (dbTok) token = dbTok;
+      }
+    }
+  } catch (_) {}
+
+  return {
+    url: url.replace(/\/+$/, ''),
+    instance: instance.trim(),
+    token: token.trim()
+  };
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -19,12 +51,14 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Mensagem vazia ou grande demais.' });
   }
 
-  const token = (process.env.EVOLUTION_TOKEN || '').trim();
+  const cfg = await loadConfig();
+  const token = cfg.token;
+  const base = cfg.url;
+  const instance = cfg.instance;
+
   if (!token) {
-    return res.status(500).json({ error: 'EVOLUTION_TOKEN não configurado na Vercel.' });
+    return res.status(500).json({ error: 'EVOLUTION_TOKEN não configurado.' });
   }
-  const base = (process.env.EVOLUTION_URL || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/+$/, '');
-  const instance = (process.env.EVOLUTION_INSTANCE || 'supreme-bot').trim();
 
   try {
     const r = await fetch(`${base}/message/sendText/${instance}`, {
