@@ -81,6 +81,16 @@ function addBotLog(log: Omit<BotLog, 'id' | 'timestamp'>) {
   return newLog;
 }
 
+const ENABLE_NATIVE = process.env.ENABLE_NATIVE_WHATSAPP === 'true';
+
+function getEffectiveProvider(): string {
+  const raw = cachedStoreConfig.connectionProvider || 'evolution';
+  if (raw === 'native' && !ENABLE_NATIVE) {
+    return 'evolution';
+  }
+  return raw;
+}
+
 // In-memory store config cache (updated via sync or API)
 let cachedStoreConfig = {
   botEnabled: true,
@@ -99,6 +109,8 @@ let cachedStoreConfig = {
   openHours: '13:00 às 20:00'
 };
 
+let lastSyncedConfigStr = '';
+
 // Auto-sync configuration directly from Firestore settings/store_config
 async function syncStoreConfigFromDb() {
   try {
@@ -107,13 +119,16 @@ async function syncStoreConfigFromDb() {
     const snap = await getDoc(doc(db, 'settings', 'store_config'));
     if (snap.exists()) {
       const data = snap.data();
-      cachedStoreConfig = {
+      const rawProv = data.whatsappConnectionProvider || cachedStoreConfig.connectionProvider || 'evolution';
+      const effectiveProv = (!ENABLE_NATIVE && rawProv === 'native') ? 'evolution' : rawProv;
+
+      const newConfig = {
         ...cachedStoreConfig,
         botEnabled: data.whatsappBotEnabled !== false,
         botName: data.whatsappBotName || cachedStoreConfig.botName,
         storeName: data.name || cachedStoreConfig.storeName,
         phone: data.phone || cachedStoreConfig.phone,
-        connectionProvider: data.whatsappConnectionProvider || cachedStoreConfig.connectionProvider || 'evolution',
+        connectionProvider: effectiveProv,
         evolutionUrl: (data.whatsappEvolutionUrl || cachedStoreConfig.evolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/$/, ''),
         evolutionInstance: (data.whatsappEvolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim(),
         evolutionToken: (data.whatsappEvolutionToken || cachedStoreConfig.evolutionToken || 'Rmfa1100@').trim(),
@@ -125,7 +140,13 @@ async function syncStoreConfigFromDb() {
         supportMsg: data.whatsappBotSupportMessage || cachedStoreConfig.supportMsg,
         address: data.address || cachedStoreConfig.address,
       };
-      console.log(`✅ [WhatsApp Bot] Configurações carregadas do Firestore! Provedor: ${cachedStoreConfig.connectionProvider} | Evolution URL: ${cachedStoreConfig.evolutionUrl}`);
+
+      const configStr = JSON.stringify(newConfig);
+      if (configStr !== lastSyncedConfigStr) {
+        lastSyncedConfigStr = configStr;
+        cachedStoreConfig = newConfig;
+        console.log(`✅ [WhatsApp Bot] Configurações carregadas do Firestore! Provedor: ${cachedStoreConfig.connectionProvider} | Evolution URL: ${cachedStoreConfig.evolutionUrl}`);
+      }
     }
   } catch (err: any) {
     console.warn('⚠️ [WhatsApp Bot] Erro não impeditivo ao ler Firestore:', err?.message || err);
@@ -136,6 +157,27 @@ async function syncStoreConfigFromDb() {
 syncStoreConfigFromDb();
 // Periodic refresh every 60s
 setInterval(syncStoreConfigFromDb, 60000);
+
+// Evolution keepalive ping every 10 minutes to prevent Render free instance from sleeping
+async function pingEvolutionKeepAlive() {
+  try {
+    const url = (cachedStoreConfig.evolutionUrl || '').trim().replace(/\/+$/, '');
+    if (url) {
+      const clean = url.startsWith('http') ? url : `https://${url}`;
+      await fetch(clean, { signal: AbortSignal.timeout(8000) }).catch(() => {});
+    }
+  } catch (_) {}
+}
+setTimeout(pingEvolutionKeepAlive, 5000);
+setInterval(pingEvolutionKeepAlive, 10 * 60 * 1000);
+
+// Protect native routes if ENABLE_NATIVE is false
+app.use('/api/whatsapp/native/*', (req: Request, res: Response, next: Function) => {
+  if (!ENABLE_NATIVE) {
+    return res.status(410).json({ error: 'Conexão direta desativada. Use a Evolution API.' });
+  }
+  next();
+});
 
 // Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message ALWAYS triggers Welcome Message
 const greetedContacts = new Map<string, number>();

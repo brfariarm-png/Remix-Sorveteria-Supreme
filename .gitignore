@@ -8,3 +8,4 @@ coverage/
 !.env.example
 .wa_bot_logs.json
 *.wa_bot_logs.json
+.wa_auth/

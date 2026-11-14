@@ -34,18 +34,22 @@ export default async function handler(req: any, res: any) {
     });
     if (!r.ok) {
       const errTxt = await r.text();
-      let friendly = `Falha no envio (${r.status}): ${errTxt}`;
-      if (/connection closed|closed|400|bad request/i.test(errTxt)) {
-        friendly = 'WhatsApp está desconectado no Render (Connection Closed). Reconecte o aparelho na aba "Conexão & QR Code Real".';
+      let friendly = 'WhatsApp desconectado: abra o painel, aba WhatsApp Bot, e leia o QR code.';
+      if (r.status === 404 || r.status === 400 || /connection closed|closed|400|bad request|not found|disconnected|close/i.test(errTxt)) {
+        friendly = 'WhatsApp desconectado: abra o painel, aba WhatsApp Bot, e leia o QR code.';
+      } else {
+        friendly = `Falha no envio (${r.status}): ${errTxt.replace(token, '[REDACTED]')}`;
       }
       return res.status(502).json({ error: friendly });
     }
     return res.status(200).json({ success: true });
   } catch (err: any) {
     const msg = err?.message || '';
-    let friendly = msg || 'Falha ao enviar mensagem';
-    if (/connection closed|closed|400|bad request/i.test(msg)) {
-      friendly = 'WhatsApp está desconectado no Render (Connection Closed). Reconecte o aparelho na aba "Conexão & QR Code Real".';
+    let friendly = 'Servidor do WhatsApp acordando, tente de novo em 1 minuto.';
+    if (/abort|timeout|fetch failed|econrefused|enotfound/i.test(msg)) {
+      friendly = 'Servidor do WhatsApp acordando, tente de novo em 1 minuto.';
+    } else {
+      friendly = msg.replace(token, '[REDACTED]');
     }
     return res.status(500).json({ error: friendly });
   }

@@ -81,6 +81,27 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
   }, [zapiToken]);
   
+  const [nativeEnabled, setNativeEnabled] = useState(true);
+
+  useEffect(() => {
+    fetch(getApiUrl('/api/whatsapp/native/status'))
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.nativeEnabled === 'boolean') {
+          setNativeEnabled(data.nativeEnabled);
+          if (!data.nativeEnabled && (connectionProvider === 'native' || storeSettings.whatsappConnectionProvider === 'native')) {
+            setConnectionProvider('evolution');
+            handleSaveSettings({ whatsappConnectionProvider: 'evolution' });
+            setDispatchFeedback({
+              type: 'success',
+              message: 'Provedor ajustado para Evolution API (Conexão direta desativada no servidor).'
+            });
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+  
   const [wppconnectUrl, setWppconnectUrl] = useState(storeSettings.whatsappWppconnectUrl || '');
   const [wppconnectInstance, setWppconnectInstance] = useState(storeSettings.whatsappWppconnectInstance || '');
   const [wppconnectToken, setWppconnectToken] = useState(storeSettings.whatsappWppconnectToken || '');
@@ -1193,6 +1214,16 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     }
     const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const isOwnBotWebhook = targetUrl.includes('/api/webhook/whatsapp');
+    const cleanTestPhone = (testPhone || '').replace(/\D/g, '');
+    const cleanStorePhone = (whatsappPhone || storeSettings.phone || '').replace(/\D/g, '');
+    if (cleanTestPhone && cleanStorePhone && cleanTestPhone.slice(-8) === cleanStorePhone.slice(-8)) {
+      setDispatchFeedback({
+        type: 'error',
+        message: 'Use um número diferente do WhatsApp conectado para o teste.'
+      });
+      return;
+    }
+
     const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
     const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
 
@@ -2964,7 +2995,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       }}
                       className="w-full p-2.5 rounded-xl border border-slate-200 bg-white outline-none text-xs font-bold text-slate-750 focus:border-emerald-500 cursor-pointer"
                     >
-                      <option value="native">⚡ Conexão Direta no Sistema (QR Code Instantâneo — Sem Render)</option>
+                      {nativeEnabled && (
+                        <option value="native">⚡ Conexão Direta no Sistema (QR Code Instantâneo — Sem Render)</option>
+                      )}
                       <option value="simulator">Simulador Interativo de Testes (Mock)</option>
                       <option value="evolution">Evolution API (Servidor Externo / Render)</option>
                       <option value="zapi">Z-API Gateway (Profissional Pago)</option>
@@ -3339,7 +3372,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                               <RefreshCw className="w-3.5 h-3.5" />
                               Celular Desconectado? Forçar Novo QR Code
                             </button>
-                          ) : (
+                          ) : nativeEnabled ? (
                             <button
                               type="button"
                               onClick={handleSwitchToNativeAndConnect}
@@ -3350,7 +3383,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                                 ? '⚡ Conectar Agora com QR Code Direto (Sem Render)'
                                 : '⚡ Gerar QR Code Agora no Site (Render + Webhook 24h)'}
                             </button>
-                          )}
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -3446,14 +3479,16 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                               <p className="text-[10px] text-slate-700 font-medium leading-relaxed">
                                 💡 <strong>Dica rápida:</strong> Clique no botão abaixo para usar a <strong>Conexão Direta no Sistema</strong> e escanear o QR Code na hora sem esperar o Render, ou atualize <code>CONFIG_SESSION_PHONE_VERSION</code> = <code>2.3000.1043857760</code> no Render.
                               </p>
-                              <button
-                                type="button"
-                                onClick={handleSwitchToNativeAndConnect}
-                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1.5"
-                              >
-                                <Zap className="w-3.5 h-3.5" />
-                                <span>⚡ Gerar QR Code Direto Agora (Sem Render)</span>
-                              </button>
+                              {nativeEnabled && (
+                                <button
+                                  type="button"
+                                  onClick={handleSwitchToNativeAndConnect}
+                                  className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1.5"
+                                >
+                                  <Zap className="w-3.5 h-3.5" />
+                                  <span>⚡ Gerar QR Code Direto Agora (Sem Render)</span>
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <button
