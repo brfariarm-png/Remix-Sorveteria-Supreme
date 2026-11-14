@@ -153,6 +153,10 @@ export default function App() {
           pagseguroEmail: parsed.pagseguroEmail ?? '',
           pagseguroToken: parsed.pagseguroToken ?? '',
           pagseguroEnvironment: parsed.pagseguroEnvironment ?? 'sandbox',
+          pixGatewayEnabled: parsed.pixGatewayEnabled ?? false,
+          pixGatewayProvider: parsed.pixGatewayProvider ?? 'mercadopago',
+          pixGatewayToken: parsed.pixGatewayToken ?? '',
+          pixGatewayPublicKey: parsed.pixGatewayPublicKey ?? '',
           cupPrices: parsed.cupPrices ?? {
             '300ml': 18,
             '400ml': 21,
@@ -225,6 +229,10 @@ export default function App() {
       pagseguroEmail: '',
       pagseguroToken: '',
       pagseguroEnvironment: 'sandbox' as 'sandbox' | 'production',
+      pixGatewayEnabled: false,
+      pixGatewayProvider: 'mercadopago' as 'mercadopago' | 'pagarme' | 'custom',
+      pixGatewayToken: '',
+      pixGatewayPublicKey: '',
       cupPrices: {
         '300ml': 18,
         '400ml': 21,
@@ -523,6 +531,10 @@ export default function App() {
           pagseguroEmail: data.pagseguroEmail ?? prev.pagseguroEmail,
           pagseguroToken: data.pagseguroToken ?? prev.pagseguroToken,
           pagseguroEnvironment: data.pagseguroEnvironment ?? prev.pagseguroEnvironment,
+          pixGatewayEnabled: data.pixGatewayEnabled ?? prev.pixGatewayEnabled,
+          pixGatewayProvider: data.pixGatewayProvider ?? prev.pixGatewayProvider,
+          pixGatewayToken: data.pixGatewayToken ?? prev.pixGatewayToken,
+          pixGatewayPublicKey: data.pixGatewayPublicKey ?? prev.pixGatewayPublicKey,
           whatsappBotEnabled: data.whatsappBotEnabled ?? prev.whatsappBotEnabled ?? true,
           whatsappBotName: data.whatsappBotName ?? prev.whatsappBotName,
           whatsappWebhookUrl: data.whatsappWebhookUrl ?? prev.whatsappWebhookUrl,
@@ -1866,6 +1878,10 @@ export default function App() {
           pagseguroEmail: settings.pagseguroEmail || '',
           pagseguroToken: settings.pagseguroToken || '',
           pagseguroEnvironment: settings.pagseguroEnvironment || 'sandbox',
+          pixGatewayEnabled: settings.pixGatewayEnabled || false,
+          pixGatewayProvider: settings.pixGatewayProvider || 'mercadopago',
+          pixGatewayToken: settings.pixGatewayToken || '',
+          pixGatewayPublicKey: settings.pixGatewayPublicKey || '',
           whatsappBotEnabled: settings.whatsappBotEnabled !== false,
           whatsappBotName: settings.whatsappBotName || 'Supreme Bot Premium 💜',
           whatsappWebhookUrl: settings.whatsappWebhookUrl || '',
@@ -4921,6 +4937,88 @@ E-mail: ${storeSettings.email}`;
                               <option value="phone">Celular (com DDD) 📱</option>
                               <option value="random">Chave Aleatória (EVP) 🔑</option>
                             </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pix Gateway Automated Payment Integration Card (Mercado Pago / Pagar.me) */}
+                      <div className="bg-white p-5 rounded-3xl border border-slate-150 space-y-4">
+                        <h4 className="text-[11px] font-black text-indigo-650 uppercase tracking-widest flex items-center gap-1.5 border-b border-indigo-50 pb-2">
+                          ⚡ Configuração de Pagamento Pix Automático (Mercado Pago / Pagar.me / Gateway)
+                        </h4>
+                        
+                        <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 space-y-2">
+                          <p className="text-[10.5px] text-indigo-900 leading-relaxed font-bold">
+                            🎯 <strong>Geração Automática de QR Code Dinâmico:</strong> <br />
+                            Insira as credenciais da sua conta no gateway de pagamento (Mercado Pago ou Pagar.me) para que o sistema gere o QR Code Pix e o código Copia e Cola com o valor exato no momento do checkout, confirmando o pagamento automaticamente.
+                          </p>
+                          <div className="text-[9.5px] text-slate-500 font-semibold space-y-1">
+                            <p><strong>Instruções de Integração:</strong></p>
+                            <ol className="list-decimal pl-4 space-y-0.5">
+                              <li>Acesse o painel do seu provedor (ex: Mercado Pago Desenvolvedores &gt; Credenciais de Produção).</li>
+                              <li>Copie o <strong>Access Token</strong> (ou Bearer Token) e cole no campo abaixo.</li>
+                              <li>Ative a integração para substituir o Pix estático por QR Codes dinâmicos com confirmação de pagamento instantânea.</li>
+                            </ol>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Status da Integração Gateway Pix
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer pt-1">
+                              <input 
+                                type="checkbox" 
+                                checked={storeSettings.pixGatewayEnabled || false}
+                                onChange={(e) => setStoreSettings({ ...storeSettings, pixGatewayEnabled: e.target.checked })}
+                                className="w-5 h-5 text-indigo-650 rounded-md accent-indigo-600 cursor-pointer"
+                              />
+                              <span className="text-xs text-slate-850 font-bold">Ativar Pix Dinâmico Automático</span>
+                            </label>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Provedor / Gateway de Pagamento
+                            </label>
+                            <select
+                              value={storeSettings.pixGatewayProvider || 'mercadopago'}
+                              onChange={(e) => setStoreSettings({ ...storeSettings, pixGatewayProvider: e.target.value as any })}
+                              className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium text-slate-800"
+                            >
+                              <option value="mercadopago">Mercado Pago (Pix / Checkout Pro) 💳</option>
+                              <option value="pagarme">Pagar.me (V5 / Pix API) 🟢</option>
+                              <option value="custom">Outra API Customizada / Webhook 🔗</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Access Token / Chave de Integração
+                            </label>
+                            <input
+                              type="password"
+                              value={storeSettings.pixGatewayToken || ''}
+                              placeholder="APP_USR-xxxx-xxxx-xxxx-xxxxxxxx"
+                              onChange={(e) => setStoreSettings({ ...storeSettings, pixGatewayToken: e.target.value })}
+                              className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-mono"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Public Key / Chave Pública (Opcional)
+                            </label>
+                            <input
+                              type="text"
+                              value={storeSettings.pixGatewayPublicKey || ''}
+                              placeholder="TEST-xxxx-xxxx-xxxx"
+                              onChange={(e) => setStoreSettings({ ...storeSettings, pixGatewayPublicKey: e.target.value })}
+                              className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-mono text-slate-800"
+                            />
                           </div>
                         </div>
                       </div>

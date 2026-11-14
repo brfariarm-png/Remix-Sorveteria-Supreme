@@ -142,6 +142,12 @@ export interface StoreSettings {
   pagseguroToken?: string;
   pagseguroEnvironment?: 'sandbox' | 'production';
 
+  // Pix Gateway configuration (Mercado Pago / Pagar.me / Custom)
+  pixGatewayEnabled?: boolean;
+  pixGatewayProvider?: 'mercadopago' | 'pagarme' | 'custom';
+  pixGatewayToken?: string;
+  pixGatewayPublicKey?: string;
+
   // Customizable WhatsApp Bot properties
   whatsappBotEnabled?: boolean;
   whatsappBotName?: string;
