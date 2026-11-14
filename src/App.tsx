@@ -1659,7 +1659,11 @@ export default function App() {
           });
           if (!evoRes.ok) {
             const errTxt = await evoRes.text();
-            throw new Error(`Evolution API (${evoRes.status}): ${errTxt.slice(0, 150)}`);
+            let friendly = `Evolution API (${evoRes.status}): ${errTxt}`;
+            if (/connection closed|closed|400|bad request/i.test(errTxt)) {
+              friendly = 'WhatsApp está desconectado no Render (Connection Closed). Reconecte o aparelho na aba "Conexão & QR Code Real".';
+            }
+            throw new Error(friendly);
           }
         }
 

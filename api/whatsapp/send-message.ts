@@ -33,11 +33,20 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify({ number: phone, text: message })
     });
     if (!r.ok) {
-      const detail = (await r.text()).slice(0, 300);
-      return res.status(502).json({ error: `Falha no envio (${r.status}): ${detail}` });
+      const errTxt = await r.text();
+      let friendly = `Falha no envio (${r.status}): ${errTxt}`;
+      if (/connection closed|closed|400|bad request/i.test(errTxt)) {
+        friendly = 'WhatsApp está desconectado no Render (Connection Closed). Reconecte o aparelho na aba "Conexão & QR Code Real".';
+      }
+      return res.status(502).json({ error: friendly });
     }
     return res.status(200).json({ success: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err?.message || 'Falha ao enviar mensagem' });
+    const msg = err?.message || '';
+    let friendly = msg || 'Falha ao enviar mensagem';
+    if (/connection closed|closed|400|bad request/i.test(msg)) {
+      friendly = 'WhatsApp está desconectado no Render (Connection Closed). Reconecte o aparelho na aba "Conexão & QR Code Real".';
+    }
+    return res.status(500).json({ error: friendly });
   }
 }
