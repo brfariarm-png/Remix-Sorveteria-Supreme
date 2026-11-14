@@ -3850,7 +3850,6 @@ export default function App() {
           )}
         </div>
       )}
-
       </main>
 
       {/* 4. Footer info area */}
