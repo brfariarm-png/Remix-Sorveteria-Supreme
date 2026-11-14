@@ -13,6 +13,7 @@ import makeWASocket, {
   DisconnectReason,
   Browsers
 } from '@whiskeysockets/baileys';
+import { verifyAdmin, webhookSecretOk } from './api/_lib/adminAuth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -913,6 +914,9 @@ app.post('/api/whatsapp/native/disconnect', async (_req: Request, res: Response)
 
 // Unified Send Message route (uses Native Socket if connected, or Evolution API)
 app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req))) {
+    return res.status(401).json({ error: 'Não autorizado. Entre como administrador.' });
+  }
   try {
     const { phone, message } = req.body;
     if (!phone || !message) {
@@ -1225,7 +1229,8 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
     const appHost = isTempPreview
       ? (cachedStoreConfig.menuLink && !cachedStoreConfig.menuLink.includes('.run.app') ? cachedStoreConfig.menuLink : 'https://sorveteriasupreme.vercel.app')
       : rawHost;
-    const webhookDestination = `${appHost.replace(/\/$/, '')}/api/webhook/whatsapp`;
+    const secretParam = process.env.WEBHOOK_SECRET ? `?secret=${encodeURIComponent(process.env.WEBHOOK_SECRET)}` : '';
+    const webhookDestination = `${appHost.replace(/\/$/, '')}/api/webhook/whatsapp${secretParam}`;
 
     // Call Evolution API /webhook/set/{instance} with both flat and nested payloads
     const webhookPayload = {
@@ -1323,6 +1328,9 @@ app.get('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 
 // MAIN WEBHOOK RECEIVER: Evolution API calls this on incoming WhatsApp messages (supports webhookByEvents subpath too)
 app.post(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: Request, res: Response) => {
+  if (!webhookSecretOk(req)) {
+    return res.status(401).json({ error: 'Webhook não autorizado' });
+  }
   const isAdminTest = String(req.body?.data?.key?.id || '').startsWith('ADMIN_TEST_');
   const finishEarly = (ignored: string) => {
     if (isAdminTest && !res.headersSent) {

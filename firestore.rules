@@ -1,13 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Safety Net: Deny all by default
+
+    // Rede de segurança: nega tudo por padrão
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -19,49 +18,64 @@ service cloud.firestore {
       );
     }
 
-    // Menu and Options collections: Publicly readable, any authenticated user can write (supports seeding)
+    // Cardápio, sabores e adicionais: todos podem ler, SÓ o administrador altera
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /flavor_options/{optionId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /topping_options/{optionId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    // Store settings: Publicly readable, Admin writeable
+    // Configurações da loja: leitura pública (NÃO guarde senhas/tokens aqui), escrita só do administrador
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Cashier closeout reports: Admin only
+    // Fechamento de caixa: só administrador
     match /closeouts/{closeoutId} {
       allow read, write: if isAdmin();
     }
 
-    // Orders: Anyone can create (supports guests), Admin can read/write all, Users/guests can access their own
+    // Pedidos
     match /orders/{orderId} {
-      // Anyone can create an order (supports both logged-in and guest checkout)
-      allow create: if true;
-      
-      // Admin can read all orders. Any guest or customer can track a specific order if they know the orderId.
-      allow get: if true; 
-      
-      // Standard query listing: Only admins, or logged-in users querying their own orders
+      // Cliente/convidado só pode criar pedido novo, aguardando, com dados válidos
+      function isValidNewOrder() {
+        let d = request.resource.data;
+        return d.status == 'waiting'
+          && d.id == orderId
+          && d.total is number
+          && d.total >= 0
+          && d.total < 100000
+          && d.items is list
+          && d.items.size() > 0
+          && d.items.size() <= 100
+          && d.ownerId is string
+          && (!isSignedIn() || d.ownerId == request.auth.uid || d.ownerId == 'totem-kiosk-client' || d.ownerId.matches('guest-.*'));
+      }
+
+      allow create: if isAdmin() || isValidNewOrder();
+
+      // Acompanhar um pedido exige conhecer o ID (agora longo e aleatório)
+      allow get: if true;
+
+      // Listar: só administrador, ou o cliente logado vendo os próprios pedidos
       allow list: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
-      
-      // Update/delete permissions: Admins can update/delete any order. Owners can update their own orders.
-      allow update, delete: if isAdmin() || (
-        (isSignedIn() && resource.data.ownerId == request.auth.uid) ||
-        (resource.data.ownerId == request.resource.data.ownerId)
-      );
+
+      // Alterar ou apagar pedidos: somente administrador
+      allow update, delete: if isAdmin();
+    }
+    // Dados privados (chaves de pagamento PIX, etc.): SOMENTE o administrador lê e escreve
+    match /private_settings/{docId} {
+      allow read, write: if isAdmin();
     }
   }
 }

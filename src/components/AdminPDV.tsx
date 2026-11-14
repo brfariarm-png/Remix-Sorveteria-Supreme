@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { MenuItem, CartItem, Order, OrderStatus, PaymentType } from '../types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS } from '../data';
+import { secureRandomHex } from '../utils/secureId';
 import { cleanDescriptionForSingleSize } from '../utils/description';
 import LazyImage from './LazyImage';
 import CupCustomizer from './CupCustomizer';
@@ -390,7 +391,7 @@ export default function AdminPDV({
     }
 
     setIsSubmitting(true);
-    const orderId = `ord-pdv-${Date.now()}`;
+    const orderId = `ord-pdv-${secureRandomHex()}-${Date.now()}`;
     
     // Create detailed notes block if they added general notes
     const itemsWithGeneralNotes = pdvCart.map((item, idx) => {

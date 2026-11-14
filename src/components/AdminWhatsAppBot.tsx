@@ -37,7 +37,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       ? storeSettings.whatsappWebhookUrl
       : 'https://sorveteriasupreme.vercel.app/api/webhook/whatsapp'
   );
-  const [apiSecret, setApiSecret] = useState(storeSettings.whatsappApiKey || 'sk_supreme_prod_xyz789');
+  const [apiSecret, setApiSecret] = useState(storeSettings.whatsappApiKey || '');
   const [botName, setBotName] = useState(storeSettings.whatsappBotName || 'Supreme Bot Premium 💜');
   
   // Real Connection Provider states
@@ -47,10 +47,32 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   
   const [evolutionUrl, setEvolutionUrl] = useState(storeSettings.whatsappEvolutionUrl || 'https://supreme-bot-2bm0.onrender.com');
   const [evolutionInstance, setEvolutionInstance] = useState(storeSettings.whatsappEvolutionInstance || 'supreme-bot');
-  const [evolutionToken, setEvolutionToken] = useState(storeSettings.whatsappEvolutionToken || 'Rmfa1100@');
+  const [evolutionToken, setEvolutionToken] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('supreme_evo_token') || storeSettings.whatsappEvolutionToken || '';
+    }
+    return storeSettings.whatsappEvolutionToken || '';
+  });
   
   const [zapiInstanceId, setZapiInstanceId] = useState(storeSettings.whatsappZapiInstanceId || '');
-  const [zapiToken, setZapiToken] = useState(storeSettings.whatsappZapiToken || '');
+  const [zapiToken, setZapiToken] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('supreme_zapi_token') || storeSettings.whatsappZapiToken || '';
+    }
+    return storeSettings.whatsappZapiToken || '';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('supreme_evo_token', evolutionToken);
+    }
+  }, [evolutionToken]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('supreme_zapi_token', zapiToken);
+    }
+  }, [zapiToken]);
   
   const [wppconnectUrl, setWppconnectUrl] = useState(storeSettings.whatsappWppconnectUrl || '');
   const [wppconnectInstance, setWppconnectInstance] = useState(storeSettings.whatsappWppconnectInstance || '');

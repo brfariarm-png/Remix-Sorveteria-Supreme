@@ -64,6 +64,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
+import { secureRandomHex } from './utils/secureId';
 
 import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption } from './types';
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, STORE_CONFIG } from './data';
@@ -1626,42 +1627,24 @@ export default function App() {
     const provider = storeSettings.whatsappConnectionProvider || 'simulator';
     if (provider === 'native' || provider === 'evolution') {
       try {
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) {
+          throw new Error('Entre como administrador para disparar mensagens do WhatsApp.');
+        }
         const rawBackend = (storeSettings.whatsappBackendUrl || '').trim().replace(/\/+$/, '');
         const apiBase = rawBackend
           ? (rawBackend.startsWith('http://') || rawBackend.startsWith('https://') ? rawBackend : `https://${rawBackend}`)
           : '';
         const res = await fetch(`${apiBase}/api/whatsapp/send-message`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
           body: JSON.stringify({ phone: formattedPhone, message })
         });
-        const isJson = res.headers.get('content-type')?.includes('application/json');
-        if (isJson) {
-          const data = await res.json();
-          if (res.ok && data.success) {
-            if (showSuccessToast) {
-              setNotificationToast({
-                title: '📱 WhatsApp Enviado!',
-                message: `Mensagem automática enviada para ${order.details?.customerName || formattedPhone}.`
-              });
-            }
-            return;
-          }
-          throw new Error(data.error || 'WhatsApp não conectado');
-        }
-
-        // Running on Vercel (no Express /api/whatsapp/send-message): call Render Evolution API directly
-        const evoUrl = (storeSettings.whatsappEvolutionUrl || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/+$/, '');
-        const evoInst = (storeSettings.whatsappEvolutionInstance || 'supreme-bot').trim() || 'supreme-bot';
-        const evoTok = (storeSettings.whatsappEvolutionToken || 'Rmfa1100@').trim() || 'Rmfa1100@';
-        const fullEvoUrl = evoUrl.startsWith('http') ? evoUrl : `https://${evoUrl}`;
-
-        const evoRes = await fetch(`${fullEvoUrl}/message/sendText/${evoInst}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: evoTok },
-          body: JSON.stringify({ number: formattedPhone, text: message })
-        });
-        if (evoRes.ok) {
+        const data = await res.json();
+        if (res.ok && data.success) {
           if (showSuccessToast) {
             setNotificationToast({
               title: '📱 WhatsApp Enviado!',
@@ -1670,8 +1653,7 @@ export default function App() {
           }
           return;
         }
-        const evoErr = await evoRes.text();
-        throw new Error(`WhatsApp não conectado no Render (${evoRes.status}): ${evoErr}`);
+        throw new Error(data.error || 'WhatsApp não conectado');
       } catch (err: any) {
         console.warn('Falha ao enviar via API WhatsApp:', err?.message || err);
         if (showSuccessToast) {
@@ -2128,7 +2110,7 @@ export default function App() {
 
   // Handle Checkout finish & saving order
   const handlePlaceOrder = async (details: CheckoutDetails) => {
-    const orderId = `ord-${Date.now()}`;
+    const orderId = `ord-${secureRandomHex()}-${Date.now()}`;
     
     const cleanCep = details.address.cep ? details.address.cep.replace(/\D/g, '') : '';
     let selectedNeighborhoodObj = undefined;

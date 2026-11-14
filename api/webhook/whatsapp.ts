@@ -1,3 +1,5 @@
+import { webhookSecretOk } from '../_lib/adminAuth';
+
 const PROJECT_ID = 'gen-lang-client-0657249394';
 const DATABASE_ID = 'ai-studio-remixsorveterias-394250e3-c97c-4dba-be9b-43921c0168c3';
 const FIRESTORE_CONFIG_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/settings/store_config`;
@@ -243,6 +245,10 @@ export default async function handler(req: any, res: any) {
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
+  }
+
+  if (!webhookSecretOk(req)) {
+    return res.status(401).json({ error: 'Webhook não autorizado' });
   }
 
   if (req.method === 'GET') {

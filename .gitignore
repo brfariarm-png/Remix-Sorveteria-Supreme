@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+.wa_bot_logs.json
+*.wa_bot_logs.json

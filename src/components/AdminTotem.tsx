@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { secureRandomHex } from '../utils/secureId';
 import { 
   QrCode, 
   CreditCard, 
@@ -438,7 +439,7 @@ export default function AdminTotem({
 
   const submitOrderToDatabase = async () => {
     const ticketSeq = Math.floor(100 + Math.random() * 900); // Generate nice ticket ticket queue
-    const orderId = `ord-totem-${Date.now()}`;
+    const orderId = `ord-totem-${secureRandomHex()}-${Date.now()}`;
     const timestampStr = new Date().toISOString();
 
     const paymentLabel = paymentType === 'pix' ? 'Pix Terminal ⚡' 
