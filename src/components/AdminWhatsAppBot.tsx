@@ -159,6 +159,24 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const directEvolutionSetupWebhook = async (overrideInstance?: string) => {
     const { url, instance, token } = getEffectiveEvolutionCreds();
     const targetInst = (overrideInstance || instance || 'supreme-bot').trim();
+
+    try {
+      const stateRes = await fetch(`${url}/instance/connectionState/${targetInst}`, {
+        headers: { apikey: token },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (stateRes.ok) {
+        const stateJson = await stateRes.json();
+        const st = stateJson?.instance?.state || stateJson?.state;
+        if (st && st !== 'open' && st !== 'CONNECTED') {
+          await fetch(`${url}/instance/connect/${targetInst}`, {
+            headers: { apikey: token },
+            signal: AbortSignal.timeout(6000)
+          }).catch(() => {});
+        }
+      }
+    } catch (_) {}
+
     const webhookDestination = getPublicWebhookUrl();
     const webhookPayload = {
       enabled: true,
@@ -181,6 +199,9 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     });
     if (!res.ok) {
       const errTxt = await res.text();
+      if (/connection closed|closed/i.test(errTxt)) {
+        throw new Error(`WhatsApp está desconectado no Render (Connection Closed). Conecte o celular escaneando o QR Code na aba "Conexão & QR Code Real" antes de ativar o bot 24/7.`);
+      }
       throw new Error(`Erro ao ativar webhook no Render (${res.status}): ${errTxt}`);
     }
     return webhookDestination;

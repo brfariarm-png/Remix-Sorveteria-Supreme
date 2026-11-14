@@ -1265,8 +1265,12 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
 
     const respText = await setWebhookRes.text();
     if (!setWebhookRes.ok) {
+      let friendlyErr = respText;
+      if (/connection closed|closed/i.test(respText)) {
+        friendlyErr = 'WhatsApp está desconectado no Render (Connection Closed). Conecte o celular escaneando o QR Code na aba "Conexão & QR Code Real" antes de ativar o bot 24/7.';
+      }
       return res.status(setWebhookRes.status).json({
-        error: `Erro na Evolution API ao configurar webhook: ${respText}`
+        error: `Erro na Evolution API ao configurar webhook: ${friendlyErr}`
       });
     }
 
