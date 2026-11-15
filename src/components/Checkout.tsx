@@ -278,6 +278,7 @@ export default function Checkout({
 
   const [copiedPix, setCopiedPix] = useState(false);
   const [pixTimeLeft, setPixTimeLeft] = useState(600); // 10 minutes countdown
+  const [pixConfirmed, setPixConfirmed] = useState(false);
 
   // Card details
   const [cardNumber, setCardNumber] = useState('');
@@ -435,6 +436,9 @@ export default function Checkout({
       if (!cardName.trim()) errs.push('Nome impresso no cartão é obrigatório.');
       if (cardExpiry.length < 5) errs.push('Validade do cartão deve estar no formato MM/AA.');
       if (cardCvv.length < 3) errs.push('Código CVV inválido (mínimo 3 dígitos).');
+    }
+    if (paymentType === 'pix' && !pixConfirmed) {
+      errs.push('Você precisa confirmar que realizou o pagamento via Pix para liberar e finalizar o pedido.');
     }
     setErrors(errs);
     return errs.length === 0;
@@ -957,6 +961,24 @@ export default function Checkout({
                           </>
                         )}
                       </button>
+                    </div>
+
+                    {/* Pix Payment Confirmation Limiter */}
+                    <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl text-left space-y-2 mt-3">
+                      <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={pixConfirmed}
+                          onChange={(e) => setPixConfirmed(e.target.checked)}
+                          className="w-4.5 h-4.5 mt-0.5 text-emerald-600 rounded accent-emerald-600 cursor-pointer flex-shrink-0"
+                        />
+                        <span className="text-[11.5px] font-black text-emerald-950 leading-snug">
+                          Confirmo que já realizei a transferência / pagamento do Pix no valor de <span className="text-emerald-700 font-extrabold">R$ {finalTotal.toFixed(2)}</span> ⚡
+                        </span>
+                      </label>
+                      <p className="text-[10px] text-emerald-800 font-medium pl-7">
+                        O pedido só será liberado e enviado para a cozinha após a marcação desta confirmação de pagamento.
+                      </p>
                     </div>
 
                     <p className="text-[10px] text-slate-400 font-medium">

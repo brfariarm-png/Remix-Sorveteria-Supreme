@@ -2937,7 +2937,6 @@ export default function App() {
               }}
               onSimulateStatusProgress={isAdmin ? handleForceStatusAdvance : undefined}
               storeSettings={storeSettings}
-              onCancelOrder={(orderId) => handleUpdateOrderStatus(orderId, 'cancelled')}
             />
           </div>
         )}
