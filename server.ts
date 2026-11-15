@@ -580,19 +580,25 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
   }
 
   // If native session is currently reconnecting after server startup, wait up to 6s for it to open
-  if (config.connectionProvider === 'native' && nativeStatus === 'connecting' && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
+  if ((nativeStatus === 'connecting' || config.connectionProvider === 'native') && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
     const waitStart = Date.now();
     while (nativeStatus === 'connecting' && Date.now() - waitStart < 6000) {
       await new Promise((r) => setTimeout(r, 250));
     }
   }
 
-  // Priority 1: Native Baileys socket if paired, open, AND connectionProvider === 'native'
-  if (config.connectionProvider === 'native' && nativeStatus === 'connected' && nativeSocket) {
-    const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
-    const result = await nativeSocket.sendMessage(jid, { text: messageText });
-    trackSentMessageId(result?.key?.id, result?.message);
-    return { provider: 'native', jid, result };
+  // Priority 1: Native Baileys socket if connected or available with session
+  if ((nativeStatus === 'connected' || nativeSocket || fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) && nativeSocket) {
+    if (nativeStatus === 'connected' && nativeSocket) {
+      try {
+        const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
+        const result = await nativeSocket.sendMessage(jid, { text: messageText });
+        trackSentMessageId(result?.key?.id, result?.message);
+        return { provider: 'native', jid, result };
+      } catch (nativeErr: any) {
+        console.warn('[WhatsApp] Falha ao enviar via socket nativo, tentando Evolution:', nativeErr?.message || nativeErr);
+      }
+    }
   }
 
   let cleanUrl = (config.evolutionUrl || '').trim().replace(/\/$/, '');
@@ -1542,11 +1548,11 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor Supreme rodando na porta ${PORT}`);
     console.log(`🤖 Webhook WhatsApp pronto em: http://0.0.0.0:${PORT}/api/webhook/whatsapp`);
-    if (cachedStoreConfig.connectionProvider === 'native' && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
-      console.log('🔄 [WhatsApp Native] Provedor é native e sessão salva encontrada! Reconectando automaticamente...');
+    if (fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
+      console.log('🔄 [WhatsApp Native] Sessão salva encontrada em .wa_auth! Reconectando automaticamente...');
       startNativeWhatsApp().catch((e) => console.warn('[WhatsApp Native] Falha ao reconectar:', e?.message));
     } else {
-      console.log(`ℹ️ [WhatsApp Native] Provedor configurado: "${cachedStoreConfig.connectionProvider || 'evolution'}". Ignorando reconexão automática do Baileys.`);
+      console.log(`ℹ️ [WhatsApp Native] Nenhuma sessão salva. Provedor: "${cachedStoreConfig.connectionProvider || 'evolution'}".`);
     }
   });
 }
