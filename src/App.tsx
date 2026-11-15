@@ -633,8 +633,13 @@ export default function App() {
       setMenuItems(itemsList);
       localStorage.setItem('supreme_menu_items', JSON.stringify(itemsList));
     }, (error) => {
-      console.error('Failed to listen to menu_items from Firestore:', error);
-      handleFirestoreError(error, OperationType.LIST, 'menu_items');
+      console.warn('Firestore quota warning for menu_items, using local fallback:', error?.message);
+      const cached = localStorage.getItem('supreme_menu_items');
+      if (cached) {
+        try { setMenuItems(JSON.parse(cached)); } catch (_) { setMenuItems(MENU_ITEMS); }
+      } else {
+        setMenuItems(MENU_ITEMS);
+      }
     });
     return () => unsub();
   }, []);
@@ -649,7 +654,13 @@ export default function App() {
       setFlavorOptions(list);
       localStorage.setItem('supreme_flavor_options', JSON.stringify(list));
     }, (error) => {
-      console.error('Failed to listen to flavor_options:', error);
+      console.warn('Firestore quota warning for flavor_options, using local fallback:', error?.message);
+      const cached = localStorage.getItem('supreme_flavor_options');
+      if (cached) {
+        try { setFlavorOptions(JSON.parse(cached)); } catch (_) { setFlavorOptions(FLAVOR_OPTIONS); }
+      } else {
+        setFlavorOptions(FLAVOR_OPTIONS);
+      }
     });
     return () => unsub();
   }, []);
@@ -664,7 +675,13 @@ export default function App() {
       setToppingOptions(list);
       localStorage.setItem('supreme_topping_options', JSON.stringify(list));
     }, (error) => {
-      console.error('Failed to listen to topping_options:', error);
+      console.warn('Firestore quota warning for topping_options, using local fallback:', error?.message);
+      const cached = localStorage.getItem('supreme_topping_options');
+      if (cached) {
+        try { setToppingOptions(JSON.parse(cached)); } catch (_) { setToppingOptions(TOPPING_OPTIONS); }
+      } else {
+        setToppingOptions(TOPPING_OPTIONS);
+      }
     });
     return () => unsub();
   }, []);
@@ -737,8 +754,12 @@ export default function App() {
           });
           await batch.commit();
         }
-      } catch (e) {
-        console.error("Error seeding or syncing database:", e);
+      } catch (e: any) {
+        if (e?.message?.includes('Quota limit exceeded') || e?.code === 'resource-exhausted') {
+          console.warn("Firestore quota limit reached during seed/sync. Running on local memory mode.");
+        } else {
+          console.error("Error seeding or syncing database:", e);
+        }
       }
     };
 
