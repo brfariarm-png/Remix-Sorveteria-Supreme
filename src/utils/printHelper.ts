@@ -53,18 +53,42 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
     fontFamily = "'Playfair Display', Georgia, serif";
   }
 
-  const itemsHtml = order.items.map((item) => {
+  // Group identical items
+  const groupedItems: typeof order.items = [];
+  for (const item of order.items) {
+    const existing = groupedItems.find(x => 
+      x.menuItem.name === item.menuItem.name &&
+      x.notes === item.notes &&
+      JSON.stringify(x.customCupConfig) === JSON.stringify(item.customCupConfig) &&
+      x.isCustomCup === item.isCustomCup
+    );
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      groupedItems.push({ ...item });
+    }
+  }
+
+  const itemsHtml = groupedItems.map((item) => {
     let customDetails = '';
     if (item.isCustomCup && item.customCupConfig) {
       const config = item.customCupConfig;
       const baseText = config.base === 'acai' ? 'Açaí' : config.base === 'sorvete' ? 'Sorvete' : 'Casadinho (Açaí + Sorvete)';
       
       const flavorNames = (config.flavors || [])
-        .map(fid => FLAVOR_OPTIONS.find(f => f.id === fid)?.name || fid)
+        .map(fid => {
+          const f = FLAVOR_OPTIONS.find(x => x.id === fid)?.name || fid;
+          return f.replace(/\s*\(cortesia\)/gi, '').replace(/\s*\(grátis\)/gi, '').replace(/\s*\(gratis\)/gi, '').trim();
+        })
+        .filter(Boolean)
         .join(', ');
         
       const toppingNames = (config.toppings || [])
-        .map(tid => TOPPING_OPTIONS.find(t => t.id === tid)?.name || tid)
+        .map(tid => {
+          const t = TOPPING_OPTIONS.find(x => x.id === tid)?.name || tid;
+          return t.replace(/\s*\(cortesia\)/gi, '').replace(/\s*\(grátis\)/gi, '').replace(/\s*\(gratis\)/gi, '').trim();
+        })
+        .filter(Boolean)
         .join(', ');
 
       const sz = config.size;
@@ -96,7 +120,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
           </div>` : ''}
           ${toppingNames ? `
           <div style="margin-top: 2px;">
-            <strong>ADICIONAIS:</strong> ${toppingNames}
+            <strong>CORTESIAS / ADICIONAIS:</strong> ${toppingNames}
           </div>` : ''}
           ${spoonText ? `
           <div style="margin-top: 2px; font-size: ${fontSize - 2}px; color: #444;">
@@ -116,14 +140,16 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
       </div>
     ` : '';
 
-    const price = ((item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price)) * item.quantity);
+    const unitPrice = item.customCupPrice || (item.menuItem.sizeMode === 'single' ? (item.menuItem.singleSizePrice ?? item.menuItem.price) : item.menuItem.price);
+    const totalPrice = unitPrice * item.quantity;
 
     return `
       <div style="margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 6px;">
         <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: ${fontSize + 1}px;">
           <span>${item.quantity}x ${item.menuItem.name}</span>
-          <span>R$ ${price.toFixed(2)}</span>
+          <span>R$ ${totalPrice.toFixed(2)}</span>
         </div>
+        ${item.quantity > 1 ? `<div style="font-size: ${fontSize - 2}px; color: #555; text-align: right;">(R$ ${unitPrice.toFixed(2)} cada)</div>` : ''}
         ${customDetails}
         ${notesHtml}
       </div>
