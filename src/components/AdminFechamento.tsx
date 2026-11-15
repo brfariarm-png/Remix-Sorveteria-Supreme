@@ -148,6 +148,11 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
   // Statistics calculations
   const ordersCount = shiftOrders.length;
   const totalSales = shiftOrders.reduce((sum, o) => sum + o.total, 0);
+
+  // Total day / all completed orders summary
+  const allCompletedOrders = orders.filter((o) => o.status === 'completed');
+  const todayTotalSales = allCompletedOrders.reduce((sum, o) => sum + o.total, 0);
+  const todayOrdersCount = allCompletedOrders.length;
   
   // Breakdown by payment type
   const pixSales = shiftOrders
@@ -424,6 +429,18 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Current Active Shift Statistics */}
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-6">
+          {/* Total Day Summary Card */}
+          <div className="bg-gradient-to-r from-rose-500 to-pink-600 p-4 rounded-2xl text-white shadow-md flex items-center justify-between">
+            <div>
+              <span className="text-[9px] bg-white/20 font-black px-2 py-0.5 rounded uppercase tracking-wider">Faturamento Total do Dia</span>
+              <h4 className="text-xl font-black mt-1">R$ {todayTotalSales.toFixed(2)}</h4>
+              <p className="text-[10px] text-white/90 font-medium">Total acumulado ({todayOrdersCount} pedidos concluídos no total)</p>
+            </div>
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">
+              💰
+            </div>
+          </div>
+
           <div>
             <h3 className="font-extrabold text-base text-slate-800 uppercase tracking-wider font-sans flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-violet-600" />
