@@ -48,6 +48,7 @@ interface CloseoutData {
 }
 
 export default function AdminFechamento({ orders, storeSettings, onRefreshOrders, setOrders }: AdminFechamentoProps) {
+  const safeOrders = orders || [];
   const [pastCloseouts, setPastCloseouts] = useState<CloseoutData[]>(() => {
     let list: CloseoutData[] = [];
     const cached = localStorage.getItem('supreme_completed_closeouts');
@@ -65,7 +66,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
 
     if (!hasToday) {
       const todayIso = new Date().toISOString();
-      const completedToday = orders.filter(o => o.status === 'completed');
+      const completedToday = safeOrders.filter(o => o.status === 'completed');
       const totalToday = completedToday.reduce((sum, o) => sum + o.total, 0);
       const pixToday = completedToday.filter(o => o.details.paymentType === 'pix').reduce((sum, o) => sum + o.total, 0);
       const cardToday = completedToday.filter(o => o.details.paymentType === 'card' || o.details.paymentType === 'card_on_delivery').reduce((sum, o) => sum + o.total, 0);
@@ -196,17 +197,17 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
 
   // 1. Filter current active shift orders: completed and NOT archived
   // (We assume completed orders without archived property or archived !== true are available for current stats)
-  const shiftOrders = orders.filter((o) => o.status === 'completed' && !(o as any).archived);
+  const shiftOrders = safeOrders.filter((o) => o.status === 'completed' && !(o as any).archived);
 
   // All active/unarchived orders of any status to be cleared/zeroed on closeout
-  const allActiveOrders = orders.filter((o) => !(o as any).archived);
+  const allActiveOrders = safeOrders.filter((o) => !(o as any).archived);
 
   // Statistics calculations
   const ordersCount = shiftOrders.length;
   const totalSales = shiftOrders.reduce((sum, o) => sum + o.total, 0);
 
   // Total day / all completed orders summary
-  const allCompletedOrders = orders.filter((o) => o.status === 'completed');
+  const allCompletedOrders = safeOrders.filter((o) => o.status === 'completed');
   const todayTotalSales = allCompletedOrders.reduce((sum, o) => sum + o.total, 0);
   const todayOrdersCount = allCompletedOrders.length;
   
@@ -245,7 +246,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
 
   const getCloseoutOrders = (orderIds: string[]) => {
     if (!orderIds) return [];
-    return orders.filter(o => orderIds.includes(o.id));
+    return safeOrders.filter(o => orderIds.includes(o.id));
   };
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
@@ -305,7 +306,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
     const hasToday = list.some(item => new Date(item.closedAt).toDateString() === todayStr);
     if (!hasToday) {
       const todayIso = new Date().toISOString();
-      const completedToday = orders.filter(o => o.status === 'completed');
+      const completedToday = safeOrders.filter(o => o.status === 'completed');
       const totalToday = completedToday.reduce((sum, o) => sum + o.total, 0);
       const pixToday = completedToday.filter(o => o.details.paymentType === 'pix').reduce((sum, o) => sum + o.total, 0);
       const cardToday = completedToday.filter(o => o.details.paymentType === 'card' || o.details.paymentType === 'card_on_delivery').reduce((sum, o) => sum + o.total, 0);
@@ -507,7 +508,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
   const handleRestoreTodayCloseout = () => {
     try {
       const todayIso = new Date().toISOString();
-      const completedToday = orders.filter(o => o.status === 'completed');
+      const completedToday = safeOrders.filter(o => o.status === 'completed');
       const totalToday = completedToday.reduce((sum, o) => sum + o.total, 0);
       const pixToday = completedToday.filter(o => o.details.paymentType === 'pix').reduce((sum, o) => sum + o.total, 0);
       const cardToday = completedToday.filter(o => o.details.paymentType === 'card' || o.details.paymentType === 'card_on_delivery').reduce((sum, o) => sum + o.total, 0);
