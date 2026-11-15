@@ -579,8 +579,8 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
     throw new Error('Número de telefone inválido. Informe DDD + número (ex: 5519999999999).');
   }
 
-  // If native session files exist (.wa_auth/creds.json), use Native Baileys socket
-  const hasNativeSession = fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'));
+  // If native session files exist (.wa_auth/creds.json) or socket is active, use Native Baileys socket
+  const hasNativeSession = fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json')) || Boolean(nativeSocket) || nativeStatus === 'connected';
 
   if (hasNativeSession) {
     if (nativeStatus !== 'connected' || !nativeSocket) {
