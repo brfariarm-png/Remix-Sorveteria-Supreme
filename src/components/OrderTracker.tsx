@@ -16,9 +16,10 @@ interface OrderTrackerProps {
   onClose: () => void;
   onSimulateStatusProgress?: () => void; // Allow manual simulation for review
   storeSettings?: any;
+  onCancelOrder?: (orderId: string) => void;
 }
 
-export default function OrderTracker({ order, onClose, onSimulateStatusProgress, storeSettings }: OrderTrackerProps) {
+export default function OrderTracker({ order, onClose, onSimulateStatusProgress, storeSettings, onCancelOrder }: OrderTrackerProps) {
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order.status);
   const [rating, setRating] = useState(0);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -149,6 +150,32 @@ export default function OrderTracker({ order, onClose, onSimulateStatusProgress,
                 className="text-[10px] bg-white border border-amber-200 text-amber-800 font-extrabold px-3 py-1 rounded-xl shadow-xs hover:bg-amber-50 transition-colors flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3 text-amber-600 animate-spin" style={{ animationDuration: '4s' }} /> Avançar Status do Pedido
+              </button>
+            </div>
+          )}
+
+          {currentStatus === 'cancelled' && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-900 p-4 rounded-2xl text-center space-y-1">
+              <p className="font-black text-sm uppercase tracking-wider">⚠️ Pedido Cancelado</p>
+              <p className="text-xs font-medium">Este pedido foi cancelado e não será mais preparado ou entregue.</p>
+            </div>
+          )}
+
+          {(currentStatus === 'waiting' || currentStatus === 'preparing') && (
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Tem certeza de que deseja cancelar este pedido?')) {
+                    if (onCancelOrder) {
+                      onCancelOrder(order.id);
+                    }
+                    setCurrentStatus('cancelled');
+                  }
+                }}
+                className="text-[11px] text-rose-600 hover:text-rose-700 font-extrabold bg-rose-50 hover:bg-rose-100 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-rose-200 flex items-center gap-1 shadow-xs"
+              >
+                ❌ Cancelar Pedido
               </button>
             </div>
           )}

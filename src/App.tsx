@@ -2937,6 +2937,7 @@ export default function App() {
               }}
               onSimulateStatusProgress={isAdmin ? handleForceStatusAdvance : undefined}
               storeSettings={storeSettings}
+              onCancelOrder={(orderId) => handleUpdateOrderStatus(orderId, 'cancelled')}
             />
           </div>
         )}
@@ -3813,6 +3814,24 @@ export default function App() {
                               <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2.5 py-2 rounded-xl select-none inline-block w-full text-center">
                                 🎉 Concluído
                               </span>
+                            )}
+                            {o.status === 'cancelled' && (
+                              <span className="text-[10px] text-rose-800 font-bold bg-rose-50 px-2.5 py-2 rounded-xl select-none inline-block w-full text-center">
+                                ❌ Cancelado
+                              </span>
+                            )}
+                            {o.status !== 'cancelled' && o.status !== 'completed' && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Deseja realmente cancelar o pedido #${o.id.slice(-6).toUpperCase()}?`)) {
+                                    handleUpdateOrderStatus(o.id, 'cancelled');
+                                  }
+                                }}
+                                className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex-shrink-0"
+                                title="Cancelar Pedido"
+                              >
+                                ❌ Cancelar
+                              </button>
                             )}
                           </>
                         )}

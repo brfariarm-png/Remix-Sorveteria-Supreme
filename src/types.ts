@@ -64,7 +64,7 @@ export interface CartItem {
   needSpoon?: boolean;
 }
 
-export type OrderStatus = 'waiting' | 'preparing' | 'delivering' | 'completed';
+export type OrderStatus = 'waiting' | 'preparing' | 'delivering' | 'completed' | 'cancelled';
 
 export type PaymentType = 'pix' | 'card' | 'cash_on_delivery' | 'card_on_delivery';
 
