@@ -77,6 +77,8 @@ export default function AdminPDV({
   // Customer Details for Checkout
   const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('Não informado');
+  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>('cash_on_delivery'); // Standard Dinheiro no Balcão
   const [cashReceived, setCashReceived] = useState('');
   const [initialStatus, setInitialStatus] = useState<OrderStatus>('completed'); // Default is completed for instant cashier checkout
@@ -413,13 +415,13 @@ export default function AdminPDV({
       details: {
         customerName: customerName.trim() || 'Cliente de Balcão',
         customerPhone: customerPhone.trim() || 'Balcão / Interno',
-        deliveryType: 'pickup',
+        deliveryType: deliveryType,
         address: {
-          street: 'Balcão da Loja',
+          street: customerAddress.trim() || (deliveryType === 'delivery' ? 'Endereço não informado' : 'Balcão da Loja'),
           number: 'S/N',
-          neighborhood: 'Atendimento no Balcão',
+          neighborhood: deliveryType === 'delivery' ? 'Delivery' : 'Atendimento no Balcão',
           city: storeSettings?.city || 'Monte Mor',
-          reference: 'Frente de Caixa (PDV) 👑'
+          reference: deliveryType === 'delivery' ? 'Pedido Balcão com Entrega' : 'Frente de Caixa (PDV) 👑'
         },
         paymentType: paymentType
       }
@@ -431,6 +433,8 @@ export default function AdminPDV({
       setPdvCart([]);
       setCustomerName('Cliente Balcão');
       setCustomerPhone('Não informado');
+      setDeliveryType('pickup');
+      setCustomerAddress('');
       setCashReceived('');
       setGeneralNotes('');
     } catch (err) {
@@ -882,6 +886,31 @@ export default function AdminPDV({
                         onChange={(e) => setCustomerPhone(e.target.value)}
                       />
                     </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-0.5">
+                    <label className="text-[8.5px] font-black uppercase tracking-wider text-slate-400 block">Tipo de Pedido</label>
+                    <select
+                      value={deliveryType}
+                      onChange={(e) => setDeliveryType(e.target.value as 'pickup' | 'delivery')}
+                      className="w-full text-[10.5px] p-1.5 bg-white border border-slate-250 rounded-xl outline-none font-bold cursor-pointer"
+                    >
+                      <option value="pickup">🛍️ Retirada Balcão</option>
+                      <option value="delivery">🛵 Entrega (Delivery)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <label className="text-[8.5px] font-black uppercase tracking-wider text-slate-400 block">Endereço de Entrega</label>
+                    <input
+                      type="text"
+                      placeholder={deliveryType === 'delivery' ? 'Ex: Rua Principal, 123' : 'Opcional'}
+                      className="w-full text-[10.5px] px-2 py-1.5 bg-white border border-slate-250 rounded-xl outline-none focus:ring-1 focus:ring-rose-500 font-extrabold text-slate-700"
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                    />
                   </div>
                 </div>
 
