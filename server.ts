@@ -603,11 +603,26 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
         trackSentMessageId(result?.key?.id, result?.message);
         return { provider: 'native', jid, result };
       } catch (nativeErr: any) {
-        console.warn('[WhatsApp] Falha ao enviar via socket nativo:', nativeErr?.message || nativeErr);
-        throw new Error(`Falha no envio via WhatsApp Nativo: ${nativeErr?.message || nativeErr}`);
+        console.warn('[WhatsApp] Falha ao enviar via socket nativo, tentando auto-reconexão:', nativeErr?.message || nativeErr);
+        try {
+          await startNativeWhatsApp({ forceFresh: false });
+          const retryWait = Date.now();
+          while (nativeStatus !== 'connected' && Date.now() - retryWait < 8000) {
+            await new Promise((r) => setTimeout(r, 300));
+          }
+          if (nativeStatus === 'connected' && nativeSocket) {
+            const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
+            const result = await nativeSocket.sendMessage(jid, { text: messageText });
+            trackSentMessageId(result?.key?.id, result?.message);
+            return { provider: 'native', jid, result };
+          }
+        } catch (retryErr) {
+          console.warn('[WhatsApp] Tentativa de reenvio falhou:', retryErr);
+        }
+        throw new Error('WhatsApp desconectado (Erro 400). Vá na aba "Conexão & QR Code Real", clique em "Desconectar" e escaneie um novo QR Code.');
       }
     } else {
-      throw new Error('WhatsApp Nativo está conectando ou sem sinal. Aguarde alguns segundos ou reconecte na aba Conexão & QR Code.');
+      throw new Error('WhatsApp Nativo está offline ou reconectando. Aguarde alguns segundos e tente novamente.');
     }
   }
 
