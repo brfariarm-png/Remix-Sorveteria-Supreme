@@ -107,25 +107,10 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
         : '';
 
       customDetails = `
-        <div style="font-size: ${fontSize - 1}px; color: #000; margin-top: 4px; padding: 4px 6px; background: #f4f4f5; border-left: 3px solid #000; line-height: 1.35;">
-          <div style="font-weight: 900; font-size: ${fontSize}px; text-transform: uppercase;">
-            📦 TAMANHO: ${sizeLabel}
-          </div>
-          <div style="margin-top: 2px;">
-            <strong>BASE:</strong> ${baseText}
-          </div>
-          ${flavorNames ? `
-          <div style="margin-top: 2px;">
-            <strong>SABORES:</strong> ${flavorNames}
-          </div>` : ''}
-          ${toppingNames ? `
-          <div style="margin-top: 2px;">
-            <strong>CORTESIAS / ADICIONAIS:</strong> ${toppingNames}
-          </div>` : ''}
-          ${spoonText ? `
-          <div style="margin-top: 2px; font-size: ${fontSize - 2}px; color: #444;">
-            <strong>Colher:</strong> ${spoonText}
-          </div>` : ''}
+        <div style="font-size: ${fontSize - 1}px; color: #333; margin-top: 2px; line-height: 1.3;">
+          ${flavorNames ? `<div><strong>SABORES:</strong> ${flavorNames}</div>` : ''}
+          ${toppingNames ? `<div><strong>ADICIONAIS:</strong> ${toppingNames}</div>` : ''}
+          ${spoonText ? `<div><strong>Colher:</strong> ${spoonText}</div>` : ''}
         </div>
       `;
     }
