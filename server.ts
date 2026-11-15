@@ -579,16 +579,23 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
     throw new Error('Número de telefone inválido. Informe DDD + número (ex: 5519999999999).');
   }
 
-  // If native session is currently reconnecting after server startup, wait up to 6s for it to open
-  if ((nativeStatus === 'connecting' || config.connectionProvider === 'native') && fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) {
-    const waitStart = Date.now();
-    while (nativeStatus === 'connecting' && Date.now() - waitStart < 6000) {
-      await new Promise((r) => setTimeout(r, 250));
-    }
-  }
+  // If native session files exist (.wa_auth/creds.json), use Native Baileys socket
+  const hasNativeSession = fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'));
 
-  // Priority 1: Native Baileys socket if connected or available with session
-  if ((nativeStatus === 'connected' || nativeSocket || fs.existsSync(path.join(WA_AUTH_DIR, 'creds.json'))) && nativeSocket) {
+  if (hasNativeSession) {
+    if (nativeStatus !== 'connected' || !nativeSocket) {
+      console.log('🔄 [WhatsApp Native] Sessão salva encontrada, mas socket inativo. Iniciando conexão nativa para envio...');
+      try {
+        await startNativeWhatsApp();
+      } catch (e) {
+        console.warn('[WhatsApp Native] Falha ao iniciar socket sob demanda:', e);
+      }
+      const startWait = Date.now();
+      while (nativeStatus !== 'connected' && Date.now() - startWait < 10000) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
+
     if (nativeStatus === 'connected' && nativeSocket) {
       try {
         const jid = await resolveWhatsAppJid(nativeSocket, cleanNumber);
@@ -596,8 +603,11 @@ async function sendWhatsAppMessage(targetNumber: string, messageText: string, co
         trackSentMessageId(result?.key?.id, result?.message);
         return { provider: 'native', jid, result };
       } catch (nativeErr: any) {
-        console.warn('[WhatsApp] Falha ao enviar via socket nativo, tentando Evolution:', nativeErr?.message || nativeErr);
+        console.warn('[WhatsApp] Falha ao enviar via socket nativo:', nativeErr?.message || nativeErr);
+        throw new Error(`Falha no envio via WhatsApp Nativo: ${nativeErr?.message || nativeErr}`);
       }
+    } else {
+      throw new Error('WhatsApp Nativo está conectando ou sem sinal. Aguarde alguns segundos ou reconecte na aba Conexão & QR Code.');
     }
   }
 
