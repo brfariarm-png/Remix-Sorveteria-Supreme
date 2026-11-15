@@ -1255,22 +1255,24 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
             timestamp: new Date().toISOString()
           };
 
-      const res = await fetch(targetUrl, {
+      const proxyRes = await fetch(getApiUrl('/api/whatsapp/test-webhook'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(samplePayload)
+        headers: await adminAuthHeaders(),
+        body: JSON.stringify({
+          url: targetUrl,
+          payload: samplePayload
+        })
       });
-      const isJson = res.headers.get('content-type')?.includes('application/json');
-      const data = isJson ? await res.json().catch(() => null) : null;
-
-      if (!res.ok || (data && data.replied === false && data.status && data.status >= 400)) {
-        const errDetail = data?.result || data?.error || data?.ignored || `HTTP ${data?.status || res.status}`;
-        throw new Error(errDetail);
+      const proxyJson = await proxyRes.json();
+      if (!proxyRes.ok || !proxyJson.success) {
+        throw new Error(proxyJson.error || proxyJson.data?.error || `HTTP ${proxyJson.status || proxyRes.status}`);
       }
+      const data = proxyJson.data;
+      const httpStatus = proxyJson.status || 200;
 
       const okMsg = data?.replied
-        ? `✓ Webhook respondeu e enviou mensagem para +${data.to || formattedNum} (HTTP ${res.status})`
-        : `✓ Webhook disparado com sucesso! Resposta HTTP: ${res.status}`;
+        ? `✓ Webhook respondeu e enviou mensagem para +${data.to || formattedNum} (HTTP ${httpStatus})`
+        : `✓ Webhook disparado com sucesso! Resposta HTTP: ${httpStatus}`;
 
       setTestLogs(prev => [
         {

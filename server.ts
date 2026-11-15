@@ -949,6 +949,36 @@ app.post('/api/whatsapp/native/disconnect', async (_req: Request, res: Response)
   res.json({ success: true });
 });
 
+// Test Webhook proxy (bypasses browser CORS for external webhook testing)
+app.post('/api/whatsapp/test-webhook', async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req))) {
+    return res.status(401).json({ error: 'Não autorizado. Entre como administrador.' });
+  }
+  try {
+    const { url, payload } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'URL do webhook é obrigatória.' });
+    }
+    const webhookRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+    const text = await webhookRes.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (_) { data = { rawText: text }; }
+
+    res.json({
+      success: webhookRes.ok,
+      status: webhookRes.status,
+      statusText: webhookRes.statusText,
+      data
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Falha de rede ao disparar webhook: ${err.message || err}` });
+  }
+});
+
 // Unified Send Message route (uses Native Socket if connected, or Evolution API)
 app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
   if (!(await verifyAdmin(req))) {
