@@ -529,7 +529,12 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
       const updatedList = [todayCloseout, ...pastCloseouts.filter(item => new Date(item.closedAt).toDateString() !== new Date().toDateString())];
       setPastCloseouts(updatedList);
       localStorage.setItem('supreme_completed_closeouts', JSON.stringify(updatedList));
-      setSuccessMsg('✅ Caixa de hoje e histórico restaurados com sucesso!');
+
+      // Auto-expand folder for today
+      const folderKey = getDirGroupName(todayIso);
+      setExpandedFolders(prev => ({ ...prev, [folderKey]: true }));
+
+      setSuccessMsg('✅ Caixa de hoje e histórico restaurados e expandidos com sucesso!');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
       console.error(err);
