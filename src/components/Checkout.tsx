@@ -367,7 +367,7 @@ export default function Checkout({
   }, [deliveryFees, neighborhood, cep]);
 
   const deliveryFee = deliveryType === 'delivery'
-    ? (selectedNeighborhoodObj ? selectedNeighborhoodObj.fee : 5.00)
+    ? (totalAmount >= 30.00 ? 0.00 : (selectedNeighborhoodObj ? selectedNeighborhoodObj.fee : 5.00))
     : 0.00;
   const finalTotal = totalAmount + deliveryFee;
 
@@ -1226,9 +1226,26 @@ export default function Checkout({
             <span>R$ {totalAmount.toFixed(2)}</span>
           </div>
           {deliveryType === 'delivery' && (
-            <div className="flex justify-between items-center text-xs text-slate-600 font-semibold">
-              <span>Taxa de Entrega:</span>
-              <span className="text-rose-500">+ R$ {deliveryFee.toFixed(2)}</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center text-xs text-slate-600 font-semibold">
+                <span>Taxa de Entrega:</span>
+                <span>
+                  {totalAmount >= 30.00 ? (
+                    <span className="text-emerald-600 font-extrabold">Grátis 🎁 (&gt; R$ 30)</span>
+                  ) : (
+                    <span className="text-rose-500">+ R$ {deliveryFee.toFixed(2)}</span>
+                  )}
+                </span>
+              </div>
+              {totalAmount < 30.00 ? (
+                <p className="text-[9.5px] text-amber-700 font-bold bg-amber-50 px-2 py-1 rounded-lg text-center border border-amber-200">
+                  💡 Adicione mais R$ {(30 - totalAmount).toFixed(2)} para ganhar <span className="underline">Frete Grátis</span>!
+                </p>
+              ) : (
+                <p className="text-[9.5px] text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded-lg text-center border border-emerald-200">
+                  🎉 Parabéns! Você ganhou <span className="underline">Frete Grátis</span> neste pedido!
+                </p>
+              )}
             </div>
           )}
           <div className="flex justify-between items-center text-sm font-black text-slate-800 border-t border-dashed border-slate-200 pt-1.5">
