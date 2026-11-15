@@ -99,6 +99,14 @@ export interface Order {
   archived?: boolean;
 }
 
+export interface DaySchedule {
+  dayOfWeek: 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sabado' | 'domingo';
+  dayName: string;
+  isOpen: boolean;
+  openTime: string;
+  closeTime: string;
+}
+
 export interface StoreSettings {
   name: string;
   shortName: string;
@@ -108,6 +116,7 @@ export interface StoreSettings {
   email: string;
   openTime: string;
   closeTime: string;
+  weeklyHours?: DaySchedule[];
   statusOverride: 'auto' | 'open' | 'closed';
   printerPaperWidth: '58mm' | '80mm';
   printerNumCopies: number;

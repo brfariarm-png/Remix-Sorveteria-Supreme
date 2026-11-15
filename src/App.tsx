@@ -66,7 +66,17 @@ import {
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { secureRandomHex } from './utils/secureId';
 
-import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption } from './types';
+import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption, DaySchedule } from './types';
+
+const DEFAULT_WEEKLY_HOURS: DaySchedule[] = [
+  { dayOfWeek: 'segunda', dayName: 'Segunda-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
+  { dayOfWeek: 'terca', dayName: 'Terça-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
+  { dayOfWeek: 'quarta', dayName: 'Quarta-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
+  { dayOfWeek: 'quinta', dayName: 'Quinta-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
+  { dayOfWeek: 'sexta', dayName: 'Sexta-feira', isOpen: true, openTime: '11:00', closeTime: '00:00' },
+  { dayOfWeek: 'sabado', dayName: 'Sábado', isOpen: true, openTime: '11:00', closeTime: '00:00' },
+  { dayOfWeek: 'domingo', dayName: 'Domingo', isOpen: true, openTime: '11:00', closeTime: '22:30' },
+];
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, STORE_CONFIG } from './data';
 import { cleanDescriptionForSingleSize } from './utils/description';
 import CupCustomizer from './components/CupCustomizer';
@@ -200,7 +210,8 @@ export default function App() {
             { neighborhood: 'Jardim São Clemente', fee: 7.00 },
             { neighborhood: 'Jardim Moreira', fee: 6.50 },
             { neighborhood: 'Jardim Colina', fee: 6.00 }
-          ]
+          ],
+          weeklyHours: parsed.weeklyHours ?? DEFAULT_WEEKLY_HOURS
         };
       } catch (e) {
         console.error('Error parsing store settings', e);
@@ -210,6 +221,7 @@ export default function App() {
       ...STORE_CONFIG,
       openTime: "11:00",
       closeTime: "23:00",
+      weeklyHours: DEFAULT_WEEKLY_HOURS,
       statusOverride: "auto" as "auto" | "open" | "closed",
       printerPaperWidth: "80mm" as "58mm" | "80mm",
       printerNumCopies: 1,
@@ -773,10 +785,29 @@ export default function App() {
     localStorage.setItem('supreme_store_settings', JSON.stringify(storeSettings));
   }, [storeSettings]);
 
-  // Determine if store is open based on hours or manual override
+  // Determine if store is open based on weekly schedule or manual override
   const isOpen = useMemo(() => {
     if (storeSettings.statusOverride === 'open') return true;
     if (storeSettings.statusOverride === 'closed') return false;
+
+    // Check weekly schedule first if configured
+    if (storeSettings.weeklyHours && storeSettings.weeklyHours.length > 0) {
+      const dayKeys = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'] as const;
+      const dayOfWeekKey = dayKeys[new Date().getDay()];
+      const todaySchedule = storeSettings.weeklyHours.find(h => h.dayOfWeek === dayOfWeekKey);
+      if (todaySchedule) {
+        if (!todaySchedule.isOpen) return false;
+        const [openH, openM] = (todaySchedule.openTime || "11:00").split(':').map(Number);
+        const [closeH, closeM] = (todaySchedule.closeTime || "23:00").split(':').map(Number);
+        const openTotalMinutes = openH * 60 + openM;
+        const closeTotalMinutes = closeH * 60 + closeM;
+        if (closeTotalMinutes > openTotalMinutes) {
+          return currentMinutes >= openTotalMinutes && currentMinutes < closeTotalMinutes;
+        } else {
+          return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
+        }
+      }
+    }
 
     // Automatic calculation using dynamic ticking currentMinutes
     const [openHour, openMin] = (storeSettings.openTime || "11:00").split(':').map(Number);
@@ -792,7 +823,7 @@ export default function App() {
       // Overnight range e.g. 18:00 to 02:00
       return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
     }
-  }, [storeSettings.statusOverride, storeSettings.openTime, storeSettings.closeTime, currentMinutes]);
+  }, [storeSettings.statusOverride, storeSettings.openTime, storeSettings.closeTime, storeSettings.weeklyHours, currentMinutes]);
 
   const [activeTab, setActiveTab] = useState<'menu' | 'tracker'>('menu');
   const [isPrinterConfigOpen, setIsPrinterConfigOpen] = useState(false);
@@ -5233,7 +5264,7 @@ E-mail: ${storeSettings.email}`;
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Abertura (HH:MM)</label>
+                          <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Abertura Padrão</label>
                           <input
                             type="text"
                             value={storeSettings.openTime}
@@ -5243,7 +5274,7 @@ E-mail: ${storeSettings.email}`;
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Fechamento (HH:MM)</label>
+                          <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Fechamento Padrão</label>
                           <input
                             type="text"
                             value={storeSettings.closeTime}
@@ -5251,6 +5282,70 @@ E-mail: ${storeSettings.email}`;
                             onChange={(e) => setStoreSettings({ ...storeSettings, closeTime: e.target.value })}
                             className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white font-medium text-slate-800"
                           />
+                        </div>
+                      </div>
+
+                      {/* Weekly Schedule Daily Adjustments */}
+                      <div className="space-y-2 pt-3 border-t border-slate-100">
+                        <h5 className="text-[10px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          📅 Horário Semanal (Ajustes por Dia)
+                        </h5>
+                        <p className="text-[9.5px] text-slate-400 font-medium">Configure horários diferentes para cada dia da semana ou marque se a loja fecha no dia.</p>
+                        
+                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                          {((storeSettings.weeklyHours) || DEFAULT_WEEKLY_HOURS).map((daySchedule, idx) => {
+                            return (
+                              <div key={daySchedule.dayOfWeek} className="bg-slate-50 border border-slate-100 p-2.5 rounded-2xl flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-[110px]">
+                                  <input
+                                    type="checkbox"
+                                    checked={daySchedule.isOpen}
+                                    onChange={(e) => {
+                                      const updated = [...(storeSettings.weeklyHours || DEFAULT_WEEKLY_HOURS)];
+                                      updated[idx] = { ...updated[idx], isOpen: e.target.checked };
+                                      setStoreSettings({ ...storeSettings, weeklyHours: updated });
+                                    }}
+                                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                                  />
+                                  <span className={`text-xs font-bold ${daySchedule.isOpen ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
+                                    {daySchedule.dayName}
+                                  </span>
+                                </div>
+
+                                {daySchedule.isOpen ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={daySchedule.openTime}
+                                      onChange={(e) => {
+                                        const updated = [...(storeSettings.weeklyHours || DEFAULT_WEEKLY_HOURS)];
+                                        updated[idx] = { ...updated[idx], openTime: e.target.value };
+                                        setStoreSettings({ ...storeSettings, weeklyHours: updated });
+                                      }}
+                                      className="w-16 text-center text-xs p-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800"
+                                      placeholder="11:00"
+                                    />
+                                    <span className="text-[10px] text-slate-400">às</span>
+                                    <input
+                                      type="text"
+                                      value={daySchedule.closeTime}
+                                      onChange={(e) => {
+                                        const updated = [...(storeSettings.weeklyHours || DEFAULT_WEEKLY_HOURS)];
+                                        updated[idx] = { ...updated[idx], closeTime: e.target.value };
+                                        setStoreSettings({ ...storeSettings, weeklyHours: updated });
+                                      }}
+                                      className="w-16 text-center text-xs p-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800"
+                                      placeholder="23:00"
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 bg-rose-50 px-2 py-1 rounded-lg">
+                                    Fechado neste dia
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
