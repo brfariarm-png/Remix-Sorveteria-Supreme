@@ -49,6 +49,11 @@ interface CloseoutData {
 
 export default function AdminFechamento({ orders, storeSettings, onRefreshOrders, setOrders }: AdminFechamentoProps) {
   const safeOrders = orders || [];
+  const [hideValues, setHideValues] = useState<boolean>(true);
+  const formatValue = (val: number) => {
+    if (hideValues) return 'R$ •••••';
+    return `R$ ${val.toFixed(2)}`;
+  };
   const [pastCloseouts, setPastCloseouts] = useState<CloseoutData[]>(() => {
     let list: CloseoutData[] = [];
     const cached = localStorage.getItem('supreme_completed_closeouts');
@@ -552,7 +557,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
   return (
     <div className="space-y-6 text-left">
       {/* Header and description */}
-      <div className="bg-gradient-to-r from-violet-650 to-indigo-600 p-6 rounded-[28px] text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-violet-650 to-indigo-600 p-6 rounded-[28px] text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="absolute right-[-20px] top-[-20px] w-40 h-40 bg-white/5 rounded-full blur-2xl" />
         <div className="relative z-10 space-y-1">
           <span className="text-[10px] bg-white/20 font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -561,6 +566,14 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
           <h2 className="text-xl sm:text-2xl font-black tracking-tight font-sans">Fechamento de Caixa & Estatísticas</h2>
           <p className="text-xs text-white/85 font-medium">Calcule o faturamento do turno por Pix, Cartão e Dinheiro, salve no histórico e feche o expediente.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setHideValues(!hideValues)}
+          className="relative z-10 self-start sm:self-auto px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center gap-2 shadow-sm whitespace-nowrap"
+          title={hideValues ? 'Mostrar valores financeiros' : 'Ocultar valores financeiros'}
+        >
+          {hideValues ? '🙈 Valores Ocultos' : '👁️ Valores Visíveis'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -570,7 +583,7 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
           <div className="bg-gradient-to-r from-rose-500 to-pink-600 p-4 rounded-2xl text-white shadow-md flex items-center justify-between">
             <div>
               <span className="text-[9px] bg-white/20 font-black px-2 py-0.5 rounded uppercase tracking-wider">Faturamento Total do Dia</span>
-              <h4 className="text-xl font-black mt-1">R$ {todayTotalSales.toFixed(2)}</h4>
+              <h4 className="text-xl font-black mt-1">{formatValue(todayTotalSales)}</h4>
               <p className="text-[10px] text-white/90 font-medium">Total acumulado ({todayOrdersCount} pedidos concluídos no total)</p>
             </div>
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">
@@ -590,25 +603,25 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-violet-50/50 p-4 rounded-2xl border border-violet-100/50">
               <span className="text-[10px] font-black text-violet-700 uppercase tracking-widest block">Vendas Concluídas</span>
-              <span className="text-2xl font-black text-violet-900 block mt-1">R$ {totalSales.toFixed(2)}</span>
+              <span className="text-2xl font-black text-violet-900 block mt-1">{formatValue(totalSales)}</span>
               <p className="text-[9px] text-violet-600 font-bold mt-1">{ordersCount} pedidos faturados</p>
             </div>
 
             <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
               <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block">Recebimento Pix</span>
-              <span className="text-2xl font-black text-emerald-900 block mt-1">R$ {pixSales.toFixed(2)}</span>
+              <span className="text-2xl font-black text-emerald-900 block mt-1">{formatValue(pixSales)}</span>
               <p className="text-[9px] text-emerald-600 font-bold mt-1">Método conveniente online</p>
             </div>
 
             <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
               <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest block">Apenas Cartão</span>
-              <span className="text-2xl font-black text-blue-900 block mt-1">R$ {cardSales.toFixed(2)}</span>
+              <span className="text-2xl font-black text-blue-900 block mt-1">{formatValue(cardSales)}</span>
               <p className="text-[9px] text-blue-600 font-bold mt-1">Maquininha ou App</p>
             </div>
 
             <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100/50">
               <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest block">Dinheiro / Espécie</span>
-              <span className="text-2xl font-black text-amber-900 block mt-1">R$ {cashSales.toFixed(2)}</span>
+              <span className="text-2xl font-black text-amber-900 block mt-1">{formatValue(cashSales)}</span>
               <p className="text-[9px] text-amber-600 font-bold mt-1">Dinheiro em mãos</p>
             </div>
           </div>
