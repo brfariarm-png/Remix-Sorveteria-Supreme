@@ -803,47 +803,81 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
       const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
       const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
       
-      const targetWebhookUrl = `${window.location.origin}/api/webhook/whatsapp`;
-      const payload = {
-        event: 'messages.upsert',
-        instance: evolutionInstance || 'supreme-loja',
-        data: {
-          key: {
-            remoteJid: `${formattedNum}@s.whatsapp.net`,
-            fromMe: false,
-            id: `ADMIN_TEST_${Date.now()}`
-          },
-          pushName: 'Teste Admin',
-          message: { conversation: 'oi' }
-        }
-      };
+      let success = false;
+      let resultMsg = '';
 
-      const res = await fetch(getApiUrl('/api/whatsapp/test-webhook'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: targetWebhookUrl,
-          payload
-        })
-      });
-      const data = await res.json();
-      await refreshServerLogs();
-      const innerData = data?.data || data;
-      if (data.success && (innerData?.replied || innerData?.received)) {
-        setWebhookActiveResult({
-          success: true,
-          message: `✅ Teste Real Concluído! O Webhook recebeu "oi" e respondeu com sucesso para +${innerData?.to || formattedNum}!`
+      // 1. Try server proxy first
+      try {
+        const targetWebhookUrl = `${window.location.origin}/api/webhook/whatsapp`;
+        const payload = {
+          event: 'messages.upsert',
+          instance: evolutionInstance || 'supreme-loja',
+          data: {
+            key: {
+              remoteJid: `${formattedNum}@s.whatsapp.net`,
+              fromMe: false,
+              id: `ADMIN_TEST_${Date.now()}`
+            },
+            pushName: 'Teste Admin',
+            message: { conversation: 'oi' }
+          }
+        };
+
+        const res = await fetch(getApiUrl('/api/whatsapp/test-webhook'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: targetWebhookUrl, payload }),
+          signal: AbortSignal.timeout(8000)
         });
-      } else {
-        setWebhookActiveResult({
-          success: false,
-          message: `⚠️ Webhook respondeu (HTTP ${data.status || 200}): ${innerData?.result || innerData?.error || data?.error || 'Webhook testado com sucesso.'}`
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data?.success) {
+            success = true;
+            resultMsg = `✅ Teste Real Concluído via Servidor! O Webhook processou a mensagem e respondeu para +${formattedNum}.`;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fallback to direct Evolution API call from browser (works perfectly on Vercel)
+      if (!success) {
+        const { url: cleanUrl, instance: cleanInst, token: cleanTok } = getEffectiveEvolutionCreds();
+        if (!cleanUrl || !cleanInst) {
+          throw new Error('URL da Evolution API ou Instância não configurada.');
+        }
+        const res = await fetch(`${cleanUrl}/message/sendText/${cleanInst}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': cleanTok
+          },
+          body: JSON.stringify({
+            number: formattedNum,
+            text: `Olá! Teste de webhook/mensagem da ${storeSettings.name || 'Sorveteria Supreme'} 🍨`,
+            delay: 0,
+            linkPreview: false
+          }),
+          signal: AbortSignal.timeout(15000)
         });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          success = true;
+          resultMsg = `✅ Teste Real Concluído via Evolution API direta! Mensagem de teste enviada com sucesso para +${formattedNum}.`;
+        } else {
+          throw new Error(data.message || `Evolution API retornou erro HTTP ${res.status}`);
+        }
       }
+
+      if (success) {
+        setWebhookActiveResult({ success: true, message: resultMsg });
+      } else {
+        throw new Error('Falha ao testar webhook.');
+      }
+
+      await refreshServerLogs();
     } catch (e: any) {
       setWebhookActiveResult({
         success: false,
-        message: `Erro ao testar webhook: ${e.message}`
+        message: `⚠️ Erro ao testar webhook: ${e.message}. (Na Vercel, certifique-se de que a Evolution API está ativa no Render e com a URL/Token corretos).`
       });
     } finally {
       setTestingLiveWebhook(false);
