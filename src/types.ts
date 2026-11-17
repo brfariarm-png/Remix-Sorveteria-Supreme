@@ -163,6 +163,7 @@ export interface StoreSettings {
   whatsappWebhookUrl?: string;
   whatsappApiKey?: string;
   whatsappBotWelcomeMessage?: string;
+  whatsappBotClosedMessage?: string;
   whatsappBotMenuMessage?: string;
   whatsappBotSupportMessage?: string;
   whatsappBotMenuLink?: string;

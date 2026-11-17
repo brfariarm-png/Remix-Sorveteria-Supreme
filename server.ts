@@ -102,11 +102,16 @@ let cachedStoreConfig = {
   evolutionInstance: 'supreme-bot',
   evolutionToken: 'Rmfa1100@',
   welcomeMsg: `Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
+  closedMsg: `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`,
   menuLink: 'https://sorveteriasupreme.vercel.app',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
   supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
-  openHours: '13:00 às 20:00'
+  openHours: '13:00 às 20:00',
+  statusOverride: 'auto',
+  openTime: '11:00',
+  closeTime: '23:00',
+  weeklyHours: []
 };
 
 let lastSyncedConfigStr = '';
@@ -133,12 +138,17 @@ async function syncStoreConfigFromDb() {
         evolutionInstance: (data.whatsappEvolutionInstance || cachedStoreConfig.evolutionInstance || 'supreme-bot').trim(),
         evolutionToken: (data.whatsappEvolutionToken || cachedStoreConfig.evolutionToken || 'Rmfa1100@').trim(),
         welcomeMsg: data.whatsappBotWelcomeMessage || cachedStoreConfig.welcomeMsg,
+        closedMsg: data.whatsappBotClosedMessage || cachedStoreConfig.closedMsg,
         menuMsg: data.whatsappBotMenuMessage || cachedStoreConfig.menuMsg,
         menuLink: (data.whatsappBotMenuLink && !String(data.whatsappBotMenuLink).includes('.run.app'))
           ? String(data.whatsappBotMenuLink).trim().replace(/\/+$/, '')
           : cachedStoreConfig.menuLink,
         supportMsg: data.whatsappBotSupportMessage || cachedStoreConfig.supportMsg,
         address: data.address || cachedStoreConfig.address,
+        statusOverride: data.statusOverride || 'auto',
+        openTime: data.openTime || '11:00',
+        closeTime: data.closeTime || '23:00',
+        weeklyHours: data.weeklyHours || []
       };
 
       const configStr = JSON.stringify(newConfig);
@@ -179,7 +189,69 @@ app.use('/api/whatsapp/native', (req: Request, res: Response, next: Function) =>
   next();
 });
 
-// Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message ALWAYS triggers Welcome Message
+// Check if store is currently open based on Brasilia time and weekly hours / statusOverride
+function isStoreCurrentlyOpen() {
+  const cfg = cachedStoreConfig;
+  if (cfg.statusOverride === 'open') return true;
+  if (cfg.statusOverride === 'closed') return false;
+
+  const now = new Date();
+  const formatterTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  const parts = formatterTime.formatToParts(now);
+  let hours = 0;
+  let minutes = 0;
+  for (const p of parts) {
+    if (p.type === 'hour') hours = parseInt(p.value, 10);
+    if (p.type === 'minute') minutes = parseInt(p.value, 10);
+  }
+  if (hours === 24) hours = 0;
+  const currentMinutes = hours * 60 + minutes;
+
+  const formatterDay = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'short'
+  });
+  const dayStr = formatterDay.format(now).toLowerCase();
+  const dayMap: Record<string, number> = {
+    'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6
+  };
+  const dayOfWeekIndex = dayMap[dayStr] ?? now.getDay();
+  const dayKeys = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'] as const;
+  const dayOfWeekKey = dayKeys[dayOfWeekIndex];
+
+  if (cfg.weeklyHours && Array.isArray(cfg.weeklyHours) && cfg.weeklyHours.length > 0) {
+    const todaySchedule = cfg.weeklyHours.find((h: any) => h.dayOfWeek === dayOfWeekKey);
+    if (todaySchedule) {
+      if (!todaySchedule.isOpen) return false;
+      const [openH, openM] = (todaySchedule.openTime || "11:00").split(':').map(Number);
+      const [closeH, closeM] = (todaySchedule.closeTime || "23:00").split(':').map(Number);
+      const openTotalMinutes = openH * 60 + openM;
+      const closeTotalMinutes = closeH * 60 + closeM;
+      if (closeTotalMinutes > openTotalMinutes) {
+        return currentMinutes >= openTotalMinutes && currentMinutes < closeTotalMinutes;
+      } else {
+        return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
+      }
+    }
+  }
+
+  const [openHour, openMin] = (cfg.openTime || "11:00").split(':').map(Number);
+  const [closeHour, closeMin] = (cfg.closeTime || "23:00").split(':').map(Number);
+  const openTotalMinutes = openHour * 60 + openMin;
+  const closeTotalMinutes = closeHour * 60 + closeMin;
+  if (closeTotalMinutes > openTotalMinutes) {
+    return currentMinutes >= openTotalMinutes && currentMinutes < closeTotalMinutes;
+  } else {
+    return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
+  }
+}
+
+// Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message ALWAYS triggers Welcome/Absence Message
 const greetedContacts = new Map<string, number>();
 const GREET_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -196,6 +268,19 @@ function processIncomingMessage(userText: string, pushName: string = 'Cliente', 
     greetedContacts.set(senderKey, Date.now());
   }
 
+  const storeOpen = isStoreCurrentlyOpen();
+
+  // If store is closed, return the automated closed absence message on first contact / greeting / default
+  if (!storeOpen && ((isFirstContact && !isExactOption) || /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(clean) || !isExactOption)) {
+    if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
+      return `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *${pushName}*! Nossa sorveteria está fechada agora, mas você pode conferir o cardápio e programar seu pedido para quando abrirmos:\n👉 ${cfg.menuLink}`;
+    }
+    if (clean === '4' || clean.includes('atendente') || clean.includes('humano')) {
+      return cfg.supportMsg.replace('{telefone}', cfg.phone).replace('[TELEFONE]', cfg.phone) + `\n\n*(Nota: A loja está fechada no momento, responderemos assim que abrirmos!)*`;
+    }
+    return cfg.closedMsg.replace('{nome}', pushName).replace('{menu_link}', cfg.menuLink);
+  }
+
   // First contact (any text except exact menu digit 1/2/3/4) OR explicit greeting => ALWAYS send Welcome Message!
   if ((isFirstContact && !isExactOption) || /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(clean)) {
     return cfg.welcomeMsg.replace('{nome}', pushName);
@@ -204,7 +289,7 @@ function processIncomingMessage(userText: string, pushName: string = 'Cliente', 
   // 1. Menu
   if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
     const raw = cfg.menuMsg.replace('{menu_link}', cfg.menuLink).replace('[LINK_CARDAPIO]', cfg.menuLink);
-    return raw;
+    return storeOpen ? raw : `🌙 *ESTABELECIMENTO FECHADO*\n\n${raw}\n\n*(Nota: A loja encontra-se fechada no momento).*`;
   }
 
   // 2. Track Order (only explicit tracking words, not "fazer pedido")
@@ -214,7 +299,7 @@ function processIncomingMessage(userText: string, pushName: string = 'Cliente', 
 
   // 3. Location & Hours
   if (clean === '3' || clean.includes('localizacao') || clean.includes('localização') || clean.includes('onde fica') || clean.includes('endereco') || clean.includes('endereço') || clean.includes('horario') || clean.includes('horário')) {
-    return `📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 *Endereço:* ${cfg.address}\n⏰ *Horário de Funcionamento:* ${cfg.openHours}\n💬 *Telefone Comercial:* ${cfg.phone}\n\nVenha nos visitar ou faça seu pedido online para receber quentinho/geladinho em casa!`;
+    return `📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 *Endereço:* ${cfg.address}\n⏰ *Horário de Funcionamento:* ${cfg.openHours}\n💬 *Telefone Comercial:* ${cfg.phone}\n\nStatus Atual: ${storeOpen ? '🟢 *ABERTO*' : '🔴 *FECHADO*'}`;
   }
 
   // 4. Human Support

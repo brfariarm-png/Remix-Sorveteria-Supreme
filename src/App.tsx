@@ -5408,7 +5408,11 @@ E-mail: ${storeSettings.email}`;
                         <div className="grid grid-cols-3 gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                           <button
                             type="button"
-                            onClick={() => setStoreSettings({ ...storeSettings, statusOverride: 'auto' })}
+                            onClick={async () => {
+                              const updated = { ...storeSettings, statusOverride: 'auto' as const };
+                              setStoreSettings(updated);
+                              await handleSaveStoreSettingsToFirestore(updated);
+                            }}
                             className={`text-[10px] font-black py-2 rounded-xl transition-all uppercase cursor-pointer ${
                               storeSettings.statusOverride === 'auto'
                                 ? 'bg-rose-500 text-white shadow-xs'
@@ -5419,7 +5423,11 @@ E-mail: ${storeSettings.email}`;
                           </button>
                           <button
                             type="button"
-                            onClick={() => setStoreSettings({ ...storeSettings, statusOverride: 'open' })}
+                            onClick={async () => {
+                              const updated = { ...storeSettings, statusOverride: 'open' as const };
+                              setStoreSettings(updated);
+                              await handleSaveStoreSettingsToFirestore(updated);
+                            }}
                             className={`text-[10px] font-black py-2 rounded-xl transition-all uppercase cursor-pointer ${
                               storeSettings.statusOverride === 'open'
                                 ? 'bg-emerald-500 text-white shadow-xs'
@@ -5430,7 +5438,11 @@ E-mail: ${storeSettings.email}`;
                           </button>
                           <button
                             type="button"
-                            onClick={() => setStoreSettings({ ...storeSettings, statusOverride: 'closed' })}
+                            onClick={async () => {
+                              const updated = { ...storeSettings, statusOverride: 'closed' as const };
+                              setStoreSettings(updated);
+                              await handleSaveStoreSettingsToFirestore(updated);
+                            }}
                             className={`text-[10px] font-black py-2 rounded-xl transition-all uppercase cursor-pointer ${
                               storeSettings.statusOverride === 'closed'
                                 ? 'bg-rose-500 text-white shadow-xs'
