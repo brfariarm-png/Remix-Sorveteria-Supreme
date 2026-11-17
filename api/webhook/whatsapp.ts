@@ -138,6 +138,29 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
   }
 }
 
+async function createSupportRequest(senderPhone: string, pushName: string, message: string): Promise<void> {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/support_requests`;
+    const body = {
+      fields: {
+        phone: { stringValue: senderPhone || '' },
+        name: { stringValue: pushName || 'Cliente' },
+        message: { stringValue: message || 'Opção 4 / Atendente humano' },
+        status: { stringValue: 'open' },
+        createdAt: { timestampValue: new Date().toISOString() }
+      }
+    };
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(3000)
+    });
+  } catch (err) {
+    console.warn('Error creating support request in Firestore:', err);
+  }
+}
+
 async function checkActiveOrderForCustomer(senderPhone: string, cfg: StoreBotConfig): Promise<string | null> {
   try {
     const cleanSender = String(senderPhone || '').replace(/\D/g, '');
@@ -241,6 +264,7 @@ async function buildBotReply(userText: string, pushName: string, senderPhone: st
   }
 
   if (clean === '4' || clean.includes('atendente') || clean.includes('humano') || clean.includes('falar com') || clean.includes('ajuda') || clean.includes('suporte')) {
+    await createSupportRequest(senderPhone, pushName, userText);
     return cfg.supportMsg.replace('{telefone}', cfg.phone).replace('[TELEFONE]', cfg.phone);
   }
 

@@ -100,6 +100,7 @@ import AdminCardapio from './components/AdminCardapio';
 import AdminWhatsAppBot from './components/AdminWhatsAppBot';
 import AdminPainelTV from './components/AdminPainelTV';
 import AdminTotem from './components/AdminTotem';
+import SupportCallAlert from './components/SupportCallAlert';
 
 const getBrasiliaTimeInfo = () => {
   const now = new Date();
@@ -6034,6 +6035,9 @@ E-mail: ${storeSettings.email}`;
           </div>
         )}
       </AnimatePresence>
+
+      {/* Support call alert banner & ringing for admin */}
+      {isAdmin && <SupportCallAlert />}
 
       {/* Toast notifications container for admin */}
       {isAdmin && (

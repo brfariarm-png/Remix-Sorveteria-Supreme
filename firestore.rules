@@ -77,5 +77,11 @@ service cloud.firestore {
     match /private_settings/{docId} {
       allow read, write: if isAdmin();
     }
+
+    // Solicitações de suporte humano (Opção 4 do bot de WhatsApp)
+    match /support_requests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
