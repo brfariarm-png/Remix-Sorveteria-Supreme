@@ -1290,7 +1290,13 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
           payload: samplePayload
         })
       });
-      const proxyJson = await proxyRes.json();
+      const rawText = await proxyRes.text();
+      let proxyJson: any = null;
+      try {
+        proxyJson = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Servidor retornou erro HTTP ${proxyRes.status} (resposta inválida): ${rawText.slice(0, 150)}`);
+      }
       if (!proxyRes.ok || !proxyJson.success) {
         throw new Error(proxyJson.error || proxyJson.data?.error || `HTTP ${proxyJson.status || proxyRes.status}`);
       }
