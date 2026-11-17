@@ -127,7 +127,7 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
 
 async function checkActiveOrderForCustomer(senderPhone: string, cfg: StoreBotConfig): Promise<string | null> {
   try {
-    const cleanSender = senderPhone.replace(/\D/g, '');
+    const cleanSender = String(senderPhone || '').replace(/\D/g, '');
     if (!cleanSender || cleanSender.length < 8) return null;
 
     const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/orders`;
@@ -198,7 +198,7 @@ function unwrapMessage(msgContent: any): any {
 }
 
 function isBotGeneratedEcho(text: string): boolean {
-  const lower = text.toLowerCase();
+  const lower = String(text || '').toLowerCase();
   return (
     lower.includes('supreme bot premium') ||
     lower.includes('rastreador de pedidos supreme') ||
@@ -211,7 +211,7 @@ function isBotGeneratedEcho(text: string): boolean {
 }
 
 async function buildBotReply(userText: string, pushName: string, senderPhone: string, cfg: StoreBotConfig): Promise<string> {
-  const clean = userText.trim().toLowerCase();
+  const clean = String(userText || '').trim().toLowerCase();
 
   if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
     return cfg.menuMsg.replace('{menu_link}', cfg.menuLink).replace('[LINK_CARDAPIO]', cfg.menuLink);
@@ -409,8 +409,22 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // POST request processing
-    const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+    // POST request processing with robust Buffer / string body parsing
+    let payload = req.body || {};
+    if (Buffer.isBuffer(payload)) {
+      try {
+        payload = JSON.parse(payload.toString('utf8'));
+      } catch {
+        payload = {};
+      }
+    } else if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        payload = {};
+      }
+    }
+
     const event = String(payload?.event || payload?.type || '').toLowerCase();
     const msgType = String(payload?.type || payload?.data?.type || '').toLowerCase();
 

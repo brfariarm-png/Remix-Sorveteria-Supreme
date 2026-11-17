@@ -19,7 +19,21 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ ok: false, error: 'Não autorizado. Entre como administrador.' });
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+    let body = req.body || {};
+    if (Buffer.isBuffer(body)) {
+      try {
+        body = JSON.parse(body.toString('utf8'));
+      } catch {
+        body = {};
+      }
+    } else if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    }
+
     const { url, payload } = body;
 
     if (!url) {
