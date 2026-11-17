@@ -20,17 +20,22 @@ interface WebhookLogItem {
 
 const recentWebhookLogs: WebhookLogItem[] = [];
 function pushWebhookLog(entry: Omit<WebhookLogItem, 'id' | 'timestamp'>) {
-  recentWebhookLogs.unshift({
-    ...entry,
-    id: `wh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    timestamp: new Date().toLocaleTimeString('pt-BR', {
-      timeZone: 'America/Sao_Paulo',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  });
-  if (recentWebhookLogs.length > 20) recentWebhookLogs.length = 20;
+  try {
+    recentWebhookLogs.unshift({
+      ...entry,
+      id: `wh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    });
+    if (recentWebhookLogs.length > 20) recentWebhookLogs.length = 20;
+    console.log(`[Webhook Log] [${entry.status.toUpperCase()}] From: ${entry.from} | In: "${entry.incomingText}" | Details: ${entry.details || ''}`);
+  } catch (e) {
+    console.error('Error pushing webhook log:', e);
+  }
 }
 
 interface StoreBotConfig {
@@ -114,7 +119,8 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
     };
     cachedConfigAt = Date.now();
     return cachedConfig;
-  } catch {
+  } catch (err) {
+    console.warn('Warning loading store config from Firestore:', err);
     return cachedConfig || DEFAULT_CONFIG;
   }
 }
@@ -185,17 +191,27 @@ function buildBotReply(userText: string, pushName: string, senderKey: string, cf
   return cfg.welcomeMsg.replace('{nome}', pushName);
 }
 
-function normalizeBrVariants(digits: string): string[] {
-  const list: string[] = [];
-  if (!digits) return list;
-  list.push(digits);
-  // Toggle Brazilian 9th digit if number starts with 55 + 2-digit DDD
-  if (digits.startsWith('55') && digits.length === 13 && digits[4] === '9') {
-    list.push(`55${digits.slice(2, 4)}${digits.slice(5)}`);
-  } else if (digits.startsWith('55') && digits.length === 12) {
-    list.push(`55${digits.slice(2, 4)}9${digits.slice(4)}`);
+// Normalize phone to standard format 55 + DDD + 8 or 9 digits
+function normalizeToBrPhone(raw: string): string {
+  const digits = String(raw || '').replace(/\D/g, '').replace(/^0+/, '');
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return digits;
   }
-  return list;
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+  return digits;
+}
+
+function normalizeBrVariants(digits: string): string[] {
+  const norm = normalizeToBrPhone(digits);
+  const list: string[] = [norm];
+  if (norm.startsWith('55') && norm.length === 13 && norm[4] === '9') {
+    list.push(`55${norm.slice(2, 4)}${norm.slice(5)}`);
+  } else if (norm.startsWith('55') && norm.length === 12) {
+    list.push(`55${norm.slice(2, 4)}9${norm.slice(4)}`);
+  }
+  return Array.from(new Set(list));
 }
 
 function buildSendCandidates(key: any, data: any): { targets: string[]; displaySender: string } {
@@ -214,11 +230,12 @@ function buildSendCandidates(key: any, data: any): { targets: string[]; displayS
   let displaySender = '';
 
   for (const jid of pnFields) {
-    if (jid.endsWith('@s.whatsapp.net') || jid.endsWith('@c.us')) {
+    if (jid.endsWith('@s.whatsapp.net') || jid.endsWith('@c.us') || !jid.includes('@')) {
       const digits = jid.split(':')[0].split('@')[0].replace(/\D/g, '');
       if (digits.length >= 10) {
-        if (!displaySender) displaySender = digits;
-        for (const variant of normalizeBrVariants(digits)) {
+        const norm = normalizeToBrPhone(digits);
+        if (!displaySender) displaySender = norm;
+        for (const variant of normalizeBrVariants(norm)) {
           if (!targets.includes(variant)) targets.push(variant);
         }
       }
@@ -227,84 +244,130 @@ function buildSendCandidates(key: any, data: any): { targets: string[]; displayS
 
   const rawRemote = String(key?.remoteJid || '').trim();
   if (rawRemote) {
+    const rawDigits = rawRemote.split(':')[0].split('@')[0].replace(/\D/g, '');
     if (!displaySender) {
-      displaySender = rawRemote.split(':')[0].split('@')[0].replace(/\D/g, '') || rawRemote;
+      displaySender = rawDigits.length >= 10 ? normalizeToBrPhone(rawDigits) : rawRemote;
     }
-    if (!targets.includes(rawRemote)) {
-      targets.push(rawRemote);
+    const normRemote = rawDigits.length >= 10 ? `${normalizeToBrPhone(rawDigits)}@s.whatsapp.net` : rawRemote;
+    if (!targets.includes(normRemote)) targets.push(normRemote);
+    if (rawDigits.length >= 10) {
+      const normDigits = normalizeToBrPhone(rawDigits);
+      if (!targets.includes(normDigits)) targets.push(normDigits);
     }
   }
 
   return { targets, displaySender };
 }
 
-export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, apikey');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-
-  if (!webhookSecretOk(req)) {
-    return res.status(401).json({ error: 'Webhook não autorizado' });
-  }
-
-  if (req.method === 'GET') {
-    const query = req.query || {};
-    const wantWakeup = query.wakeup === '1' || query.wakeup === 'true' || query.heartbeat === '1' || query.heartbeat === 'true';
-    let renderStatus: string | undefined;
-    let instanceState: string | undefined;
-    if (wantWakeup) {
-      try {
-        const cfg = await loadStoreConfigFromFirestore();
-        const evoBase = (cfg.evolutionUrl || DEFAULT_CONFIG.evolutionUrl).trim().replace(/\/+$/, '');
-        const fullEvo = evoBase.startsWith('http') ? evoBase : `https://${evoBase}`;
-        const pingRes = await fetch(`${fullEvo}/`, { signal: AbortSignal.timeout(12000) });
-        renderStatus = pingRes.ok ? 'awake' : `http_${pingRes.status}`;
-        if (pingRes.ok) {
-          try {
-            const stateRes = await fetch(`${fullEvo}/instance/connectionState/${cfg.evolutionInstance}`, {
-              headers: { apikey: cfg.evolutionToken },
-              signal: AbortSignal.timeout(6000)
-            });
-            if (stateRes.ok) {
-              const stateJson: any = await stateRes.json();
-              instanceState = stateJson?.instance?.state || stateJson?.state || undefined;
-            }
-          } catch {
-            // Non-fatal
-          }
-        }
-      } catch (e: any) {
-        renderStatus = `error:${e?.message || 'timeout'}`;
+// Retry helper: try sending up to 3 times with backoff
+async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey: string, target: string, text: string, maxRetries = 3): Promise<{ ok: boolean; status: number; result: string }> {
+  let lastStatus = 500;
+  let lastResult = '';
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const cleanTarget = target.includes('@') ? target : `${normalizeToBrPhone(target)}`;
+      const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': apiKey
+        },
+        body: JSON.stringify({
+          number: cleanTarget,
+          text,
+          delay: 0,
+          linkPreview: false
+        }),
+        signal: AbortSignal.timeout(18000)
+      });
+      const status = sendRes.status;
+      const result = await sendRes.text();
+      if (sendRes.ok) {
+        return { ok: true, status, result };
       }
+      lastStatus = status;
+      lastResult = result;
+      if (status >= 400 && status < 500 && status !== 429) {
+        break; // Don't retry client errors except rate limit
+      }
+    } catch (err: any) {
+      lastStatus = 504;
+      lastResult = err?.message || 'Timeout/Network error';
     }
-    return res.status(200).json({
-      ok: true,
-      service: 'Supreme WhatsApp Webhook (Vercel)',
-      clientUrl: 'https://sorveteriasupreme.vercel.app',
-      ...(renderStatus ? { renderStatus } : {}),
-      ...(instanceState ? { instanceState } : {}),
-      recentLogs: recentWebhookLogs.slice(0, 15)
-    });
+    if (attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
   }
+  return { ok: false, status: lastStatus, result: lastResult };
+}
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export default async function handler(req: any, res: any) {
   try {
-    const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, apikey');
+
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+
+    if (req.method !== 'GET' && req.method !== 'POST') {
+      return res.status(405).json({ ok: false, error: 'Method not allowed. Use GET or POST.' });
+    }
+
+    if (!webhookSecretOk(req)) {
+      return res.status(401).json({ ok: false, error: 'Webhook não autorizado' });
+    }
+
+    if (req.method === 'GET') {
+      const query = req.query || {};
+      const wantWakeup = query.wakeup === '1' || query.wakeup === 'true' || query.heartbeat === '1' || query.heartbeat === 'true';
+      let renderStatus: string | undefined;
+      let instanceState: string | undefined;
+      if (wantWakeup) {
+        try {
+          const cfg = await loadStoreConfigFromFirestore();
+          const evoBase = (cfg.evolutionUrl || DEFAULT_CONFIG.evolutionUrl).trim().replace(/\/+$/, '');
+          const fullEvo = evoBase.startsWith('http') ? evoBase : `https://${evoBase}`;
+          const pingRes = await fetch(`${fullEvo}/`, { signal: AbortSignal.timeout(12000) });
+          renderStatus = pingRes.ok ? 'awake' : `http_${pingRes.status}`;
+          if (pingRes.ok) {
+            try {
+              const stateRes = await fetch(`${fullEvo}/instance/connectionState/${cfg.evolutionInstance}`, {
+                headers: { apikey: cfg.evolutionToken },
+                signal: AbortSignal.timeout(6000)
+              });
+              if (stateRes.ok) {
+                const stateJson: any = await stateRes.json();
+                instanceState = stateJson?.instance?.state || stateJson?.state || undefined;
+              }
+            } catch {
+              // Non-fatal
+            }
+          }
+        } catch (e: any) {
+          renderStatus = `error:${e?.message || 'timeout'}`;
+        }
+      }
+      return res.status(200).json({
+        ok: true,
+        service: 'Supreme WhatsApp Webhook (Vercel)',
+        clientUrl: 'https://sorveteriasupreme.vercel.app',
+        ...(renderStatus ? { renderStatus } : {}),
+        ...(instanceState ? { instanceState } : {}),
+        recentLogs: recentWebhookLogs.slice(0, 15)
+      });
+    }
+
+    // POST request processing
+    const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     const event = String(payload?.event || payload?.type || '').toLowerCase();
     const msgType = String(payload?.type || payload?.data?.type || '').toLowerCase();
 
     if (msgType.includes('append') || event.includes('append')) {
-      return res.status(200).json({ received: true, ignored: 'append-event' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'append-event' });
     }
 
-    // Only react to incoming messages.upsert events (ignore send.message / connection.update)
     if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
       if (event && event !== 'ping.test') {
         pushWebhookLog({
@@ -315,7 +378,7 @@ export default async function handler(req: any, res: any) {
           details: 'Evento ignorado (apenas messages.upsert dispara resposta)'
         });
       }
-      return res.status(200).json({ received: true, ignored: 'non-upsert-event', event });
+      return res.status(200).json({ ok: true, received: true, ignored: 'non-upsert-event', event });
     }
 
     const rawData = payload?.data;
@@ -331,7 +394,7 @@ export default async function handler(req: any, res: any) {
         status: 'ignored',
         details: 'Payload recebido sem key'
       });
-      return res.status(200).json({ received: true, ignored: 'empty-key' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'empty-key' });
     }
 
     const remoteJid = String(key.remoteJid || '');
@@ -343,7 +406,7 @@ export default async function handler(req: any, res: any) {
         status: 'ignored',
         details: 'Grupos e status são ignorados'
       });
-      return res.status(200).json({ received: true, ignored: 'group-or-broadcast' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'group-or-broadcast' });
     }
 
     const cfg = await loadStoreConfigFromFirestore();
@@ -392,15 +455,15 @@ export default async function handler(req: any, res: any) {
         incomingText: effectiveText || '(sem texto)',
         replyText: '',
         status: 'ignored',
-        details: `fromMe=true (enviada pelo próprio aparelho ${remoteJid}). Teste de outro número.`
+        details: `fromMe=true (enviada pelo próprio aparelho ${remoteJid}).`
       });
-      return res.status(200).json({ received: true, ignored: 'fromMe-outbound' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'fromMe-outbound' });
     }
 
     const msgId = key.id;
     if (msgId) {
       if (processedMsgIds.has(msgId)) {
-        return res.status(200).json({ received: true, ignored: 'duplicate' });
+        return res.status(200).json({ ok: true, received: true, ignored: 'duplicate' });
       }
       processedMsgIds.add(msgId);
       if (processedMsgIds.size > 500) {
@@ -412,17 +475,16 @@ export default async function handler(req: any, res: any) {
     if (!effectiveText) {
       pushWebhookLog({
         from: remoteAltDigits || remoteBaseDigits || remoteJid,
-        incomingText: `(tipo: ${String(data?.messageType || 'sem texto')})`,
+        incomingText: '(sem texto legível)',
         replyText: '',
         status: 'ignored',
-        details: 'Mensagem sem texto legível'
+        details: 'Mensagem sem texto'
       });
-      return res.status(200).json({ received: true, ignored: 'no-text' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'no-text' });
     }
 
-    // Prevent echo loop in self-chat tests
     if (key.fromMe && isBotGeneratedEcho(effectiveText)) {
-      return res.status(200).json({ received: true, ignored: 'self-echo-prevented' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'self-echo-prevented' });
     }
 
     if (!cfg.botEnabled) {
@@ -431,9 +493,9 @@ export default async function handler(req: any, res: any) {
         incomingText: effectiveText,
         replyText: '',
         status: 'ignored',
-        details: 'Bot pausado nas configurações'
+        details: 'Bot pausado'
       });
-      return res.status(200).json({ received: true, ignored: 'bot-disabled' });
+      return res.status(200).json({ ok: true, received: true, ignored: 'bot-disabled' });
     }
 
     const pushName = String(data?.pushName || 'Cliente');
@@ -452,105 +514,22 @@ export default async function handler(req: any, res: any) {
     let finalStatus = 0;
     let finalResult = '';
     let usedTarget = targets[0] || remoteJid;
-    let timedOut = false;
 
-    // Pre-check live Baileys socket state so offline/connecting instances fail fast instead of hanging sendText into a 504 timeout
-    let liveSocketState: string | null = null;
-    const probeState = async (): Promise<string | null> => {
+    for (const target of targets) {
       for (const apiKey of apiKeys) {
-        try {
-          const stRes = await fetch(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
-            headers: { apikey: apiKey },
-            signal: AbortSignal.timeout(6000)
-          });
-          if (stRes.ok) {
-            const stJson: any = await stRes.json();
-            return stJson?.instance?.state || stJson?.state || null;
-          }
-          if (stRes.status !== 401 && stRes.status !== 403) break;
-        } catch {
+        const retryRes = await sendWithRetry(evolutionUrl, instanceName, apiKey, target, replyText, 3);
+        finalStatus = retryRes.status;
+        finalResult = retryRes.result;
+        usedTarget = target;
+        if (retryRes.ok) {
+          finalOk = true;
+          break;
+        }
+        if (retryRes.status !== 401 && retryRes.status !== 403) {
           break;
         }
       }
-      return null;
-    };
-
-    liveSocketState = await probeState();
-    if (liveSocketState === 'connecting') {
-      await new Promise((r) => setTimeout(r, 2000));
-      liveSocketState = await probeState();
-    }
-
-    const isSelfTargetNumber = (target: string): boolean => {
-      const targetDigits = String(target || '').split(':')[0].split('@')[0].replace(/\D/g, '');
-      const storeDigits = cfg.phone.replace(/\D/g, '');
-      return Boolean(
-        targetDigits.length >= 8 &&
-        storeDigits.length >= 8 &&
-        targetDigits.slice(-8) === storeDigits.slice(-8)
-      );
-    };
-
-    if (liveSocketState && liveSocketState !== 'open' && liveSocketState !== 'CONNECTED') {
-      finalStatus = 503;
-      finalResult = `Instância "${instanceName}" está em estado "${liveSocketState}" no Render (reconectando ou desconectada do WhatsApp). Reconecte via QR Code / "Forçar Novo QR Code" no painel.`;
-    } else {
-      for (const target of targets) {
-        for (const apiKey of apiKeys) {
-          try {
-            const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': apiKey
-              },
-              body: JSON.stringify({
-                number: target,
-                text: replyText,
-                delay: 0,
-                linkPreview: false
-              }),
-              signal: AbortSignal.timeout(18000)
-            });
-
-            finalStatus = sendRes.status;
-            finalResult = await sendRes.text();
-            usedTarget = target;
-
-            if (sendRes.ok) {
-              finalOk = true;
-              break;
-            }
-            // Retry with next apiKey only on 401/403
-            if (sendRes.status !== 401 && sendRes.status !== 403) {
-              break;
-            }
-          } catch (fetchErr: any) {
-            usedTarget = target;
-            timedOut = true;
-            const errMsg = String(fetchErr?.message || '');
-            const isTimeout = fetchErr?.name === 'TimeoutError' || fetchErr?.name === 'AbortError' || /abort|timeout/i.test(errMsg);
-            const afterState = await probeState();
-
-            if (afterState && afterState !== 'open' && afterState !== 'CONNECTED') {
-              finalStatus = 503;
-              finalResult = `Instância "${instanceName}" desconectou no Render (estado atual: "${afterState}"). Clique em "Celular Desconectado? Forçar Novo QR Code" para escanear novamente.`;
-            } else if (isTimeout && isSelfTargetNumber(target)) {
-              finalStatus = 504;
-              finalResult = `Render Evolution API travou (>18s) no autoenvio para +${target}. Em Evolution v2.3.7 no Render, teste com outro celular e verifique no Render > Environment se CACHE_REDIS_ENABLED=false e CACHE_LOCAL_ENABLED=true.`;
-            } else if (isTimeout) {
-              finalStatus = 504;
-              finalResult = `Render Evolution API (/message/sendText/${instanceName}) travou >18s para +${target} mesmo com sessão aberta. No Render > Environment defina CACHE_REDIS_ENABLED=false e CACHE_LOCAL_ENABLED=true (ou use Servidor Bot Externo / Z-API).`;
-            } else {
-              finalStatus = 502;
-              finalResult = errMsg || 'Erro de rede ao contatar Evolution API no Render';
-            }
-            break;
-          }
-        }
-        // Do not multiply 504 timeouts across fallback JID variants; only retry alternate JIDs on 400/404 exists:false
-        if (finalOk || timedOut) break;
-      }
+      if (finalOk) break;
     }
 
     pushWebhookLog({
@@ -558,10 +537,11 @@ export default async function handler(req: any, res: any) {
       incomingText: effectiveText,
       replyText: finalOk ? replyText : '',
       status: finalOk ? 'sent' : 'error',
-      details: finalOk ? `Respondido para ${usedTarget}` : `HTTP ${finalStatus}: ${finalResult.slice(0, 220)}`
+      details: finalOk ? `Respondido para ${usedTarget} (com retry)` : `HTTP ${finalStatus}: ${finalResult.slice(0, 220)}`
     });
 
     return res.status(200).json({
+      ok: true,
       received: true,
       replied: finalOk,
       to: usedTarget,
@@ -569,14 +549,16 @@ export default async function handler(req: any, res: any) {
       result: finalResult.slice(0, 300)
     });
   } catch (err: any) {
+    console.error('[Webhook Fatal Error]:', err);
     pushWebhookLog({
       from: 'Webhook',
-      incomingText: 'Erro ao processar evento',
+      incomingText: 'Erro fatal ao processar evento',
       replyText: '',
       status: 'error',
-      details: err?.message || 'Webhook processing error'
+      details: err?.message || String(err)
     });
     return res.status(200).json({
+      ok: false,
       received: true,
       error: err?.message || 'Webhook processing error'
     });
