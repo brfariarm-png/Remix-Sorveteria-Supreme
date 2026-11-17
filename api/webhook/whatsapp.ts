@@ -62,12 +62,12 @@ const DEFAULT_CONFIG: StoreBotConfig = {
   evolutionUrl: 'https://supreme-bot-2bm0.onrender.com',
   evolutionInstance: 'supreme-bot',
   evolutionToken: 'Rmfa1100@',
-  welcomeMsg: `Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
+  welcomeMsg: `Olá, *{nome}*! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\n⭐️ *Cardápio & Pedidos Online*:\n👉 {menu_link}\n\n⏰ *Horário de Funcionamento*:\n{open_hours}\n\nEscolha uma das opções abaixo enviando o número:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
   menuLink: 'https://sorveteriasupreme.vercel.app',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
   supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
-  openHours: '13:00 às 20:00'
+  openHours: '13:00 às 23:00'
 };
 
 let cachedConfig: StoreBotConfig | null = null;
@@ -100,7 +100,7 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
       : DEFAULT_CONFIG.menuLink;
 
     const openTime = readFsString(fields, 'openTime') || '13:00';
-    const closeTime = readFsString(fields, 'closeTime') || '20:00';
+    const closeTime = readFsString(fields, 'closeTime') || '23:00';
 
     cachedConfig = {
       botEnabled: readFsBool(fields, 'whatsappBotEnabled') !== false,
@@ -123,6 +123,54 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
     console.warn('Warning loading store config from Firestore:', err);
     return cachedConfig || DEFAULT_CONFIG;
   }
+}
+
+async function checkActiveOrderForCustomer(senderPhone: string, cfg: StoreBotConfig): Promise<string | null> {
+  try {
+    const cleanSender = senderPhone.replace(/\D/g, '');
+    if (!cleanSender || cleanSender.length < 8) return null;
+
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/orders`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    const json: any = await res.json();
+    const docs = json?.documents || [];
+
+    const activeOrder = docs.find((doc: any) => {
+      const fields = doc.fields || {};
+      const status = fields.status?.stringValue || 'waiting';
+      if (status === 'completed' || status === 'cancelled') return false;
+
+      const orderPhone = (
+        fields.details?.mapValue?.fields?.whatsapp?.stringValue ||
+        fields.whatsapp?.stringValue ||
+        fields.details?.mapValue?.fields?.phone?.stringValue ||
+        fields.phone?.stringValue ||
+        ''
+      ).replace(/\D/g, '');
+
+      if (!orderPhone) return false;
+      return orderPhone.slice(-8) === cleanSender.slice(-8);
+    });
+
+    if (activeOrder) {
+      const fields = activeOrder.fields || {};
+      const orderId = activeOrder.name.split('/').pop().slice(-6).toUpperCase();
+      const status = fields.status?.stringValue || 'waiting';
+      const statusMap: Record<string, string> = {
+        'waiting': '⌛ Aguardando Confirmação / Fila',
+        'preparing': '🥣 Em Preparação na Cozinha',
+        'delivering': '🛵 A Caminho para Entrega / Pronto para Retirada'
+      };
+      const statusText = statusMap[status] || status;
+      const total = fields.total?.doubleValue || fields.total?.integerValue || 0;
+
+      return `📦 *STATUS DO SEU PEDIDO ATIVO*\n\nPedido: *#SUP${orderId}*\nStatus: *${statusText}*\nTotal: R$ ${Number(total).toFixed(2)}\n\n🔗 Acompanhe ao vivo: ${cfg.menuLink}?track=true\n\nPrecisa de ajuda? Envie *4* para falar com um atendente.`;
+    }
+  } catch (err) {
+    console.warn('Error checking active order:', err);
+  }
+  return null;
 }
 
 function unwrapMessage(msgContent: any): any {
@@ -157,41 +205,50 @@ function isBotGeneratedEcho(text: string): boolean {
     lower.includes('localização & horários supreme') ||
     lower.includes('conectando à nossa equipe') ||
     lower.includes('cardápio digital') ||
+    lower.includes('status do seu pedido ativo') ||
     lower.includes('escolha uma das opções abaixo enviando o número')
   );
 }
 
-function buildBotReply(userText: string, pushName: string, senderKey: string, cfg: StoreBotConfig): string {
+async function buildBotReply(userText: string, pushName: string, senderPhone: string, cfg: StoreBotConfig): Promise<string> {
   const clean = userText.trim().toLowerCase();
   const isExactOption = clean === '1' || clean === '2' || clean === '3' || clean === '4';
-  const lastGreeted = greetedContacts.get(senderKey);
-  const isFirstContact = !lastGreeted || Date.now() - lastGreeted > GREET_TTL_MS;
-  greetedContacts.set(senderKey, Date.now());
 
-  if ((isFirstContact && !isExactOption) || /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(clean)) {
-    return cfg.welcomeMsg.replace('{nome}', pushName);
-  }
-
+  // Explicit Menu option
   if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
     return cfg.menuMsg.replace('{menu_link}', cfg.menuLink).replace('[LINK_CARDAPIO]', cfg.menuLink);
   }
 
+  // Explicit Track Order option
   if (clean === '2' || clean.includes('rastrear') || clean.includes('rastreio') || clean.includes('status') || clean.includes('onde esta') || clean.includes('onde está') || clean.includes('meu pedido') || clean.includes('acompanhar')) {
-    return `🔍 *RASTREADOR DE PEDIDOS SUPREME*\n\nOlá, *${pushName}*! Para acompanhar o status do seu pedido em tempo real, acesse:\n👉 ${cfg.menuLink}?track=true\n\nCaso já tenha o código do pedido (ex: #SUP123), digite aqui que verificamos para você!`;
+    const activeOrderReply = await checkActiveOrderForCustomer(senderPhone, cfg);
+    if (activeOrderReply) return activeOrderReply;
+    return `🔍 *RASTREADOR DE PEDIDOS SUPREME*\n\nOlá, *${pushName}*! Não encontramos pedidos ativos no momento para o seu número.\n\nAcesse nosso cardápio para pedir:\n👉 ${cfg.menuLink}`;
   }
 
+  // Explicit Location & Hours option
   if (clean === '3' || clean.includes('localizacao') || clean.includes('localização') || clean.includes('onde fica') || clean.includes('endereco') || clean.includes('endereço') || clean.includes('horario') || clean.includes('horário')) {
     return `📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 *Endereço:* ${cfg.address}\n⏰ *Horário de Funcionamento:* ${cfg.openHours}\n💬 *Telefone Comercial:* ${cfg.phone}\n\nVenha nos visitar ou peça online pelo cardápio:\n👉 ${cfg.menuLink}`;
   }
 
+  // Explicit Human Support option
   if (clean === '4' || clean.includes('atendente') || clean.includes('humano') || clean.includes('falar com') || clean.includes('ajuda') || clean.includes('suporte')) {
     return cfg.supportMsg.replace('{telefone}', cfg.phone).replace('[TELEFONE]', cfg.phone);
   }
 
-  return cfg.welcomeMsg.replace('{nome}', pushName);
+  // If general message, check if there's an active order first
+  const activeOrderReply = await checkActiveOrderForCustomer(senderPhone, cfg);
+  if (activeOrderReply && (clean.includes('pedido') || clean.includes('entrega') || clean.includes('demora'))) {
+    return activeOrderReply;
+  }
+
+  // Default welcome message with menu link and operating hours
+  return cfg.welcomeMsg
+    .replace('{nome}', pushName)
+    .replace('{menu_link}', cfg.menuLink)
+    .replace('{open_hours}', cfg.openHours);
 }
 
-// Normalize phone to standard format 55 + DDD + 8 or 9 digits
 function normalizeToBrPhone(raw: string): string {
   const digits = String(raw || '').replace(/\D/g, '').replace(/^0+/, '');
   if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
@@ -259,7 +316,6 @@ function buildSendCandidates(key: any, data: any): { targets: string[]; displayS
   return { targets, displaySender };
 }
 
-// Retry helper: try sending up to 3 times with backoff
 async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey: string, target: string, text: string, maxRetries = 3): Promise<{ ok: boolean; status: number; result: string }> {
   let lastStatus = 500;
   let lastResult = '';
@@ -288,7 +344,7 @@ async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey:
       lastStatus = status;
       lastResult = result;
       if (status >= 400 && status < 500 && status !== 429) {
-        break; // Don't retry client errors except rate limit
+        break;
       }
     } catch (err: any) {
       lastStatus = 504;
@@ -500,7 +556,7 @@ export default async function handler(req: any, res: any) {
 
     const pushName = String(data?.pushName || 'Cliente');
     const { targets, displaySender } = buildSendCandidates(key, data);
-    const replyText = buildBotReply(effectiveText, pushName, displaySender || remoteJid, cfg);
+    const replyText = await buildBotReply(effectiveText, pushName, displaySender || remoteJid, cfg);
 
     const baseEvoUrl = (cfg.evolutionUrl || String(payload?.server_url || '')).trim().replace(/\/+$/, '');
     const evolutionUrl = baseEvoUrl.startsWith('http') ? baseEvoUrl : `https://${baseEvoUrl}`;
@@ -537,7 +593,7 @@ export default async function handler(req: any, res: any) {
       incomingText: effectiveText,
       replyText: finalOk ? replyText : '',
       status: finalOk ? 'sent' : 'error',
-      details: finalOk ? `Respondido para ${usedTarget} (com retry)` : `HTTP ${finalStatus}: ${finalResult.slice(0, 220)}`
+      details: finalOk ? `Respondido para ${usedTarget}` : `HTTP ${finalStatus}: ${finalResult.slice(0, 220)}`
     });
 
     return res.status(200).json({
