@@ -1523,14 +1523,10 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
   try {
     const payload = req.body || {};
     const event = String(payload?.event || payload?.type || '').toLowerCase();
-    const isUpsert = isAdminTest || event.includes('messages.upsert') || event.includes('messages_upsert') || !event;
-
-    if (!isUpsert) {
-      if (isAdminTest && !res.headersSent) {
-        return res.status(200).json({ received: true, replied: false, ignored: 'non-upsert-event' });
-      }
+    const isSystemEvent = event.includes('connection') || event.includes('qrcode') || event.includes('presence');
+    if (isSystemEvent && !isAdminTest) {
       if (!res.headersSent) {
-        return res.status(200).json({ received: true });
+        return res.status(200).json({ received: true, ignored: 'system-event' });
       }
       return;
     }
