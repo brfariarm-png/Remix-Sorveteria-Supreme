@@ -534,6 +534,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
   };
   const [supportMsg, setSupportMsg] = useState(storeSettings.whatsappBotSupportMessage || `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para os nossos atendentes humanos na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`);
+  const [closedMsg, setClosedMsg] = useState(storeSettings.whatsappBotClosedMessage || `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`);
 
   // Settings saving state
   const [saving, setSaving] = useState(false);
@@ -628,6 +629,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         whatsappBotMenuMessage: menuMsg,
         whatsappBotMenuLink: menuLink,
         whatsappBotSupportMessage: supportMsg,
+        whatsappBotClosedMessage: closedMsg,
         whatsappConnectionProvider: override?.whatsappConnectionProvider || connectionProvider,
         whatsappBackendUrl: customBackendUrl.trim().replace(/\/+$/, ''),
         whatsappEvolutionUrl: evolutionUrl,
@@ -3307,6 +3309,18 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
                       rows={3}
                       value={supportMsg}
                       onChange={(e) => setSupportMsg(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-750 focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                      4. Mensagem Automática de Loja Fechada ({`{nome}`}, {`{menu_link}`})
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={closedMsg}
+                      onChange={(e) => setClosedMsg(e.target.value)}
                       className="w-full p-2.5 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-750 focus:border-emerald-500"
                     />
                   </div>
