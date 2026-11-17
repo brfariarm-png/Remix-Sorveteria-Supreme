@@ -60,11 +60,18 @@ import {
   query, 
   where, 
   orderBy,
+  limit,
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { secureRandomHex } from './utils/secureId';
+
+let sessionFirestoreReads = 0;
+function trackFirestoreRead(collectionName: string, count = 1) {
+  sessionFirestoreReads += count;
+  console.log(`📊 [Firestore Read Tracker] Total de leituras nesta sessão: ${sessionFirestoreReads} (+${count} em '${collectionName}')`);
+}
 
 import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption, DaySchedule } from './types';
 
@@ -665,74 +672,77 @@ export default function App() {
     return () => clearInterval(heartbeat);
   }, [storeSettings.whatsappBackendUrl]);
 
-  // 2b. Load dynamic menu from Firestore
+  // 2b. Load dynamic menu, flavors, and toppings from Firestore with localStorage cache & getDocs (10 min refresh)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'menu_items'), (snapshot) => {
-      const itemsList: MenuItem[] = [];
-      snapshot.forEach((docSnap) => {
-        itemsList.push({ id: docSnap.id, ...docSnap.data() } as MenuItem);
-      });
-      // Sort by index, then alphabetically
-      itemsList.sort((a, b) => {
-        const idxA = (a as any).index ?? 999;
-        const idxB = (b as any).index ?? 999;
-        if (idxA !== idxB) return idxA - idxB;
-        return a.name.localeCompare(b.name);
-      });
-      setMenuItems(itemsList);
-      localStorage.setItem('supreme_menu_items', JSON.stringify(itemsList));
-    }, (error) => {
-      console.warn('Firestore quota warning for menu_items, using local fallback:', error?.message);
-      const cached = localStorage.getItem('supreme_menu_items');
-      if (cached) {
-        try { setMenuItems(JSON.parse(cached)); } catch (_) { setMenuItems(MENU_ITEMS); }
-      } else {
-        setMenuItems(MENU_ITEMS);
-      }
-    });
-    return () => unsub();
-  }, []);
+    const cachedMenu = localStorage.getItem('supreme_menu_items');
+    if (cachedMenu) {
+      try { setMenuItems(JSON.parse(cachedMenu)); } catch (_) { setMenuItems(MENU_ITEMS); }
+    } else {
+      setMenuItems(MENU_ITEMS);
+    }
 
-  // 2b2. Load dynamic flavors from Firestore
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'flavor_options'), (snapshot) => {
-      const list: FlavorOption[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as FlavorOption);
-      });
-      setFlavorOptions(list);
-      localStorage.setItem('supreme_flavor_options', JSON.stringify(list));
-    }, (error) => {
-      console.warn('Firestore quota warning for flavor_options, using local fallback:', error?.message);
-      const cached = localStorage.getItem('supreme_flavor_options');
-      if (cached) {
-        try { setFlavorOptions(JSON.parse(cached)); } catch (_) { setFlavorOptions(FLAVOR_OPTIONS); }
-      } else {
-        setFlavorOptions(FLAVOR_OPTIONS);
-      }
-    });
-    return () => unsub();
-  }, []);
+    const cachedFlavors = localStorage.getItem('supreme_flavor_options');
+    if (cachedFlavors) {
+      try { setFlavorOptions(JSON.parse(cachedFlavors)); } catch (_) { setFlavorOptions(FLAVOR_OPTIONS); }
+    } else {
+      setFlavorOptions(FLAVOR_OPTIONS);
+    }
 
-  // 2b3. Load dynamic toppings from Firestore
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'topping_options'), (snapshot) => {
-      const list: ToppingOption[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as ToppingOption);
-      });
-      setToppingOptions(list);
-      localStorage.setItem('supreme_topping_options', JSON.stringify(list));
-    }, (error) => {
-      console.warn('Firestore quota warning for topping_options, using local fallback:', error?.message);
-      const cached = localStorage.getItem('supreme_topping_options');
-      if (cached) {
-        try { setToppingOptions(JSON.parse(cached)); } catch (_) { setToppingOptions(TOPPING_OPTIONS); }
-      } else {
-        setToppingOptions(TOPPING_OPTIONS);
+    const cachedToppings = localStorage.getItem('supreme_topping_options');
+    if (cachedToppings) {
+      try { setToppingOptions(JSON.parse(cachedToppings)); } catch (_) { setToppingOptions(TOPPING_OPTIONS); }
+    } else {
+      setToppingOptions(TOPPING_OPTIONS);
+    }
+
+    const fetchCatalog = async () => {
+      try {
+        const menuSnap = await getDocs(collection(db, 'menu_items'));
+        trackFirestoreRead('menu_items', menuSnap.size);
+        const itemsList: MenuItem[] = [];
+        menuSnap.forEach((docSnap) => {
+          itemsList.push({ id: docSnap.id, ...docSnap.data() } as MenuItem);
+        });
+        itemsList.sort((a, b) => {
+          const idxA = (a as any).index ?? 999;
+          const idxB = (b as any).index ?? 999;
+          if (idxA !== idxB) return idxA - idxB;
+          return a.name.localeCompare(b.name);
+        });
+        if (itemsList.length > 0) {
+          setMenuItems(itemsList);
+          localStorage.setItem('supreme_menu_items', JSON.stringify(itemsList));
+        }
+
+        const flavorSnap = await getDocs(collection(db, 'flavor_options'));
+        trackFirestoreRead('flavor_options', flavorSnap.size);
+        const flavorList: FlavorOption[] = [];
+        flavorSnap.forEach((docSnap) => {
+          flavorList.push({ id: docSnap.id, ...docSnap.data() } as FlavorOption);
+        });
+        if (flavorList.length > 0) {
+          setFlavorOptions(flavorList);
+          localStorage.setItem('supreme_flavor_options', JSON.stringify(flavorList));
+        }
+
+        const toppingSnap = await getDocs(collection(db, 'topping_options'));
+        trackFirestoreRead('topping_options', toppingSnap.size);
+        const toppingList: ToppingOption[] = [];
+        toppingSnap.forEach((docSnap) => {
+          toppingList.push({ id: docSnap.id, ...docSnap.data() } as ToppingOption);
+        });
+        if (toppingList.length > 0) {
+          setToppingOptions(toppingList);
+          localStorage.setItem('supreme_topping_options', JSON.stringify(toppingList));
+        }
+      } catch (err: any) {
+        console.warn('Firestore quota warning for catalog getDocs:', err?.message);
       }
-    });
-    return () => unsub();
+    };
+
+    fetchCatalog();
+    const catalogInterval = setInterval(fetchCatalog, 10 * 60 * 1000);
+    return () => clearInterval(catalogInterval);
   }, []);
 
   // 2c. Seed default menu items, toppings, and flavors if db is empty, and sync any changes from code to Firestore
@@ -1339,26 +1349,23 @@ export default function App() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'waiting' | 'preparing' | 'delivering' | 'completed'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
-  // 4. Real-time sync of orders from Firestore
+  // 4. Real-time sync of orders from Firestore (limited and closed on hidden/non-visible tabs)
   useEffect(() => {
-    if (!currentUser) {
-      // Avoid subscribing to orders until currentUser is initialized to prevent permissions errors
-      return;
-    }
+    if (!currentUser) return;
+    if (activeTab !== 'tracker') return;
+    if (document.visibilityState === 'hidden') return;
 
     const ordersCol = collection(db, 'orders');
-
-    // Connect to Firestore orders matching current user.
-    // A blanket list query is only allowed by the security rules if the user is a verified DB administrator.
     let q;
     const isRealDbAdmin = currentUser && currentUser.email === 'brfariarm@gmail.com' && currentUser.emailVerified;
     if (isRealDbAdmin) {
-      q = query(ordersCol);
+      q = query(ordersCol, limit(100));
     } else {
-      q = query(ordersCol, where('ownerId', '==', currentUser.uid));
+      q = query(ordersCol, where('ownerId', '==', currentUser.uid), limit(50));
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      trackFirestoreRead('orders', snapshot.size);
       const fetchedOrders: Order[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -1373,8 +1380,6 @@ export default function App() {
         });
       });
       
-      // Sort client-side of list retrieval to avoid Firestore index requisites on empty creation
-      // Orders can be styled as `ord-171839...` or `ord-pdv-171839...`. Extract digits to compare epoch timestamps.
       fetchedOrders.sort((a, b) => {
         const timeA = parseInt(a.id.match(/\d+$/)?.[0] || '0', 10);
         const timeB = parseInt(b.id.match(/\d+$/)?.[0] || '0', 10);
@@ -1383,7 +1388,6 @@ export default function App() {
       
       setOrders(fetchedOrders);
 
-      // Cache client orders locally
       const isAdminMode = isAdmin;
       if (!isAdminMode) {
         localStorage.setItem('supreme_orders', JSON.stringify(fetchedOrders));
@@ -1396,7 +1400,6 @@ export default function App() {
         console.error('Failed to subscribe to orders query:', error);
         handleFirestoreError(error, OperationType.LIST, 'orders');
       }
-      // Fallback: Load saved local orders when offline/restricted
       const savedOrders = localStorage.getItem('supreme_orders');
       if (savedOrders) {
         try {
@@ -1407,8 +1410,18 @@ export default function App() {
       }
     });
 
-    return () => unsubscribe();
-  }, [currentUser]);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        unsubscribe();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [currentUser, activeTab]);
 
   // Keep active tracking order in sync with live Firestore document updates
   useEffect(() => {

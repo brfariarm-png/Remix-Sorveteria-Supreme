@@ -96,7 +96,7 @@ function readFsBool(fields: any, key: string): boolean | undefined {
 }
 
 async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
-  if (cachedConfig && Date.now() - cachedConfigAt < 30000) {
+  if (cachedConfig && Date.now() - cachedConfigAt < 5 * 60 * 1000) {
     return cachedConfig;
   }
   try {

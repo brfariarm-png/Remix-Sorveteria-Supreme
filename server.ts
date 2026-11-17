@@ -172,8 +172,8 @@ async function syncStoreConfigFromDb() {
 
 // Initial sync on startup
 syncStoreConfigFromDb();
-// Periodic refresh every 60s
-setInterval(syncStoreConfigFromDb, 60000);
+// Periodic refresh every 10 minutes
+setInterval(syncStoreConfigFromDb, 10 * 60 * 1000);
 
 // Evolution keepalive ping every 10 minutes to prevent Render free instance from sleeping
 async function pingEvolutionKeepAlive() {
