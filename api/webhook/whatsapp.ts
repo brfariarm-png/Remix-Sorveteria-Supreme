@@ -444,7 +444,7 @@ export default async function handler(req: any, res: any) {
     const event = String(payload?.event || payload?.type || '').toLowerCase();
     const msgType = String(payload?.type || payload?.data?.type || '').toLowerCase();
 
-    if (msgType.includes('append') || event.includes('append') || event.includes('connection') || event.includes('qrcode') || event.includes('presence')) {
+    if (msgType.includes('append') || event.includes('connection') || event.includes('qrcode') || event.includes('presence')) {
       return res.status(200).json({ ok: true, received: true, ignored: 'system-event' });
     }
 
@@ -452,13 +452,11 @@ export default async function handler(req: any, res: any) {
     const data = Array.isArray(rawData)
       ? rawData[0]
       : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
-    const key = data?.key || payload?.key || (data?.remoteJid ? data : null) || { remoteJid: data?.from || payload?.from };
+    const key = data?.key || payload?.key || (data?.remoteJid ? data : null) || { remoteJid: data?.from || payload?.from || data?.sender };
     const messageContent = data?.message || payload?.message || data;
 
-    if (!data || !key || (!key.remoteJid && !data.remoteJid && !messageContent)) {
-      if (event && event !== 'messages.upsert' && event !== 'messages_upsert' && event !== 'message' && event !== 'send_message' && event !== 'messages_set') {
-        return res.status(200).json({ ok: true, received: true, ignored: 'non-message-event', event });
-      }
+    if (!key?.remoteJid && !data?.remoteJid && !messageContent) {
+      return res.status(200).json({ ok: true, received: true, ignored: 'no-message-content', event });
     }
 
     const remoteJid = String(key.remoteJid || '');
