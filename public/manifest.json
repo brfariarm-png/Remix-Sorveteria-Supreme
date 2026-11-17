@@ -3,7 +3,10 @@
   "scope": "/",
   "lang": "pt-BR",
   "dir": "ltr",
-  "categories": ["food", "shopping"],
+  "categories": [
+    "food",
+    "shopping"
+  ],
   "short_name": "Supreme",
   "name": "Sorveteria Supreme",
   "description": "App de pedidos online e delivery para a Sorveteria Supreme de Monte Mor/SP. Faça seu açaí ou peça sorvetes artesanais com agilidade e rastreamento em tempo real.",
@@ -20,19 +23,19 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
       "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
@@ -87,5 +90,6 @@
         }
       ]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
