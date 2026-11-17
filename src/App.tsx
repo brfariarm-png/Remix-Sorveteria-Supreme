@@ -1804,30 +1804,40 @@ export default function App() {
       dispatchOrderWhatsApp(targetOrder, newStatus, true);
     }
 
-    if (currentUser) {
-      try {
-        await updateDoc(doc(db, 'orders', orderId), {
-          status: newStatus
-        });
+    // Instantly update local state so the UI responds immediately without any lag or failure
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
 
-        // Auto print on preparing if enabled
-        if (newStatus === 'preparing' && autoPrintOnPrep && targetOrder) {
-          try {
-            printOrderReceipt(targetOrder, storeSettings);
-          } catch (e) {
-            console.error("Auto print error on initiating prep:", e);
-          }
-        }
-      } catch (e) {
-        handleFirestoreError(e, OperationType.UPDATE, `orders/${orderId}`);
-      }
-    } else {
-      // Local fallback
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
+    // Also update localStorage cache of orders
+    try {
+      const updatedOrders = orders.map((order) =>
+        order.id === orderId ? { ...order, status: newStatus } : order
       );
+      localStorage.setItem('supreme_orders', JSON.stringify(updatedOrders));
+    } catch (e) {
+      console.error('Error updating local storage cache:', e);
+    }
+
+    // Attempt Firestore update in background
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        status: newStatus
+      });
+
+      // Auto print on preparing if enabled
+      if (newStatus === 'preparing' && autoPrintOnPrep && targetOrder) {
+        try {
+          printOrderReceipt(targetOrder, storeSettings);
+        } catch (e) {
+          console.error("Auto print error on initiating prep:", e);
+        }
+      }
+    } catch (e: any) {
+      console.warn("Firestore update skipped or failed (local state updated):", e);
+      handleFirestoreError(e, OperationType.UPDATE, `orders/${orderId}`);
     }
   };
 
