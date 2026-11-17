@@ -637,8 +637,13 @@ export default function App() {
         }));
       }
     }, (error) => {
-      console.log('Read settings skipped or restricted (admin setting):', error.message);
-      handleFirestoreError(error, OperationType.GET, 'settings/store_config');
+      const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';
+      if (isQuota) {
+        console.warn('Firestore quota limit reached for store_config. Running on local settings.');
+      } else {
+        console.log('Read settings skipped or restricted (admin setting):', error.message);
+        handleFirestoreError(error, OperationType.GET, 'settings/store_config');
+      }
     });
     return () => unsub();
   }, []);
@@ -1384,8 +1389,13 @@ export default function App() {
         localStorage.setItem('supreme_orders', JSON.stringify(fetchedOrders));
       }
     }, (error) => {
-      console.error('Failed to subscribe to orders query:', error);
-      handleFirestoreError(error, OperationType.LIST, 'orders');
+      const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';
+      if (isQuota) {
+        console.warn('Firestore quota limit reached for orders query. Using local cached orders.');
+      } else {
+        console.error('Failed to subscribe to orders query:', error);
+        handleFirestoreError(error, OperationType.LIST, 'orders');
+      }
       // Fallback: Load saved local orders when offline/restricted
       const savedOrders = localStorage.getItem('supreme_orders');
       if (savedOrders) {
@@ -1431,7 +1441,10 @@ export default function App() {
         );
       }
     }, (error) => {
-      console.error("Failed to sync individual tracking order:", error);
+      const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';
+      if (!isQuota) {
+        console.error("Failed to sync individual tracking order:", error);
+      }
     });
 
     return () => unsubscribe();
