@@ -35,12 +35,26 @@ async function loadConfig() {
 }
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (!res.status) {
+    res.status = function(code: number) {
+      this.statusCode = code;
+      return this;
+    };
   }
-  if (!(await verifyAdmin(req))) {
-    return res.status(401).json({ error: 'Não autorizado. Entre como administrador.' });
+  if (!res.json) {
+    res.json = function(obj: any) {
+      this.setHeader('Content-Type', 'application/json');
+      this.end(JSON.stringify(obj));
+      return this;
+    };
   }
+  try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+    if (!(await verifyAdmin(req))) {
+      return res.status(401).json({ error: 'Não autorizado. Entre como administrador.' });
+    }
 
   const phone = String(req.body?.phone || '').replace(/\D/g, '');
   const message = String(req.body?.message || '');
@@ -86,5 +100,8 @@ export default async function handler(req: any, res: any) {
       friendly = msg.replace(token, '[REDACTED]');
     }
     return res.status(500).json({ error: friendly });
+  }
+  } catch (outerErr: any) {
+    return res.status(500).json({ error: outerErr?.message || 'Erro interno no servidor' });
   }
 }

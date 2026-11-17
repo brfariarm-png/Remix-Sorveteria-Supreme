@@ -352,6 +352,19 @@ async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey:
 }
 
 export default async function handler(req: any, res: any) {
+  if (!res.status) {
+    res.status = function(code: number) {
+      this.statusCode = code;
+      return this;
+    };
+  }
+  if (!res.json) {
+    res.json = function(obj: any) {
+      this.setHeader('Content-Type', 'application/json');
+      this.end(JSON.stringify(obj));
+      return this;
+    };
+  }
   try {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
