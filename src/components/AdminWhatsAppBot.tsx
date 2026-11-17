@@ -1300,7 +1300,8 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
         throw new Error(`Servidor retornou erro HTTP ${proxyRes.status} (resposta inválida): ${rawText.slice(0, 150)}`);
       }
       if (!proxyRes.ok || !proxyJson.success) {
-        throw new Error(proxyJson.error || proxyJson.data?.error || `HTTP ${proxyJson.status || proxyRes.status}`);
+        const errDetail = typeof proxyJson.data?.error === 'string' ? proxyJson.data.error : (proxyJson.error || proxyJson.data?.rawText || JSON.stringify(proxyJson.data) || `HTTP ${proxyJson.status || proxyRes.status}`);
+        throw new Error(errDetail);
       }
       const data = proxyJson.data;
       const httpStatus = proxyJson.status || 200;

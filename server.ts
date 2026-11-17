@@ -1060,7 +1060,12 @@ app.post('/api/whatsapp/test-webhook', async (req: Request, res: Response) => {
       data
     });
   } catch (err: any) {
-    res.status(500).json({ error: `Falha de rede ao disparar webhook: ${err.message || err}` });
+    res.json({
+      success: false,
+      status: 500,
+      statusText: 'Network Error',
+      data: { error: `Falha de rede ao disparar webhook (o servidor Render pode estar dormindo): ${err.message || err}` }
+    });
   }
 });
 
