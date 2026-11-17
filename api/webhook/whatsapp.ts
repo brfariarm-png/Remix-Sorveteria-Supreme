@@ -1,11 +1,4 @@
-// (Função embutida aqui: a Vercel não resolve imports relativos sem extensão em projetos ESM.)
-function webhookSecretOk(req: any): boolean {
-  const expected = process.env.WEBHOOK_SECRET;
-  if (!expected) return true;
-  const fromQuery = String(req?.query?.secret || '');
-  const fromHeader = String(req?.headers?.['x-webhook-secret'] || '');
-  return fromQuery === expected || fromHeader === expected;
-}
+import { webhookSecretOk } from '../_lib/adminAuth';
 
 const PROJECT_ID = 'gen-lang-client-0657249394';
 const DATABASE_ID = 'ai-studio-remixsorveterias-394250e3-c97c-4dba-be9b-43921c0168c3';
@@ -451,37 +444,21 @@ export default async function handler(req: any, res: any) {
     const event = String(payload?.event || payload?.type || '').toLowerCase();
     const msgType = String(payload?.type || payload?.data?.type || '').toLowerCase();
 
-    if (msgType.includes('append') || event.includes('append')) {
-      return res.status(200).json({ ok: true, received: true, ignored: 'append-event' });
+    if (msgType.includes('append') || event.includes('append') || event.includes('connection') || event.includes('qrcode') || event.includes('presence')) {
+      return res.status(200).json({ ok: true, received: true, ignored: 'system-event' });
     }
 
-    if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
-      if (event && event !== 'ping.test') {
-        pushWebhookLog({
-          from: String(payload?.instance || 'Evolution'),
-          incomingText: `Evento: ${event}`,
-          replyText: '',
-          status: 'ignored',
-          details: 'Evento ignorado (apenas messages.upsert dispara resposta)'
-        });
-      }
-      return res.status(200).json({ ok: true, received: true, ignored: 'non-upsert-event', event });
-    }
-
-    const rawData = payload?.data;
+    const rawData = payload?.data || payload?.message || payload;
     const data = Array.isArray(rawData)
       ? rawData[0]
       : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
-    const key = data?.key || payload?.key;
-    if (!data || !key) {
-      pushWebhookLog({
-        from: 'Evolution',
-        incomingText: 'messages.upsert sem key',
-        replyText: '',
-        status: 'ignored',
-        details: 'Payload recebido sem key'
-      });
-      return res.status(200).json({ ok: true, received: true, ignored: 'empty-key' });
+    const key = data?.key || payload?.key || (data?.remoteJid ? data : null) || { remoteJid: data?.from || payload?.from };
+    const messageContent = data?.message || payload?.message || data;
+
+    if (!data || !key || (!key.remoteJid && !data.remoteJid && !messageContent)) {
+      if (event && event !== 'messages.upsert' && event !== 'messages_upsert' && event !== 'message' && event !== 'send_message' && event !== 'messages_set') {
+        return res.status(200).json({ ok: true, received: true, ignored: 'non-message-event', event });
+      }
     }
 
     const remoteJid = String(key.remoteJid || '');

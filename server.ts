@@ -29,7 +29,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = isProd ? (Number(process.env.PORT) || 8080) : 3000;
+let PORT = Number(process.env.PORT) || (isProd ? 8080 : 3000);
+const args = process.argv.slice(2);
+for (let i = 0; i < args.length; i++) {
+  if ((args[i] === '--port' || args[i] === '-p') && args[i + 1]) {
+    const p = Number(args[i + 1]);
+    if (!isNaN(p) && p > 0) PORT = p;
+  }
+}
 
 app.use(cors({
   origin: '*',
