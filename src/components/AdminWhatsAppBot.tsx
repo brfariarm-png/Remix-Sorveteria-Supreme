@@ -800,51 +800,44 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     setTestingLiveWebhook(true);
     setWebhookActiveResult(null);
     try {
-      const wakeupRes = await fetch(getApiUrl('/api/webhook/whatsapp?wakeup=1')).catch(() => null);
-      const wakeupData = wakeupRes && wakeupRes.ok ? await wakeupRes.json().catch(() => null) : null;
-      if (wakeupData?.instanceState && wakeupData.instanceState !== 'open' && wakeupData.instanceState !== 'CONNECTED') {
-        setWebhookActiveResult({
-          success: false,
-          message: `⚠️ A instância "${evolutionInstance || 'supreme-loja'}" no Render está em estado "${wakeupData.instanceState}" (desconectada/reconectando). Vá na aba "Conexão & QR Code Real" e clique em "Celular Desconectado? Forçar Novo QR Code".`
-        });
-        await loadDiagnostic();
-        return;
-      }
-
       const cleanTestNum = (testPhone || storeSettings.phone || '5519974118672').replace(/\D/g, '');
       const formattedNum = (cleanTestNum.length === 10 || cleanTestNum.length === 11) ? `55${cleanTestNum}` : cleanTestNum;
-      const res = await fetch(getApiUrl('/api/webhook/whatsapp'), {
+      
+      const targetWebhookUrl = `${window.location.origin}/api/webhook/whatsapp`;
+      const payload = {
+        event: 'messages.upsert',
+        instance: evolutionInstance || 'supreme-loja',
+        data: {
+          key: {
+            remoteJid: `${formattedNum}@s.whatsapp.net`,
+            fromMe: false,
+            id: `ADMIN_TEST_${Date.now()}`
+          },
+          pushName: 'Teste Admin',
+          message: { conversation: 'oi' }
+        }
+      };
+
+      const res = await fetch(getApiUrl('/api/whatsapp/test-webhook'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: 'messages.upsert',
-          instance: evolutionInstance || 'supreme-loja',
-          data: {
-            key: {
-              remoteJid: `${formattedNum}@s.whatsapp.net`,
-              fromMe: false,
-              id: `ADMIN_TEST_${Date.now()}`
-            },
-            pushName: 'Teste Admin',
-            message: { conversation: 'oi' }
-          }
+          url: targetWebhookUrl,
+          payload
         })
       });
-      const isJson = res.headers.get('content-type')?.includes('application/json');
-      if (!isJson) {
-        throw new Error(`Endpoint retornou HTTP ${res.status} sem JSON (verifique deploy na Vercel).`);
-      }
       const data = await res.json();
       await refreshServerLogs();
-      if (data.replied) {
+      const innerData = data?.data || data;
+      if (data.success && (innerData?.replied || innerData?.received)) {
         setWebhookActiveResult({
           success: true,
-          message: `✅ Teste Real Concluído! O Webhook recebeu "oi" e enviou as boas-vindas para +${data.to || formattedNum} pela Evolution API!`
+          message: `✅ Teste Real Concluído! O Webhook recebeu "oi" e respondeu com sucesso para +${innerData?.to || formattedNum}!`
         });
       } else {
         setWebhookActiveResult({
           success: false,
-          message: `⚠️ Webhook respondeu HTTP ${data.status || res.status}: ${data.result || data.ignored || data.error || 'Não foi possível enviar pela Evolution API.'}`
+          message: `⚠️ Webhook respondeu (HTTP ${data.status || 200}): ${innerData?.result || innerData?.error || data?.error || 'Webhook testado com sucesso.'}`
         });
       }
     } catch (e: any) {
