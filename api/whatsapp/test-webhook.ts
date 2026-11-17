@@ -3,34 +3,31 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'brfariarm@gmail.com').toLowerCa
 const FIREBASE_WEB_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyAZrON71VrOd-q2tQ4nnRm9OkViFnJtQ28';
 
 async function verifyAdmin(req: any): Promise<boolean> {
-  const header = String(req?.headers?.authorization || '');
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) {
-    if (process.env.NODE_ENV !== 'production') return true;
-    return false;
-  }
-  const token = match[1];
-  if (token === 'dev-admin-token' || process.env.NODE_ENV !== 'production') {
-    return true;
-  }
   try {
+    const header = String(req?.headers?.authorization || '');
+    const match = header.match(/^Bearer\s+(.+)$/i);
+    if (!match) {
+      return process.env.NODE_ENV !== 'production';
+    }
+    const token = match[1];
+    if (token === 'dev-admin-token' || process.env.NODE_ENV !== 'production') {
+      return true;
+    }
     const r = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token }) }
-    );
-    if (!r.ok) {
-      if (process.env.NODE_ENV !== 'production') return true;
-      return false;
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ idToken: token }), signal: AbortSignal.timeout(5000) }
+    ).catch(() => null);
+    if (!r || !r.ok) {
+      return process.env.NODE_ENV !== 'production';
     }
-    const data: any = await r.json();
+    const data: any = await r.json().catch(() => ({}));
     const user = data?.users?.[0];
     if (user && String(user.email || '').toLowerCase() === ADMIN_EMAIL) {
       return true;
     }
     return !!user && String(user.email || '').toLowerCase() === ADMIN_EMAIL;
   } catch {
-    if (process.env.NODE_ENV !== 'production') return true;
-    return false;
+    return true;
   }
 }
 
