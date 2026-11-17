@@ -94,6 +94,39 @@ import AdminWhatsAppBot from './components/AdminWhatsAppBot';
 import AdminPainelTV from './components/AdminPainelTV';
 import AdminTotem from './components/AdminTotem';
 
+const getBrasiliaTimeInfo = () => {
+  const now = new Date();
+  const formatterTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  const parts = formatterTime.formatToParts(now);
+  let hours = 0;
+  let minutes = 0;
+  for (const p of parts) {
+    if (p.type === 'hour') hours = parseInt(p.value, 10);
+    if (p.type === 'minute') minutes = parseInt(p.value, 10);
+  }
+  if (hours === 24) hours = 0;
+
+  const formatterDay = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'short'
+  });
+  const dayStr = formatterDay.format(now).toLowerCase();
+  const dayMap: Record<string, number> = {
+    'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6
+  };
+  const dayOfWeekIndex = dayMap[dayStr] ?? now.getDay();
+
+  return {
+    currentMinutes: hours * 60 + minutes,
+    dayOfWeekIndex
+  };
+};
+
 const BannerImage = "/assets/images/supreme_banner_1780583592745.png";
 const LogoImage = "/assets/images/supreme_logo_1780583608054.png";
 
@@ -307,18 +340,16 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showAdminSection, setShowAdminSection] = useState(false);
 
-  const [currentMinutes, setCurrentMinutes] = useState(() => {
-    const d = new Date();
-    return d.getHours() * 60 + d.getMinutes();
-  });
+  const [brasiliaTimeData, setBrasiliaTimeData] = useState(() => getBrasiliaTimeInfo());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const d = new Date();
-      setCurrentMinutes(d.getHours() * 60 + d.getMinutes());
+      setBrasiliaTimeData(getBrasiliaTimeInfo());
     }, 15000); // tick every 15 seconds to update open/closed state in real-time
     return () => clearInterval(timer);
   }, []);
+
+  const currentMinutes = brasiliaTimeData.currentMinutes;
 
   useEffect(() => {
     if (!isAuthModalOpen) {
@@ -794,7 +825,7 @@ export default function App() {
     // Check weekly schedule first if configured
     if (storeSettings.weeklyHours && storeSettings.weeklyHours.length > 0) {
       const dayKeys = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'] as const;
-      const dayOfWeekKey = dayKeys[new Date().getDay()];
+      const dayOfWeekKey = dayKeys[brasiliaTimeData.dayOfWeekIndex];
       const todaySchedule = storeSettings.weeklyHours.find(h => h.dayOfWeek === dayOfWeekKey);
       if (todaySchedule) {
         if (!todaySchedule.isOpen) return false;
@@ -824,7 +855,7 @@ export default function App() {
       // Overnight range e.g. 18:00 to 02:00
       return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
     }
-  }, [storeSettings.statusOverride, storeSettings.openTime, storeSettings.closeTime, storeSettings.weeklyHours, currentMinutes]);
+  }, [storeSettings.statusOverride, storeSettings.openTime, storeSettings.closeTime, storeSettings.weeklyHours, currentMinutes, brasiliaTimeData.dayOfWeekIndex]);
 
   const [activeTab, setActiveTab] = useState<'menu' | 'tracker'>('menu');
   const [isPrinterConfigOpen, setIsPrinterConfigOpen] = useState(false);
