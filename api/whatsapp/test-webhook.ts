@@ -1,4 +1,24 @@
-import { verifyAdmin } from '../_lib/adminAuth';
+// (Função embutida aqui: a Vercel não resolve imports relativos sem extensão em projetos ESM.)
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'brfariarm@gmail.com').toLowerCase();
+const FIREBASE_WEB_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyAZrON71VrOd-q2tQ4nnRm9OkViFnJtQ28';
+
+async function verifyAdmin(req: any): Promise<boolean> {
+  const header = String(req?.headers?.authorization || '');
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return false;
+  try {
+    const r = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: match[1] }) }
+    );
+    if (!r.ok) return false;
+    const data: any = await r.json();
+    const user = data?.users?.[0];
+    return !!user && String(user.email || '').toLowerCase() === ADMIN_EMAIL && user.emailVerified === true;
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req: any, res: any) {
   if (!res.status) {

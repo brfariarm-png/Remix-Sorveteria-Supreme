@@ -1,4 +1,11 @@
-import { webhookSecretOk } from '../_lib/adminAuth';
+// (Função embutida aqui: a Vercel não resolve imports relativos sem extensão em projetos ESM.)
+function webhookSecretOk(req: any): boolean {
+  const expected = process.env.WEBHOOK_SECRET;
+  if (!expected) return true;
+  const fromQuery = String(req?.query?.secret || '');
+  const fromHeader = String(req?.headers?.['x-webhook-secret'] || '');
+  return fromQuery === expected || fromHeader === expected;
+}
 
 const PROJECT_ID = 'gen-lang-client-0657249394';
 const DATABASE_ID = 'ai-studio-remixsorveterias-394250e3-c97c-4dba-be9b-43921c0168c3';
