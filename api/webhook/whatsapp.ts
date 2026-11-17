@@ -308,7 +308,7 @@ function buildSendCandidates(key: any, data: any): { targets: string[]; displayS
   return { targets, displaySender };
 }
 
-async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey: string, target: string, text: string, maxRetries = 3): Promise<{ ok: boolean; status: number; result: string }> {
+async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey: string, target: string, text: string, maxRetries = 1): Promise<{ ok: boolean; status: number; result: string }> {
   let lastStatus = 500;
   let lastResult = '';
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -331,7 +331,7 @@ async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey:
           delay: 0,
           linkPreview: false
         }),
-        signal: AbortSignal.timeout(18000)
+        signal: AbortSignal.timeout(6000)
       });
       const status = sendRes.status;
       const result = await sendRes.text();
