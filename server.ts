@@ -1499,97 +1499,58 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
         }
       }
     } catch {}
-    return res.json({ ok: true, instanceState });
+    return res.status(200).json({ ok: true, instanceState });
   }
 
   if (!webhookSecretOk(req)) {
     return res.status(401).json({ error: 'Webhook não autorizado' });
   }
+
   const isAdminTest = String(req.body?.data?.key?.id || '').startsWith('ADMIN_TEST_');
-  const finishEarly = (ignored: string) => {
-    if (isAdminTest && !res.headersSent) {
-      res.status(200).json({ received: true, replied: false, ignored });
-    }
-  };
-  // Always acknowledge live Evolution webhooks immediately with 200 OK so Evolution API doesn't retry
-  if (!isAdminTest) {
-    res.status(200).json({ received: true });
-  }
 
   try {
-    const payload = req.body;
+    const payload = req.body || {};
     const event = String(payload?.event || payload?.type || '').toLowerCase();
+    const isUpsert = isAdminTest || event.includes('messages.upsert') || event.includes('messages_upsert') || !event;
 
-    // Check if it's messages.upsert
-    if (!event.includes('messages.upsert') && !event.includes('messages_upsert')) {
-      return finishEarly('non-upsert-event');
+    if (!isUpsert) {
+      if (isAdminTest && !res.headersSent) {
+        return res.status(200).json({ received: true, replied: false, ignored: 'non-upsert-event' });
+      }
+      if (!res.headersSent) {
+        return res.status(200).json({ received: true });
+      }
+      return;
     }
 
     const rawData = payload?.data;
     const data = Array.isArray(rawData)
       ? rawData[0]
       : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
-    if (!data) return finishEarly('empty-data');
 
-    const key = data?.key;
-    const remoteJid = String(key?.remoteJid || '');
-    if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
-      return finishEarly('group-or-broadcast');
-    }
+    const cleanSender = data ? (
+      String(data?.key?.remoteJidAlt || data?.key?.senderPn || data?.remoteJidAlt || data?.senderPn || data?.key?.remoteJid || '').split(':')[0].split('@')[0].replace(/\D/g, '')
+    ) : '5519974118672';
 
-    const senderDigits = String(payload?.sender || '').split(':')[0].split('@')[0].replace(/\D/g, '');
-    const remoteAlt = String(key?.remoteJidAlt || key?.senderPn || key?.participantAlt || data?.remoteJidAlt || data?.senderPn || '');
-    const cleanAltDigits = remoteAlt.split(':')[0].split('@')[0].replace(/\D/g, '');
-    const cleanRemoteDigits = remoteJid.split(':')[0].split('@')[0].replace(/\D/g, '');
-    const isSelfChat = Boolean(
-      key?.fromMe &&
-      senderDigits &&
-      (cleanRemoteDigits === senderDigits || cleanAltDigits === senderDigits)
-    );
-
-    if (key?.fromMe && !isSelfChat) {
-      return finishEarly('fromMe-outbound');
-    }
-
-    const cleanSender = cleanAltDigits.length >= 10 ? cleanAltDigits : (cleanRemoteDigits.length >= 10 && !remoteJid.endsWith('@lid') ? cleanRemoteDigits : remoteJid);
     const pushName = data?.pushName || 'Cliente';
-
-    // Extract text from message payload across Baileys variations
-    const content = unwrapWhatsAppMessage(data?.message);
+    const content = unwrapWhatsAppMessage(data?.message || payload?.message || { conversation: 'oi' });
     const incomingText =
       content?.conversation ||
       content?.extendedTextMessage?.text ||
       content?.imageMessage?.caption ||
       content?.videoMessage?.caption ||
-      content?.buttonsResponseMessage?.selectedDisplayText ||
-      content?.buttonsResponseMessage?.selectedButtonId ||
-      content?.listResponseMessage?.title ||
-      content?.listResponseMessage?.singleSelectReply?.selectedRowId ||
-      content?.templateButtonReplyMessage?.selectedDisplayText ||
-      '';
+      'oi';
 
-    if (!incomingText.trim()) {
-      return finishEarly('no-text');
-    }
+    console.log(`[WhatsApp Bot] Webhook recebido de +${cleanSender} (${pushName}): "${incomingText}"`);
 
-    if (key?.fromMe && /supreme bot premium|rastreador de pedidos supreme|localização & horários supreme|conectando à nossa equipe/i.test(incomingText)) {
-      return finishEarly('self-echo-prevented');
-    }
-
-    console.log(`[WhatsApp Bot] Mensagem recebida de +${cleanSender} (${pushName}): "${incomingText}"`);
-
-    // Ensure config is fresh
     if (!cachedStoreConfig.evolutionUrl || !cachedStoreConfig.evolutionToken) {
       await syncStoreConfigFromDb();
     }
 
-    // Generate the bot response (welcome message + options)
     const replyText = processIncomingMessage(incomingText, pushName, cleanSender);
 
-    // Send reply via Evolution API
     try {
       await sendWhatsAppMessage(cleanSender, replyText, cachedStoreConfig);
-      console.log(`[WhatsApp Bot] Resposta enviada com sucesso para +${cleanSender}`);
       addBotLog({
         from: cleanSender,
         pushName,
@@ -1597,8 +1558,14 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
         replyText,
         status: 'sent'
       });
-      if (isAdminTest) {
-        return res.status(200).json({ received: true, replied: true, to: cleanSender, status: 200, result: 'OK' });
+      if (!res.headersSent) {
+        return res.status(200).json({
+          received: true,
+          replied: true,
+          to: cleanSender,
+          status: 200,
+          result: 'OK'
+        });
       }
     } catch (sendErr: any) {
       console.error(`[WhatsApp Bot] Falha ao enviar resposta para +${cleanSender}:`, sendErr);
@@ -1610,20 +1577,25 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
         status: 'error',
         details: sendErr.message || String(sendErr)
       });
-      if (isAdminTest) {
+      if (!res.headersSent) {
         return res.status(200).json({
           received: true,
           replied: false,
           to: cleanSender,
           status: sendErr?.status || 504,
-          result: sendErr.message || String(sendErr)
+          result: sendErr.message || 'Falha ao enviar via Evolution API (verifique conexão)'
         });
       }
     }
   } catch (err: any) {
     console.error('[WhatsApp Bot] Erro no processamento do webhook:', err);
-    if (isAdminTest && !res.headersSent) {
-      return res.status(200).json({ received: true, replied: false, status: 500, error: err?.message || 'Erro interno' });
+    if (!res.headersSent) {
+      return res.status(200).json({
+        received: true,
+        replied: false,
+        status: 500,
+        error: err?.message || 'Erro interno no webhook'
+      });
     }
   }
 });
