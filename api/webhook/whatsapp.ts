@@ -212,37 +212,30 @@ function isBotGeneratedEcho(text: string): boolean {
 
 async function buildBotReply(userText: string, pushName: string, senderPhone: string, cfg: StoreBotConfig): Promise<string> {
   const clean = userText.trim().toLowerCase();
-  const isExactOption = clean === '1' || clean === '2' || clean === '3' || clean === '4';
 
-  // Explicit Menu option
   if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
     return cfg.menuMsg.replace('{menu_link}', cfg.menuLink).replace('[LINK_CARDAPIO]', cfg.menuLink);
   }
 
-  // Explicit Track Order option
   if (clean === '2' || clean.includes('rastrear') || clean.includes('rastreio') || clean.includes('status') || clean.includes('onde esta') || clean.includes('onde está') || clean.includes('meu pedido') || clean.includes('acompanhar')) {
     const activeOrderReply = await checkActiveOrderForCustomer(senderPhone, cfg);
     if (activeOrderReply) return activeOrderReply;
     return `🔍 *RASTREADOR DE PEDIDOS SUPREME*\n\nOlá, *${pushName}*! Não encontramos pedidos ativos no momento para o seu número.\n\nAcesse nosso cardápio para pedir:\n👉 ${cfg.menuLink}`;
   }
 
-  // Explicit Location & Hours option
   if (clean === '3' || clean.includes('localizacao') || clean.includes('localização') || clean.includes('onde fica') || clean.includes('endereco') || clean.includes('endereço') || clean.includes('horario') || clean.includes('horário')) {
     return `📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 *Endereço:* ${cfg.address}\n⏰ *Horário de Funcionamento:* ${cfg.openHours}\n💬 *Telefone Comercial:* ${cfg.phone}\n\nVenha nos visitar ou peça online pelo cardápio:\n👉 ${cfg.menuLink}`;
   }
 
-  // Explicit Human Support option
   if (clean === '4' || clean.includes('atendente') || clean.includes('humano') || clean.includes('falar com') || clean.includes('ajuda') || clean.includes('suporte')) {
     return cfg.supportMsg.replace('{telefone}', cfg.phone).replace('[TELEFONE]', cfg.phone);
   }
 
-  // If general message, check if there's an active order first
   const activeOrderReply = await checkActiveOrderForCustomer(senderPhone, cfg);
   if (activeOrderReply && (clean.includes('pedido') || clean.includes('entrega') || clean.includes('demora'))) {
     return activeOrderReply;
   }
 
-  // Default welcome message with menu link and operating hours
   return cfg.welcomeMsg
     .replace('{nome}', pushName)
     .replace('{menu_link}', cfg.menuLink)
@@ -305,12 +298,8 @@ function buildSendCandidates(key: any, data: any): { targets: string[]; displayS
     if (!displaySender) {
       displaySender = rawDigits.length >= 10 ? normalizeToBrPhone(rawDigits) : rawRemote;
     }
-    const normRemote = rawDigits.length >= 10 ? `${normalizeToBrPhone(rawDigits)}@s.whatsapp.net` : rawRemote;
-    if (!targets.includes(normRemote)) targets.push(normRemote);
-    if (rawDigits.length >= 10) {
-      const normDigits = normalizeToBrPhone(rawDigits);
-      if (!targets.includes(normDigits)) targets.push(normDigits);
-    }
+    const normDigits = rawDigits.length >= 10 ? normalizeToBrPhone(rawDigits) : rawRemote;
+    if (!targets.includes(normDigits)) targets.push(normDigits);
   }
 
   return { targets, displaySender };
@@ -321,7 +310,12 @@ async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey:
   let lastResult = '';
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const cleanTarget = target.includes('@') ? target : `${normalizeToBrPhone(target)}`;
+      const rawNum = target ? String(target).split('@')[0].replace(/\D/g, '') : '';
+      const cleanTarget = normalizeToBrPhone(rawNum);
+      if (!cleanTarget || cleanTarget.length < 10) {
+        throw new Error(`Número de telefone inválido para envio: ${target}`);
+      }
+
       const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
         method: 'POST',
         headers: {
