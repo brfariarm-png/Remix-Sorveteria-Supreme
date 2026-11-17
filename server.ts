@@ -1483,7 +1483,25 @@ app.get('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 });
 
 // MAIN WEBHOOK RECEIVER: Evolution API calls this on incoming WhatsApp messages (supports webhookByEvents subpath too)
-app.post(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: Request, res: Response) => {
+app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: Request, res: Response) => {
+  if (req.method === 'GET' || req.query?.wakeup === '1') {
+    let instanceState = 'open';
+    try {
+      const fullEvo = (cachedStoreConfig.evolutionUrl || '').trim().replace(/\/+$/, '');
+      if (fullEvo && cachedStoreConfig.evolutionInstance) {
+        const stRes = await fetch(`${fullEvo}/instance/connectionState/${cachedStoreConfig.evolutionInstance}`, {
+          headers: { apikey: cachedStoreConfig.evolutionToken },
+          signal: AbortSignal.timeout(4000)
+        });
+        if (stRes.ok) {
+          const stJson: any = await stRes.json();
+          instanceState = stJson?.instance?.state || stJson?.state || 'open';
+        }
+      }
+    } catch {}
+    return res.json({ ok: true, instanceState });
+  }
+
   if (!webhookSecretOk(req)) {
     return res.status(401).json({ error: 'Webhook não autorizado' });
   }
