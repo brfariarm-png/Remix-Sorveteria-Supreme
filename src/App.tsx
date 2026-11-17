@@ -528,6 +528,7 @@ export default function App() {
           printerHeaderMessage: data.printerHeaderMessage ?? prev.printerHeaderMessage,
           printerFooterMessage: data.printerFooterMessage ?? prev.printerFooterMessage,
           deliveryFees: data.deliveryFees ?? prev.deliveryFees,
+          weeklyHours: data.weeklyHours ?? prev.weeklyHours,
           customDomain: (data.customDomain === 'Sorveteria-Supreme.vercel.app') ? 'sorveteriasupreme.vercel.app' : (data.customDomain ?? prev.customDomain),
           instagram: (!data.instagram || data.instagram === '@sorveteriagourmetsupreme') 
             ? (prev.instagram === '@sorveteriagourmetsupreme' || !prev.instagram ? '@sorveteria.supreme' : prev.instagram) 
@@ -1918,6 +1919,7 @@ export default function App() {
           printerHeaderMessage: settings.printerHeaderMessage || "Comprovante de Pedido",
           printerFooterMessage: settings.printerFooterMessage || "Muito obrigado pela preferência!",
           deliveryFees: settings.deliveryFees || [],
+          weeklyHours: settings.weeklyHours || DEFAULT_WEEKLY_HOURS,
           customDomain: settings.customDomain || '',
           instagram: settings.instagram || '@sorveteria.supreme',
           pixKey: settings.pixKey || 'contato@sorveteriasupreme.com.br',
@@ -2182,6 +2184,11 @@ export default function App() {
 
   // Handle Checkout finish & saving order
   const handlePlaceOrder = async (details: CheckoutDetails) => {
+    if (!isOpen && !isAdmin) {
+      alert("⚠️ A loja encontra-se FECHADA no momento. Não é possível enviar novos pedidos fora do horário de funcionamento.");
+      setIsCheckoutOpen(false);
+      return;
+    }
     const orderId = `ord-${secureRandomHex()}-${Date.now()}`;
     
     const cleanCep = details.address.cep ? details.address.cep.replace(/\D/g, '') : '';
@@ -4118,6 +4125,10 @@ export default function App() {
                     <button
                       disabled={cart.length === 0}
                       onClick={() => {
+                        if (!isOpen && !isAdmin) {
+                          alert("⚠️ A loja encontra-se FECHADA no momento. Você pode visualizar o cardápio e montar seu carrinho, mas a finalização de pedidos só é permitida durante o horário de funcionamento!");
+                          return;
+                        }
                         setIsCartOpen(false);
                         setIsCheckoutOpen(true);
                       }}
@@ -4169,6 +4180,8 @@ export default function App() {
             deliveryFees={storeSettings.deliveryFees}
             storePhone={storeSettings.phone}
             storeSettings={storeSettings}
+            isOpen={isOpen}
+            isAdmin={isAdmin}
           />
         )}
       </AnimatePresence>

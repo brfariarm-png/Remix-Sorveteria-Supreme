@@ -95,7 +95,9 @@ export default function Checkout({
   onSignIn, 
   deliveryFees, 
   storePhone,
-  storeSettings
+  storeSettings,
+  isOpen,
+  isAdmin
 }: CheckoutProps) {
   const [step, setStep] = useState<1 | 2>(1); // Step 1: Delivery info, Step 2: Payment
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
@@ -457,6 +459,11 @@ export default function Checkout({
   };
 
   const handleFinishCheckout = () => {
+    if (isOpen === false && !isAdmin) {
+      alert("⚠️ A loja encontra-se FECHADA no momento. Você pode visualizar o cardápio, mas os pedidos só podem ser realizados durante o horário de funcionamento!");
+      setIsSubmitting(false);
+      return;
+    }
     if (!validateStep2()) return;
 
     setIsSubmitting(true);
