@@ -1129,6 +1129,98 @@ app.post(['/api/pausar-bot', '/api/whatsapp/pausar-bot'], async (req: Request, r
   }
 });
 
+// Notify store owner about new order via WhatsApp without touching Firestore (bypassing Firestore quota limits)
+app.post(['/api/notificar-pedido', '/api/whatsapp/notificar-pedido'], async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    const orderData = req.body || {};
+    const orderId = String(orderData.id || `SUP-${Date.now().toString().slice(-6)}`).slice(-6).toUpperCase();
+    const customerName = String(orderData.customerName || orderData.details?.customerName || 'Cliente');
+    const customerPhone = String(orderData.customerPhone || orderData.details?.customerPhone || '');
+    const items = Array.isArray(orderData.items) ? orderData.items : [];
+    const total = Number(orderData.total || 0);
+    const deliveryType = String(orderData.deliveryType || orderData.details?.deliveryType || 'delivery');
+    const address = String(orderData.address || orderData.details?.address || 'Retirada na Loja');
+    const paymentType = String(orderData.paymentType || orderData.details?.paymentType || 'pix');
+    const notes = String(orderData.notes || orderData.details?.notes || '');
+
+    const itemsFormatted = items.map((item: any) => {
+      const q = item.quantity || 1;
+      const name = item.menuItem?.name || item.name || 'Item';
+      const itemTotal = ((item.customCupPrice || item.menuItem?.price || item.price || 0) * q).toFixed(2);
+      let desc = `• ${q}x ${name} (R$ ${itemTotal})`;
+      if (item.customCupConfig) {
+        const sz = item.customCupConfig.size || '';
+        if (sz) desc += ` [Tamanho: ${sz}]`;
+        if (item.customCupConfig.flavors?.length) desc += ` [Sabores: ${item.customCupConfig.flavors.join(', ')}]`;
+        if (item.customCupConfig.toppings?.length) desc += ` [Adicionais: ${item.customCupConfig.toppings.join(', ')}]`;
+      }
+      if (item.notes) desc += ` (Obs: ${item.notes})`;
+      return desc;
+    }).join('\n');
+
+    const paymentMap: Record<string, string> = {
+      'pix': '💳 PIX Online',
+      'card': '💳 Cartão App',
+      'cash_on_delivery': '💵 Dinheiro na Entrega',
+      'card_on_delivery': '💳 Cartão na Entrega'
+    };
+    const paymentText = paymentMap[paymentType] || paymentType;
+    const typeText = deliveryType === 'delivery' ? '🛵 Delivery' : '🏃 Retirada na Loja';
+
+    const messageText = `🚨 *NOVO PEDIDO RECEBIDO! (#SUP${orderId})* 🚨\n\n👤 *Cliente:* ${customerName}\n📱 *Telefone:* ${customerPhone}\n📍 *Tipo:* ${typeText}\n🏠 *Endereço:* ${address}\n💳 *Pagamento:* ${paymentText}\n\n🛒 *Itens do Pedido:*\n${itemsFormatted}\n\n💰 *Total do Pedido: R$ ${total.toFixed(2)}*\n${notes ? `\n📝 *Obs Geral:* ${notes}` : ''}\n\n_Enviado pelo Alerta de Pedidos Sem Firestore_`;
+
+    const evoUrl = (process.env.EVOLUTION_URL || process.env.VITE_EVOLUTION_URL || 'https://supreme-bot-2bm0.onrender.com').trim().replace(/\/+$/, '');
+    const evoInstance = (process.env.EVOLUTION_INSTANCE || 'supreme-bot').trim();
+    const evoToken = (process.env.EVOLUTION_TOKEN || 'Rmfa1100@').trim();
+    const ownerPhone = (process.env.NUMERO_DONO || process.env.WHATSAPP_DONO || '5519974118672').replace(/\D/g, '');
+
+    if (!ownerPhone || ownerPhone.length < 10) {
+      return res.status(400).json({ ok: false, error: 'NUMERO_DONO not configured' });
+    }
+
+    let sentOk = false;
+    let lastResult = '';
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const sendRes = await fetch(`${evoUrl}/message/sendText/${evoInstance}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': evoToken
+          },
+          body: JSON.stringify({
+            number: ownerPhone,
+            text: messageText,
+            delay: 0,
+            linkPreview: false
+          }),
+          signal: AbortSignal.timeout(6000)
+        });
+        const respText = await sendRes.text();
+        lastResult = respText;
+        if (sendRes.ok) {
+          sentOk = true;
+          break;
+        }
+      } catch (err: any) {
+        lastResult = err?.message || 'Timeout';
+      }
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+
+    return res.status(200).json({ ok: sentOk, detail: lastResult.slice(0, 200) });
+  } catch (err: any) {
+    console.error('Error in /api/notificar-pedido:', err);
+    return res.status(200).json({ ok: false, error: err?.message || 'Internal error' });
+  }
+});
+
 // Connect or get QR Code from Evolution API via server proxy (avoids browser CORS & network drops)
 app.post('/api/evolution/connect', async (req: Request, res: Response) => {
   try {
