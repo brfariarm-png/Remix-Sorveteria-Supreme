@@ -16,6 +16,7 @@ const FIRESTORE_CONFIG_URL = `https://firestore.googleapis.com/v1/projects/${PRO
 
 const greetedContacts = new Map<string, number>();
 const processedMsgIds = new Set<string>();
+const recentReplies = new Map<string, number>();
 const GREET_TTL_MS = 6 * 60 * 60 * 1000;
 
 interface WebhookLogItem {
@@ -736,9 +737,28 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true, received: true, ignored: 'bot-disabled' });
     }
 
+    const msgTimestamp = Number(data?.messageTimestamp || payload?.messageTimestamp || 0);
+    if (msgTimestamp > 0) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (nowSec - msgTimestamp > 60) {
+        return res.status(200).json({ ok: true, received: true, ignored: 'old-message-sync' });
+      }
+    }
+
     const pushName = String(data?.pushName || 'Cliente');
     const { targets, displaySender } = buildSendCandidates(key, data);
-    const replyText = await buildBotReply(effectiveText, pushName, displaySender || remoteJid, cfg);
+    const targetPhone = displaySender || remoteJid;
+    const lastReply = recentReplies.get(targetPhone) || 0;
+    if (Date.now() - lastReply < 4000) {
+      return res.status(200).json({ ok: true, received: true, ignored: 'debounce-rate-limit' });
+    }
+    recentReplies.set(targetPhone, Date.now());
+    if (recentReplies.size > 200) {
+      const firstKey = recentReplies.keys().next().value;
+      if (firstKey) recentReplies.delete(firstKey);
+    }
+
+    const replyText = await buildBotReply(effectiveText, pushName, targetPhone, cfg);
 
     if (!replyText) {
       pushWebhookLog({
