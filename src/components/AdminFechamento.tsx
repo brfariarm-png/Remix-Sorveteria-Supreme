@@ -156,6 +156,67 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
     }
   };
 
+  // Download full backup JSON (orders + closeouts)
+  const handleDownloadFullBackup = () => {
+    try {
+      const backupData = {
+        exportedAt: new Date().toISOString(),
+        orders: safeOrders,
+        closeouts: pastCloseouts
+      };
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `backup_completo_pedidos_fechamentos_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccessMsg('✅ Backup completo baixado com sucesso!');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setErrorMsg('Erro ao exportar backup: ' + err.message);
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+  };
+
+  // Purge completed orders from Firestore to free up database space/quota
+  const handlePurgeCompletedOrders = async () => {
+    if (!window.confirm('⚠️ Tem certeza que deseja excluir DEFINITIVAMENTE todos os pedidos concluídos do banco de dados? Isso vai liberar espaço no banco. Certifique-se de ter baixado o backup antes!')) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const completedOrders = safeOrders.filter(o => o.status === 'completed');
+      if (completedOrders.length === 0) {
+        setSuccessMsg('Nenhum pedido concluído para limpar.');
+        setLoading(false);
+        setTimeout(() => setSuccessMsg(''), 3000);
+        return;
+      }
+      const batch = writeBatch(db);
+      completedOrders.forEach(o => {
+        const ref = doc(db, 'orders', o.id);
+        batch.delete(ref);
+      });
+      await batch.commit();
+
+      if (setOrders) {
+        setOrders(prev => prev.filter(o => o.status !== 'completed'));
+      }
+      localStorage.removeItem('supreme_orders');
+      setSuccessMsg(`✅ ${completedOrders.length} pedidos concluídos foram apagados permanentemente do banco, liberando espaço!`);
+      setLoading(false);
+      setTimeout(() => setSuccessMsg(''), 4000);
+      onRefreshOrders();
+    } catch (err: any) {
+      console.error('Error purging completed orders:', err);
+      setErrorMsg('Erro ao limpar pedidos do banco: ' + err.message);
+      setLoading(false);
+      setTimeout(() => setErrorMsg(''), 3000);
+    }
+  };
+
   // Export historical shift closeouts to CSV
   const exportPastCloseoutsToCSV = () => {
     try {
@@ -730,6 +791,22 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
               <p className="text-xs text-slate-400 mt-0.5">Turnos fechados e salvos com segurança no banco de dados.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadFullBackup}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
+                title="Baixar backup completo de pedidos e fechamentos para salvar no seu computador/Desktop"
+              >
+                📥 Baixar Backup
+              </button>
+              <button
+                type="button"
+                onClick={handlePurgeCompletedOrders}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
+                title="Apagar permanentemente pedidos concluídos do banco para liberar espaço e cota"
+              >
+                🧹 Limpar Pedidos Antigos (Banco)
+              </button>
               <button
                 type="button"
                 onClick={handleRestoreTodayCloseout}
