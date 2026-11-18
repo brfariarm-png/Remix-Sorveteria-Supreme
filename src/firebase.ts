@@ -9,6 +9,17 @@ import { initializeFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
+
+// Suppress benign gRPC idle stream cancellation warnings from Firestore SDK
+const originalWarn = console.warn;
+console.warn = (...args: any[]) => {
+  const msg = String(args[0] || '');
+  if (msg.includes('Disconnecting idle stream') || msg.includes('Timed out waiting for new targets') || msg.includes('GrpcConnection RPC')) {
+    return;
+  }
+  originalWarn(...args);
+};
+
 export const db = initializeFirestore(app, {
   ignoreUndefinedProperties: true
 }, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
