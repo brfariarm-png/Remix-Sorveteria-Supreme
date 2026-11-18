@@ -1434,13 +1434,16 @@ export default function App() {
             }
           },
           (error) => {
-            console.error('[Orders Realtime onSnapshot Error]:', error);
-            if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
-              console.error('[Firestore Index Required]: Missing composite index for orders query. Create index in Firebase Console:', error.message);
-            }
             const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';
-            if (!isQuota) {
-              handleFirestoreError(error, OperationType.LIST, 'orders');
+            if (isQuota) {
+              console.warn('[Firestore Quota Reached]: Free tier daily read quota exceeded. Using local cached orders.');
+            } else {
+              console.error('[Orders Realtime onSnapshot Error]:', error);
+              if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+                console.error('[Firestore Index Required]: Missing composite index for orders query. Create index in Firebase Console:', error.message);
+              } else {
+                handleFirestoreError(error, OperationType.LIST, 'orders');
+              }
             }
             const savedOrders = localStorage.getItem('supreme_orders');
             if (savedOrders) {
