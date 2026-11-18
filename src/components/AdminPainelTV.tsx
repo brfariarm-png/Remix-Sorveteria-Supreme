@@ -142,12 +142,14 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <div className="relative w-full max-w-5xl h-[72vh] flex flex-col items-center justify-center">
               
               {/* Image in Original Proportion (object-contain) */}
-              <div className="relative w-full h-[56vh] flex items-center justify-center rounded-3xl overflow-hidden bg-black/40 border-2 border-white/10 shadow-2xl group">
-                <LazyImage 
+              <div className="relative w-full h-[58vh] flex items-center justify-center rounded-3xl overflow-hidden bg-black/40 border-2 border-white/10 shadow-2xl group p-4">
+                <img 
                   key={currentItem?.id}
                   src={currentItem?.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
                   alt={currentItem?.name}
-                  className="w-full h-full object-contain animate-fade-in transition-all duration-700"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  className="max-w-full max-h-full w-auto h-auto object-contain animate-fade-in transition-all duration-700 drop-shadow-2xl"
                 />
 
                 {currentItem?.popular && (
