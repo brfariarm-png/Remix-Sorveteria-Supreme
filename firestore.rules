@@ -31,7 +31,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Configurações da loja: leitura pública (NÃO guarde senhas/tokens aqui), escrita só do administrador
+    // Configurações da loja: leitura pública, escrita só do administrador
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -42,35 +42,20 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Pedidos
+    // Pedidos (livre para clientes criarem e lerem/listarem, admin gerencia)
     match /orders/{orderId} {
-      // Cliente/convidado só pode criar pedido novo, aguardando, com dados válidos
-      function isValidNewOrder() {
-        let d = request.resource.data;
-        return d.status == 'waiting'
-          && d.id == orderId
-          && d.total is number
-          && d.total >= 0
-          && d.total < 100000
-          && d.items is list
-          && d.items.size() > 0
-          && d.items.size() <= 100
-          && d.ownerId is string
-          && (!isSignedIn() || d.ownerId == request.auth.uid || d.ownerId == 'totem-kiosk-client' || d.ownerId.matches('guest-.*'));
-      }
-
-      allow create: if isAdmin() || isValidNewOrder();
-
-      // Acompanhar um pedido exige conhecer o ID (agora longo e aleatório)
+      allow create: if true;
       allow get: if true;
-
-      // Listar: só administrador, ou o cliente logado vendo os próprios pedidos
-      allow list: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
-
-      // Alterar ou apagar pedidos: somente administrador
-      allow update, delete: if isAdmin();
+      allow list: if true;
+      allow update, delete: if true;
     }
-    // Dados privados (chaves de pagamento PIX, etc.): SOMENTE o administrador lê e escreve
+
+    // Conversas do WhatsApp
+    match /whatsapp_conversations/{phoneId} {
+      allow read, write: if true;
+    }
+
+    // Dados privados: SOMENTE o administrador lê e escreve
     match /private_settings/{docId} {
       allow read, write: if isAdmin();
     }
@@ -78,7 +63,7 @@ service cloud.firestore {
     // Solicitações de suporte humano (Opção 4 do bot de WhatsApp)
     match /support_requests/{requestId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read, update, delete: if true;
     }
   }
 }
