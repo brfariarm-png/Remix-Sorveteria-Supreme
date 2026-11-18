@@ -12,10 +12,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'brfariarm@gmail.com' &&
-        request.auth.token.email_verified == true
-      );
+      return isSignedIn() && request.auth.token.email == 'brfariarm@gmail.com';
     }
 
     // Cardápio, sabores e adicionais: todos podem ler, SÓ o administrador altera
