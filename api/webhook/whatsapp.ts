@@ -386,8 +386,10 @@ async function buildBotReply(userText: string, pushName: string, senderPhone: st
     const SIX_HOURS = 6 * 60 * 60 * 1000;
     if (!conv.ultimaAusencia || nowMs - conv.ultimaAusencia > SIX_HOURS) {
       await updateAbsenceTimestamp(senderPhone, nowMs);
-      const openTimeFormatted = cfg.openTime || '13:00';
-      return `Olá! No momento estamos fechados 🍦 Nosso horário é das ${openTimeFormatted} às 20h. Assim que abrirmos, respondemos você!`;
+      return cfg.closedMsg
+        .replace('{nome}', pushName)
+        .replace('{menu_link}', cfg.menuLink)
+        .replace('[LINK_CARDAPIO]', cfg.menuLink);
     }
     return ''; // Within 6 hours of last absence message, do not spam
   }
