@@ -1106,6 +1106,28 @@ app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
   }
 });
 
+// Pause / Resume bot per conversation route
+app.post(['/api/pausar-bot', '/api/whatsapp/pausar-bot'], async (req: Request, res: Response) => {
+  try {
+    const phone = String(req.body?.phone || '').replace(/\D/g, '');
+    const pausado = Boolean(req.body?.pausado);
+    if (!phone || phone.length < 8) {
+      return res.status(400).json({ ok: false, error: 'Telefone inválido' });
+    }
+    const { db } = await import('./src/firebase');
+    const { doc, setDoc } = await import('firebase/firestore');
+    await setDoc(doc(db, 'whatsapp_conversations', phone), {
+      phone,
+      botPausado: pausado,
+      updatedAt: new Date()
+    }, { merge: true });
+    return res.json({ ok: true, phone, botPausado: pausado });
+  } catch (err: any) {
+    console.error('Error pausing bot in server.ts:', err);
+    return res.status(500).json({ ok: false, error: err.message || 'Internal error' });
+  }
+});
+
 // Connect or get QR Code from Evolution API via server proxy (avoids browser CORS & network drops)
 app.post('/api/evolution/connect', async (req: Request, res: Response) => {
   try {

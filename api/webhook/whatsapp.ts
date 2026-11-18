@@ -330,20 +330,65 @@ function isBotGeneratedEcho(text: string): boolean {
   );
 }
 
+async function getConversationRecord(phone: string): Promise<{ botPausado: boolean; ultimaAusencia: number }> {
+  try {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return { botPausado: false, ultimaAusencia: 0 };
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/whatsapp_conversations/${cleanPhone}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) return { botPausado: false, ultimaAusencia: 0 };
+    const json: any = await res.json();
+    const fields = json?.fields || {};
+    const botPausado = fields.botPausado?.booleanValue === true;
+    const ultimaAusencia = Number(fields.ultimaAusencia?.integerValue || fields.ultimaAusencia?.doubleValue || 0);
+    return { botPausado, ultimaAusencia };
+  } catch {
+    return { botPausado: false, ultimaAusencia: 0 };
+  }
+}
+
+async function updateAbsenceTimestamp(phone: string, timestamp: number): Promise<void> {
+  try {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return;
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/whatsapp_conversations/${cleanPhone}?updateMask.fieldPaths=ultimaAusencia&updateMask.fieldPaths=phone`;
+    const body = {
+      fields: {
+        phone: { stringValue: cleanPhone },
+        ultimaAusencia: { integerValue: String(timestamp) }
+      }
+    };
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(2000)
+    });
+  } catch (err) {
+    console.warn('Failed to update ultimaAusencia:', err);
+  }
+}
+
 async function buildBotReply(userText: string, pushName: string, senderPhone: string, cfg: StoreBotConfig): Promise<string> {
   const clean = String(userText || '').trim().toLowerCase();
-  const storeOpen = isStoreCurrentlyOpen(cfg);
-  const isExactOption = clean === '1' || clean === '2' || clean === '3' || clean === '4';
 
-  if (!storeOpen && (!isExactOption || clean === '1' || /^(oi|olá|ola|bom dia|boa tarde|boa noite)\b/i.test(clean))) {
-    if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
-      return `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *${pushName}*! Nossa sorveteria está fechada agora, mas você pode conferir o cardápio e programar seu pedido para quando abrirmos:\n👉 ${cfg.menuLink}`;
+  // 1. Check if bot is paused for this conversation
+  const conv = await getConversationRecord(senderPhone);
+  if (conv.botPausado) {
+    return ''; // Bot is paused, do not reply
+  }
+
+  // 2. Check if store is open
+  const storeOpen = isStoreCurrentlyOpen(cfg);
+  if (!storeOpen) {
+    const nowMs = Date.now();
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    if (!conv.ultimaAusencia || nowMs - conv.ultimaAusencia > SIX_HOURS) {
+      await updateAbsenceTimestamp(senderPhone, nowMs);
+      const openTimeFormatted = cfg.openTime || '13:00';
+      return `Olá! No momento estamos fechados 🍦 Nosso horário é das ${openTimeFormatted} às 20h. Assim que abrirmos, respondemos você!`;
     }
-    if (clean === '4' || clean.includes('atendente') || clean.includes('humano') || clean.includes('falar com') || clean.includes('ajuda') || clean.includes('suporte')) {
-      await createSupportRequest(senderPhone, pushName, userText);
-      return cfg.supportMsg.replace('{telefone}', cfg.phone).replace('[TELEFONE]', cfg.phone) + `\n\n*(Nota: A loja está fechada no momento, responderemos assim que abrirmos!)*`;
-    }
-    return cfg.closedMsg.replace('{nome}', pushName).replace('{menu_link}', cfg.menuLink);
+    return ''; // Within 6 hours of last absence message, do not spam
   }
 
   if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
@@ -694,6 +739,17 @@ export default async function handler(req: any, res: any) {
     const pushName = String(data?.pushName || 'Cliente');
     const { targets, displaySender } = buildSendCandidates(key, data);
     const replyText = await buildBotReply(effectiveText, pushName, displaySender || remoteJid, cfg);
+
+    if (!replyText) {
+      pushWebhookLog({
+        from: displaySender || remoteJid,
+        incomingText: effectiveText,
+        replyText: '',
+        status: 'ignored',
+        details: 'Bot pausado para esta conversa ou mensagem de ausência já enviada na janela de 6h'
+      });
+      return res.status(200).json({ ok: true, received: true, ignored: 'bot-paused-or-absence-throttled' });
+    }
 
     const baseEvoUrl = (cfg.evolutionUrl || String(payload?.server_url || '')).trim().replace(/\/+$/, '');
     const evolutionUrl = baseEvoUrl.startsWith('http') ? baseEvoUrl : `https://${baseEvoUrl}`;

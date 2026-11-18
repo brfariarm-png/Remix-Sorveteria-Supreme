@@ -102,6 +102,13 @@ import AdminPainelTV from './components/AdminPainelTV';
 import AdminTotem from './components/AdminTotem';
 import SupportCallAlert from './components/SupportCallAlert';
 
+const getWhatsAppChatUrl = (phone: string) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return 'https://wa.me/';
+  const formatted = digits.startsWith('55') ? digits : `55${digits}`;
+  return `https://wa.me/${formatted}`;
+};
+
 const getBrasiliaTimeInfo = () => {
   const now = new Date();
   const formatterTime = new Intl.DateTimeFormat('en-US', {
@@ -410,6 +417,44 @@ export default function App() {
     navigator.clipboard.writeText(publicUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 3000);
+  };
+
+  const [whatsappConversationsState, setWhatsappConversationsState] = useState<Record<string, { botPausado: boolean }>>({});
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const unsub = onSnapshot(collection(db, 'whatsapp_conversations'), (snap) => {
+      const map: Record<string, { botPausado: boolean }> = {};
+      snap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const phoneDigits = String(data.phone || docSnap.id).replace(/\D/g, '');
+        map[phoneDigits] = { botPausado: data.botPausado === true };
+      });
+      setWhatsappConversationsState(map);
+    }, () => {});
+    return () => unsub();
+  }, [isAdmin]);
+
+  const handleToggleBotPause = async (phone: string, currentPaused: boolean) => {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return;
+    try {
+      await fetch('/api/pausar-bot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, pausado: !currentPaused })
+      });
+    } catch {
+      try {
+        await setDoc(doc(db, 'whatsapp_conversations', cleanPhone), {
+          phone: cleanPhone,
+          botPausado: !currentPaused,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Failed to toggle bot pause:", e);
+      }
+    }
   };
 
   // Helper to handle and format Firebase auth errors beautifully in Portuguese
