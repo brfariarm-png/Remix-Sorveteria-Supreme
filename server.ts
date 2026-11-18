@@ -116,8 +116,8 @@ let cachedStoreConfig = {
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
   openHours: '13:00 às 20:00',
   statusOverride: 'auto',
-  openTime: '11:00',
-  closeTime: '23:00',
+  openTime: '13:00',
+  closeTime: '20:00',
   weeklyHours: []
 };
 
@@ -153,8 +153,8 @@ async function syncStoreConfigFromDb() {
         supportMsg: data.whatsappBotSupportMessage || cachedStoreConfig.supportMsg,
         address: data.address || cachedStoreConfig.address,
         statusOverride: data.statusOverride || 'auto',
-        openTime: data.openTime || '11:00',
-        closeTime: data.closeTime || '23:00',
+        openTime: data.openTime || '13:00',
+        closeTime: data.closeTime || '20:00',
         weeklyHours: data.weeklyHours || []
       };
 
@@ -235,8 +235,8 @@ function isStoreCurrentlyOpen() {
     const todaySchedule = cfg.weeklyHours.find((h: any) => h.dayOfWeek === dayOfWeekKey);
     if (todaySchedule) {
       if (!todaySchedule.isOpen) return false;
-      const [openH, openM] = (todaySchedule.openTime || "11:00").split(':').map(Number);
-      const [closeH, closeM] = (todaySchedule.closeTime || "23:00").split(':').map(Number);
+      const [openH, openM] = (todaySchedule.openTime || "13:00").split(':').map(Number);
+      const [closeH, closeM] = (todaySchedule.closeTime || "20:00").split(':').map(Number);
       const openTotalMinutes = openH * 60 + openM;
       const closeTotalMinutes = closeH * 60 + closeM;
       if (closeTotalMinutes > openTotalMinutes) {
@@ -247,8 +247,8 @@ function isStoreCurrentlyOpen() {
     }
   }
 
-  const [openHour, openMin] = (cfg.openTime || "11:00").split(':').map(Number);
-  const [closeHour, closeMin] = (cfg.closeTime || "23:00").split(':').map(Number);
+  const [openHour, openMin] = (cfg.openTime || "13:00").split(':').map(Number);
+  const [closeHour, closeMin] = (cfg.closeTime || "20:00").split(':').map(Number);
   const openTotalMinutes = openHour * 60 + openMin;
   const closeTotalMinutes = closeHour * 60 + closeMin;
   if (closeTotalMinutes > openTotalMinutes) {

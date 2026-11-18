@@ -76,13 +76,13 @@ function trackFirestoreRead(collectionName: string, count = 1) {
 import { MenuItem, CartItem, Order, CheckoutDetails, OrderStatus, StoreSettings, FlavorOption, ToppingOption, DaySchedule } from './types';
 
 const DEFAULT_WEEKLY_HOURS: DaySchedule[] = [
-  { dayOfWeek: 'segunda', dayName: 'Segunda-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  { dayOfWeek: 'terca', dayName: 'Terça-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  { dayOfWeek: 'quarta', dayName: 'Quarta-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  { dayOfWeek: 'quinta', dayName: 'Quinta-feira', isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  { dayOfWeek: 'sexta', dayName: 'Sexta-feira', isOpen: true, openTime: '11:00', closeTime: '00:00' },
-  { dayOfWeek: 'sabado', dayName: 'Sábado', isOpen: true, openTime: '11:00', closeTime: '00:00' },
-  { dayOfWeek: 'domingo', dayName: 'Domingo', isOpen: true, openTime: '11:00', closeTime: '22:30' },
+  { dayOfWeek: 'segunda', dayName: 'Segunda-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'terca', dayName: 'Terça-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'quarta', dayName: 'Quarta-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'quinta', dayName: 'Terça-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'sexta', dayName: 'Sexta-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'sabado', dayName: 'Sábado', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'domingo', dayName: 'Domingo', isOpen: true, openTime: '13:00', closeTime: '20:00' },
 ];
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, STORE_CONFIG } from './data';
 import { cleanDescriptionForSingleSize } from './utils/description';

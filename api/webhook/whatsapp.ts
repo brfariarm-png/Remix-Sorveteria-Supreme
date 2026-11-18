@@ -63,6 +63,10 @@ interface StoreBotConfig {
   closedMsg: string;
   address: string;
   openHours: string;
+  statusOverride: string;
+  openTime: string;
+  closeTime: string;
+  weeklyHours: any[];
 }
 
 const DEFAULT_CONFIG: StoreBotConfig = {
@@ -79,7 +83,11 @@ const DEFAULT_CONFIG: StoreBotConfig = {
   supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
   closedMsg: `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`,
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
-  openHours: '13:00 às 23:00'
+  openHours: '13:00 às 20:00',
+  statusOverride: 'auto',
+  openTime: '13:00',
+  closeTime: '20:00',
+  weeklyHours: []
 };
 
 let cachedConfig: StoreBotConfig | null = null;
@@ -93,6 +101,66 @@ function readFsString(fields: any, key: string): string | undefined {
 function readFsBool(fields: any, key: string): boolean | undefined {
   const val = fields?.[key]?.booleanValue;
   return typeof val === 'boolean' ? val : undefined;
+}
+
+function isStoreCurrentlyOpen(cfg: StoreBotConfig): boolean {
+  if (cfg.statusOverride === 'open') return true;
+  if (cfg.statusOverride === 'closed') return false;
+
+  const now = new Date();
+  const formatterTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  const parts = formatterTime.formatToParts(now);
+  let hours = 0;
+  let minutes = 0;
+  for (const p of parts) {
+    if (p.type === 'hour') hours = parseInt(p.value, 10);
+    if (p.type === 'minute') minutes = parseInt(p.value, 10);
+  }
+  if (hours === 24) hours = 0;
+  const currentMinutes = hours * 60 + minutes;
+
+  const formatterDay = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'short'
+  });
+  const dayStr = formatterDay.format(now).toLowerCase();
+  const dayMap: Record<string, number> = {
+    'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6
+  };
+  const dayOfWeekIndex = dayMap[dayStr] ?? now.getDay();
+  const dayKeys = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'] as const;
+  const dayOfWeekKey = dayKeys[dayOfWeekIndex];
+
+  if (cfg.weeklyHours && Array.isArray(cfg.weeklyHours) && cfg.weeklyHours.length > 0) {
+    const todaySchedule = cfg.weeklyHours.find((h: any) => h.dayOfWeek === dayOfWeekKey);
+    if (todaySchedule) {
+      if (!todaySchedule.isOpen) return false;
+      const [openH, openM] = (todaySchedule.openTime || "13:00").split(':').map(Number);
+      const [closeH, closeM] = (todaySchedule.closeTime || "20:00").split(':').map(Number);
+      const openTotalMinutes = openH * 60 + openM;
+      const closeTotalMinutes = closeH * 60 + closeM;
+      if (closeTotalMinutes > openTotalMinutes) {
+        return currentMinutes >= openTotalMinutes && currentMinutes < closeTotalMinutes;
+      } else {
+        return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
+      }
+    }
+  }
+
+  const [openHour, openMin] = (cfg.openTime || "13:00").split(':').map(Number);
+  const [closeHour, closeMin] = (cfg.closeTime || "20:00").split(':').map(Number);
+  const openTotalMinutes = openHour * 60 + openMin;
+  const closeTotalMinutes = closeHour * 60 + closeMin;
+  if (closeTotalMinutes > openTotalMinutes) {
+    return currentMinutes >= openTotalMinutes && currentMinutes < closeTotalMinutes;
+  } else {
+    return currentMinutes >= openTotalMinutes || currentMinutes < closeTotalMinutes;
+  }
 }
 
 async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
@@ -112,7 +180,19 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
       : DEFAULT_CONFIG.menuLink;
 
     const openTime = readFsString(fields, 'openTime') || '13:00';
-    const closeTime = readFsString(fields, 'closeTime') || '23:00';
+    const closeTime = readFsString(fields, 'closeTime') || '20:00';
+    const statusOverride = readFsString(fields, 'statusOverride') || 'auto';
+    const weeklyHours = fields?.weeklyHours?.arrayValue?.values
+      ? fields.weeklyHours.arrayValue.values.map((v: any) => {
+          const m = v.mapValue?.fields || {};
+          return {
+            dayOfWeek: m.dayOfWeek?.stringValue || '',
+            isOpen: m.isOpen?.booleanValue !== false,
+            openTime: m.openTime?.stringValue || '13:00',
+            closeTime: m.closeTime?.stringValue || '20:00'
+          };
+        })
+      : [];
 
     cachedConfig = {
       botEnabled: readFsBool(fields, 'whatsappBotEnabled') !== false,
@@ -128,7 +208,11 @@ async function loadStoreConfigFromFirestore(): Promise<StoreBotConfig> {
       supportMsg: readFsString(fields, 'whatsappBotSupportMessage') || DEFAULT_CONFIG.supportMsg,
       closedMsg: readFsString(fields, 'whatsappBotClosedMessage') || DEFAULT_CONFIG.closedMsg,
       address: readFsString(fields, 'address') || DEFAULT_CONFIG.address,
-      openHours: `${openTime} às ${closeTime}`
+      openHours: `${openTime} às ${closeTime}`,
+      statusOverride,
+      openTime,
+      closeTime,
+      weeklyHours
     };
     cachedConfigAt = Date.now();
     return cachedConfig;
@@ -248,6 +332,19 @@ function isBotGeneratedEcho(text: string): boolean {
 
 async function buildBotReply(userText: string, pushName: string, senderPhone: string, cfg: StoreBotConfig): Promise<string> {
   const clean = String(userText || '').trim().toLowerCase();
+  const storeOpen = isStoreCurrentlyOpen(cfg);
+  const isExactOption = clean === '1' || clean === '2' || clean === '3' || clean === '4';
+
+  if (!storeOpen && (!isExactOption || clean === '1' || /^(oi|olá|ola|bom dia|boa tarde|boa noite)\b/i.test(clean))) {
+    if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
+      return `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *${pushName}*! Nossa sorveteria está fechada agora, mas você pode conferir o cardápio e programar seu pedido para quando abrirmos:\n👉 ${cfg.menuLink}`;
+    }
+    if (clean === '4' || clean.includes('atendente') || clean.includes('humano') || clean.includes('falar com') || clean.includes('ajuda') || clean.includes('suporte')) {
+      await createSupportRequest(senderPhone, pushName, userText);
+      return cfg.supportMsg.replace('{telefone}', cfg.phone).replace('[TELEFONE]', cfg.phone) + `\n\n*(Nota: A loja está fechada no momento, responderemos assim que abrirmos!)*`;
+    }
+    return cfg.closedMsg.replace('{nome}', pushName).replace('{menu_link}', cfg.menuLink);
+  }
 
   if (clean === '1' || clean.includes('cardapio') || clean.includes('cardápio') || clean === 'menu') {
     return cfg.menuMsg.replace('{menu_link}', cfg.menuLink).replace('[LINK_CARDAPIO]', cfg.menuLink);
