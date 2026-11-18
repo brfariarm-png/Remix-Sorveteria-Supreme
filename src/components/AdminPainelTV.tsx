@@ -2,12 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Cardápio Digital para TV com Rolagem Automática Suave e Modo Exibição de Tela Cheia 16:9
+ * Cardápio Digital para TV • Modo Apresentação (Uma imagem e nome por vez)
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Tv, Clock, Search, ExternalLink, Utensils, Flame, ArrowLeft, Play, Pause
+  Tv, Clock, Search, ExternalLink, Utensils, ArrowLeft, Play, Pause, ChevronLeft, ChevronRight, Flame
 } from 'lucide-react';
 import { MenuItem } from '../types';
 import { MENU_ITEMS } from '../data';
@@ -30,11 +30,10 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
   });
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [autoScrollActive, setAutoScrollActive] = useState<boolean>(true);
-
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Load menu items from Firestore with localStorage cache
   useEffect(() => {
@@ -60,48 +59,11 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
     loadMenu();
   }, []);
 
-  // Smooth Auto-Scroll Effect for TV Mode
-  useEffect(() => {
-    if (viewMode !== 'tv' || !autoScrollActive) return;
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    let scrollDirection = 1; // 1 = down, -1 = up
-    let pauseCounter = 0;
-
-    const interval = setInterval(() => {
-      if (!container) return;
-      
-      // If paused at top or bottom
-      if (pauseCounter > 0) {
-        pauseCounter--;
-        return;
-      }
-
-      const maxScroll = container.scrollHeight - container.clientHeight;
-      if (maxScroll <= 0) return;
-
-      container.scrollTop += scrollDirection * 1.2; // Smooth scroll step
-
-      if (container.scrollTop >= maxScroll - 5) {
-        // Reached bottom, pause then reverse or jump to top
-        pauseCounter = 120; // pause for ~3 seconds at bottom
-        container.scrollTop = 0; // loop back to top smoothly
-      } else if (container.scrollTop <= 0) {
-        pauseCounter = 60; // pause at top
-      }
-    }, 35);
-
-    return () => clearInterval(interval);
-  }, [viewMode, autoScrollActive]);
-
   const categories = [
-    { id: 'all', name: '✨ Todos os Produtos' },
-    { id: 'acai', name: '🥣 Açaí Gourmet' },
+    { id: 'all', name: '✨ Todos' },
+    { id: 'acai', name: '🥣 Açaí' },
     { id: 'milkshake', name: '🥤 Milkshakes' },
-    { id: 'copos_especiais', name: '🍨 Copos Especiais' },
-    { id: 'milkshake_especiais', name: '🍫 Especiais Supreme' }
+    { id: 'copos_especiais', name: '🍨 Copos Especiais' }
   ];
 
   const filteredItems = menuItems.filter(item => {
@@ -110,129 +72,141 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
     return matchesCat && matchesSearch;
   });
 
+  // Auto-advance slideshow in TV mode
+  useEffect(() => {
+    if (viewMode !== 'tv' || !isPlaying || filteredItems.length === 0) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % filteredItems.length);
+    }, 4500); // 4.5 seconds per item
+
+    return () => clearInterval(interval);
+  }, [viewMode, isPlaying, filteredItems.length]);
+
   const handleOpenTVTab = () => {
     const url = window.location.origin + '?mode=tv_menu';
     window.open(url, 'supreme_tv_menu');
   };
 
-  // If in standalone TV Mode, render full-screen 16:9 optimized TV presentation with auto-scroll
+  const currentItem = filteredItems[currentIndex] || filteredItems[0] || menuItems[0];
+
+  // If in standalone TV Mode, render Fullscreen Presentation (One product at a time)
   if (viewMode === 'tv') {
     return (
-      <div 
-        ref={containerRef}
-        className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-y-auto p-6 sm:p-10 flex flex-col justify-between select-none scroll-smooth"
-      >
+      <div className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-hidden flex flex-col justify-between select-none">
+        
         {/* TV Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8 shrink-0">
+        <div className="flex items-center justify-between px-8 py-6 bg-gradient-to-b from-slate-950/90 to-transparent z-20 shrink-0">
           <div className="flex items-center gap-4">
             <span className="text-4xl">🍨</span>
             <div className="text-left">
-              <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-white">SORVETERIA GOURMET SUPREME</h1>
-              <p className="text-xs text-rose-400 font-extrabold uppercase tracking-widest">Cardápio Digital Oficial • Exibição em TV</p>
+              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white">SORVETERIA GOURMET SUPREME</h1>
+              <p className="text-[10px] text-rose-400 font-extrabold uppercase tracking-widest">Cardápio Digital • Exibição Exclusiva</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setAutoScrollActive(!autoScrollActive)}
-              className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase flex items-center gap-2 border cursor-pointer transition-all ${
-                autoScrollActive ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-              }`}
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase rounded-xl border border-white/10 cursor-pointer flex items-center gap-2 transition-all shadow-lg"
             >
-              {autoScrollActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {autoScrollActive ? 'Pausar Rolagem' : 'Retomar Rolagem'}
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isPlaying ? 'Pausar' : 'Reproduzir'}
             </button>
 
-            <div className="font-mono text-xl font-black bg-white/10 px-6 py-2.5 rounded-2xl text-emerald-400 border border-white/10 shadow-lg">
+            <div className="font-mono text-lg font-black bg-white/10 px-5 py-2 rounded-xl text-emerald-400 border border-white/10 shadow-lg">
               {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </div>
 
             <button
               onClick={() => setViewMode('control')}
-              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase rounded-xl border border-white/10 cursor-pointer flex items-center gap-2 transition-all"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase rounded-xl border border-white/10 cursor-pointer flex items-center gap-2 transition-all"
             >
-              <ArrowLeft className="w-4 h-4" /> Voltar
+              <ArrowLeft className="w-4 h-4" /> Sair da TV
             </button>
           </div>
         </div>
 
-        {/* Categories Bar in TV Mode */}
-        <div className="flex items-center justify-center gap-3 mb-8 overflow-x-auto pb-2 shrink-0">
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
-                selectedCategory === cat.id
-                  ? 'bg-rose-600 text-white shadow-xl shadow-rose-600/30 scale-105'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
+        {/* Center Main Presentation: Huge Image & Name */}
+        <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-12 overflow-hidden">
+          
+          {filteredItems.length === 0 ? (
+            <div className="text-center text-slate-400">
+              <p className="text-xl font-bold">Nenhum produto encontrado nesta categoria.</p>
+            </div>
+          ) : (
+            <div className="relative w-full max-w-5xl h-[70vh] flex flex-col items-center justify-center">
+              
+              {/* Giant Product Image */}
+              <div className="relative w-full h-[55vh] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/10 bg-slate-900 group">
+                <LazyImage 
+                  key={currentItem?.id}
+                  src={currentItem?.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
+                  alt={currentItem?.name}
+                  className="w-full h-full object-cover animate-fade-in transition-all duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
 
-        {/* Full TV Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-12">
-          {filteredItems.map((item) => (
-            <div 
-              key={item.id}
-              className="bg-slate-900/90 border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between group transform hover:-translate-y-1 transition-all duration-300"
-            >
-              <div>
-                <div className="relative h-56 w-full overflow-hidden bg-slate-950">
-                  <LazyImage 
-                    src={item.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90" />
-                  
-                  <div className="absolute bottom-4 right-4 bg-rose-600 text-white font-mono font-black text-lg px-4 py-2 rounded-2xl shadow-2xl border border-rose-400/40">
-                    R$ {item.price.toFixed(2).replace('.', ',')}
-                  </div>
+                {currentItem?.popular && (
+                  <span className="absolute top-6 left-6 bg-amber-500 text-slate-950 font-black text-xs uppercase px-4 py-2 rounded-2xl flex items-center gap-1.5 shadow-2xl">
+                    <Flame className="w-4 h-4 fill-slate-950" /> Destaque Supreme
+                  </span>
+                )}
 
-                  {item.popular && (
-                    <span className="absolute top-4 left-4 bg-amber-500 text-slate-950 font-black text-[10px] uppercase px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-lg">
-                      <Flame className="w-3.5 h-3.5 fill-slate-950" /> Mais Pedido
-                    </span>
-                  )}
-                </div>
-
-                <div className="p-6 space-y-3">
-                  <h3 className="text-xl font-black text-white leading-tight">
-                    {item.name}
-                  </h3>
-                  <p className="text-sm text-slate-300 font-medium leading-relaxed">
-                    {item.description}
-                  </p>
+                {/* Price Tag Floating */}
+                <div className="absolute top-6 right-6 bg-rose-600 text-white font-mono font-black text-2xl sm:text-3xl px-6 py-3 rounded-2xl shadow-2xl border-2 border-rose-400/40">
+                  R$ {currentItem?.price?.toFixed(2).replace('.', ',')}
                 </div>
               </div>
 
-              {item.tags && item.tags.length > 0 && (
-                <div className="px-6 pb-6 pt-0 flex flex-wrap gap-2">
-                  {item.tags.map((tag, idx) => (
-                    <span key={idx} className="text-[10px] font-black uppercase bg-white/5 text-rose-300 px-2.5 py-1 rounded-xl border border-white/10">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* Giant Product Name & Category */}
+              <div className="mt-6 text-center space-y-2 z-10">
+                <span className="text-xs font-black uppercase tracking-widest text-rose-400 bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20">
+                  {currentItem?.category === 'acai' ? '🥣 Açaí Gourmet' : currentItem?.category === 'milkshake' ? '🥤 Milkshake' : '🍨 Copo Especial'}
+                </span>
+                <h2 className="text-3xl sm:text-5xl font-black text-white tracking-wide drop-shadow-lg">
+                  {currentItem?.name}
+                </h2>
+              </div>
+
+              {/* Manual Left/Right Navigation Arrows */}
+              <button 
+                onClick={() => setCurrentIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length)}
+                className="absolute left-[-20px] sm:left-[-40px] top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/25 rounded-full text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-2xl"
+              >
+                <ChevronLeft className="w-8 h-8" />
+              </button>
+              <button 
+                onClick={() => setCurrentIndex((prev) => (prev + 1) % filteredItems.length)}
+                className="absolute right-[-20px] sm:right-[-40px] top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/25 rounded-full text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-2xl"
+              >
+                <ChevronRight className="w-8 h-8" />
+              </button>
             </div>
-          ))}
+          )}
         </div>
 
-        {/* TV Footer Ticker */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between text-slate-300 text-sm gap-3 shrink-0 mt-8">
+        {/* TV Bottom Footer Indicator */}
+        <div className="flex items-center justify-between px-8 py-5 bg-slate-900 border-t border-white/10 text-slate-400 text-xs shrink-0 z-20">
           <div className="flex items-center gap-2">
-            <span className="text-xl">⭐</span>
-            <strong className="text-white">Monte seu copo premium com adicionais ilimitados!</strong>
+            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-white font-bold">Apresentação Automática Ativa</span>
           </div>
-          <div className="text-rose-400 font-extrabold uppercase tracking-wider text-xs">
-            Acesse pelo celular ou peça no balcão 🍨
+
+          <div className="flex items-center gap-2">
+            {filteredItems.map((_, idx) => (
+              <span 
+                key={idx} 
+                className={`h-2 rounded-full transition-all ${idx === currentIndex ? 'w-8 bg-rose-500' : 'w-2 bg-white/20'}`} 
+              />
+            ))}
+          </div>
+
+          <div className="text-rose-400 font-extrabold uppercase tracking-wider">
+            Item {currentIndex + 1} de {filteredItems.length}
           </div>
         </div>
+
       </div>
     );
   }
@@ -250,7 +224,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <h3 className="text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
               Cardápio Digital para TV <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">ATIVO</span>
             </h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Exibição completa de produtos com imagens, descrições e rolagem automática</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Modo Apresentação (Uma imagem e nome por vez para Smart TV)</p>
           </div>
         </div>
 
@@ -258,10 +232,10 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
           <button
             type="button"
             onClick={() => setViewMode('tv')}
-            className="py-2.5 px-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center gap-2 shadow-lg transition-all active:scale-97"
+            className="py-2.5 px-5 bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center gap-2 shadow-lg transition-all active:scale-97"
           >
             <Tv className="w-4 h-4" />
-            Entrar no Modo Exibição TV (Rolagem Automática)
+            Iniciar Modo Apresentação TV (Tela Cheia)
           </button>
 
           <button
@@ -275,102 +249,43 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
         </div>
       </div>
 
-      {/* Category filter tabs & search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
-                selectedCategory === cat.id
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        <div className="relative min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar produto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-white placeholder-slate-400 focus:outline-none focus:border-rose-500"
-          />
-        </div>
+      {/* Category filter tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+              selectedCategory === cat.id
+                ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
+                : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
+            }`}
+          >
+            {cat.name}
+          </button>
+        ))}
       </div>
 
-      {/* Menu Grid Display */}
-      {filteredItems.length === 0 ? (
-        <div className="py-20 text-center text-slate-400 space-y-2">
-          <Utensils className="w-10 h-10 text-slate-600 mx-auto" />
-          <p className="text-xs font-black uppercase tracking-wider">Nenhum produto encontrado nesta categoria</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-          {filteredItems.map((item) => (
-            <div 
-              key={item.id}
-              className="bg-slate-800/80 border border-slate-700/80 rounded-3xl overflow-hidden shadow-xl hover:border-rose-500/50 transition-all duration-300 flex flex-col justify-between group"
-            >
-              <div>
-                <div className="relative h-48 w-full overflow-hidden bg-slate-900">
-                  <LazyImage 
-                    src={item.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80" />
-                  
-                  <div className="absolute bottom-3 right-3 bg-rose-600 text-white font-mono font-black text-sm px-3 py-1.5 rounded-2xl shadow-lg border border-rose-400/30">
-                    R$ {item.price.toFixed(2).replace('.', ',')}
-                  </div>
-
-                  {item.popular && (
-                    <span className="absolute top-3 left-3 bg-amber-500 text-slate-950 font-black text-[9px] uppercase px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-md">
-                      <Flame className="w-3 h-3 fill-slate-950" /> Mais Pedido
-                    </span>
-                  )}
-                </div>
-
-                <div className="p-5 space-y-2">
-                  <h4 className="text-base font-black text-white group-hover:text-rose-400 transition-colors leading-tight">
-                    {item.name}
-                  </h4>
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed line-clamp-3">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
-
-              {item.tags && item.tags.length > 0 && (
-                <div className="px-5 pb-5 pt-0 flex flex-wrap gap-1.5">
-                  {item.tags.map((tag, idx) => (
-                    <span key={idx} className="text-[9px] font-black uppercase bg-white/5 text-rose-300 px-2 py-0.5 rounded-lg border border-white/5">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+      {/* Admin Preview Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+        {filteredItems.map((item, idx) => (
+          <div 
+            key={item.id}
+            onClick={() => {
+              setCurrentIndex(idx);
+              setViewMode('tv');
+            }}
+            className="bg-slate-800/80 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg hover:border-rose-500 transition-all cursor-pointer group p-3 flex flex-col items-center text-center"
+          >
+            <div className="relative h-32 w-full overflow-hidden rounded-xl bg-slate-900 mb-3">
+              <LazyImage src={item.image || ''} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Footer Branding */}
-      <div className="mt-8 pt-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-slate-400 text-xs gap-3">
-        <div className="flex items-center gap-2">
-          <span>🍨</span>
-          <strong className="text-white">Sorveteria Supreme</strong> • Cardápio Digital Oficial para Exibição em TV
-        </div>
-        <p className="text-[10px] text-slate-400 font-semibold">
-          Atualizado em tempo real com o painel do administrador.
-        </p>
+            <h4 className="text-xs font-black text-white group-hover:text-rose-400 transition-colors leading-tight mb-1">
+              {item.name}
+            </h4>
+            <span className="text-rose-400 font-mono font-bold text-xs">R$ {item.price.toFixed(2)}</span>
+          </div>
+        ))}
       </div>
 
     </div>
