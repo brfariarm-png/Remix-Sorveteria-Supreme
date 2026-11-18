@@ -2,552 +2,210 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Painel de Chamada de Senhas para TV e Controle do Atendente
+ * Cardápio Digital para TV (Substitui o painel de senhas antigo pelo cardápio completo com imagem e descrição)
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Tv, Volume2, VolumeX, Play, RotateCcw, Check, Clock, 
-  User, Shield, Plus, Minus, Send, List, Bell, AlertTriangle, ExternalLink
+  Tv, Clock, Search, ExternalLink, Utensils, Flame
 } from 'lucide-react';
+import { MenuItem } from '../types';
+import { MENU_ITEMS } from '../data';
+import LazyImage from './LazyImage';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { doc, setDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Order } from '../types';
 
 interface AdminPainelTVProps {
-  orders: Order[];
-  storeSettings: any;
+  orders?: any[];
+  storeSettings?: any;
 }
 
-interface CalledSenha {
-  password: string;
-  name: string;
-  timestamp: any;
-}
+export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-export default function AdminPainelTV({ orders, storeSettings }: AdminPainelTVProps) {
-  // Tabs: 'control' (operator screen) or 'tv' (TV screen display mode)
-  const [viewMode, setViewMode] = useState<'control' | 'tv'>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('mode') === 'tv') return 'tv';
-    }
-    return 'control';
-  });
-  
-  // Real-time Called Password State (Synced via Firestore settings/called_senha)
-  const [activePassword, setActivePassword] = useState<string>('01');
-  const [activeName, setActiveName] = useState<string>('Cliente Balcão');
-  const [lastCalledTime, setLastCalledTime] = useState<number>(Date.now());
-  const [senhaHistory, setSenhaHistory] = useState<CalledSenha[]>([]);
-
-  // Local TV settings
-  const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
-  const [chimeEnabled, setChimeEnabled] = useState<boolean>(true);
-  const [chimeVolume, setChimeVolume] = useState<number>(0.8);
-  const [isFlashing, setIsFlashing] = useState<boolean>(false);
-
-  // Manual calling form states
-  const [manualPassword, setManualPassword] = useState<string>('');
-  const [manualName, setManualName] = useState<string>('');
-
-  const previousTimeRef = useRef<number>(Date.now());
-
-  // Real-time Firestore sync
+  // Load menu items from Firestore with localStorage cache
   useEffect(() => {
-    // Listen to called password document
-    const docRef = doc(db, 'settings', 'called_senha');
-    const unsubscribe = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setActivePassword(data.currentPassword || '01');
-        setActiveName(data.currentName || 'Cliente');
-        setSenhaHistory(data.history || []);
-        
-        const newTime = data.lastCalled ? (data.lastCalled.toMillis ? data.lastCalled.toMillis() : data.lastCalled) : Date.now();
-        
-        // If the timestamp changed and is newer, trigger TV Alert (Chime & Voice synthesis)
-        if (newTime > previousTimeRef.current) {
-          previousTimeRef.current = newTime;
-          setLastCalledTime(newTime);
-          triggerTVAlert(data.currentPassword || '01', data.currentName || 'Cliente');
+    async function loadMenu() {
+      try {
+        const cached = localStorage.getItem('supreme_menu_items');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMenuItems(parsed);
+          }
         }
-      } else {
-        // Initialize default document in firestore if not exists
-        try {
-          setDoc(docRef, {
-            currentPassword: '01',
-            currentName: 'Cliente Balcão',
-            lastCalled: Date.now(),
-            history: [
-              { password: '01', name: 'Cliente Balcão', timestamp: Date.now() }
-            ]
-          });
-        } catch (e) {
-          console.warn("Firestore offline - utilizando fallback local para o painel de senhas.");
+        const snap = await getDocs(collection(db, 'menu_items'));
+        if (!snap.empty) {
+          const list: MenuItem[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as MenuItem));
+          setMenuItems(list);
+          localStorage.setItem('supreme_menu_items', JSON.stringify(list));
         }
+      } catch (err) {
+        console.warn('Could not load menu from firestore for TV cardapio:', err);
       }
-    }, (error) => {
-      console.warn("Firestore error on painel de TV:", error);
-    });
-
-    return () => unsubscribe();
+    }
+    loadMenu();
   }, []);
 
-  // Play synthetic "Ding Dong" audio chime
-  const playChime = () => {
-    if (!chimeEnabled) return;
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // First Note
-      const osc1 = audioCtx.createOscillator();
-      const gain1 = audioCtx.createGain();
-      osc1.connect(gain1);
-      gain1.connect(audioCtx.destination);
-      osc1.type = 'triangle';
-      osc1.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      gain1.gain.setValueAtTime(chimeVolume, audioCtx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-      
-      // Second Note
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.type = 'triangle';
-      osc2.frequency.setValueAtTime(440.00, audioCtx.currentTime + 0.35); // A4
-      gain2.gain.setValueAtTime(0, audioCtx.currentTime);
-      gain2.gain.setValueAtTime(chimeVolume, audioCtx.currentTime + 0.35);
-      gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
-      
-      osc1.start(audioCtx.currentTime);
-      osc1.stop(audioCtx.currentTime + 0.8);
-      osc2.start(audioCtx.currentTime + 0.35);
-      osc2.stop(audioCtx.currentTime + 1.2);
-    } catch (e) {
-      console.warn("Falha ao tocar sino sintético:", e);
-    }
-  };
+  const categories = [
+    { id: 'all', name: '✨ Todos os Produtos' },
+    { id: 'acai', name: '🥣 Açaí Gourmet' },
+    { id: 'milkshake', name: '🥤 Milkshakes' },
+    { id: 'copos_especiais', name: '🍨 Copos Especiais' },
+    { id: 'milkshake_especiais', name: '🍫 Especiais Supreme' }
+  ];
 
-  // Speak password via Browser speech synthesis (Text-to-Speech)
-  const speakPassword = (password: string, name: string) => {
-    if (!ttsEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel(); // Stop current speech
-      
-      const cleanName = name && name !== 'Não informado' && name !== 'Cliente Balcão' ? name : '';
-      const text = cleanName 
-        ? `Senha número, ${password}. Cliente, ${cleanName}. Favor retirar o pedido no balcão.`
-        : `Senha número, ${password}. Favor retirar o pedido no balcão.`;
-        
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'pt-BR';
-      utterance.rate = 0.95; // Slightly slower for clear TV resonance
-      utterance.pitch = 1.0;
-      
-      // Select appropriate Brazilian voice if available
-      const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find(v => v.lang.includes('pt-BR') || v.lang.includes('pt_BR'));
-      if (ptVoice) {
-        utterance.voice = ptVoice;
-      }
-      
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn("Speech synthesis error:", e);
-    }
-  };
+  const filteredItems = menuItems.filter(item => {
+    const matchesCat = selectedCategory === 'all' || item.category === selectedCategory || (selectedCategory === 'acai' && item.category?.includes('acai'));
+    const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
 
-  // Flash background on new call
-  const triggerTVAlert = (password: string, name: string) => {
-    setIsFlashing(true);
-    setTimeout(() => setIsFlashing(false), 2500); // flash for 2.5 seconds
-    
-    // Play chime immediately, then speak password after a short delay
-    playChime();
-    setTimeout(() => {
-      speakPassword(password, name);
-    }, 850);
-  };
-
-  // Call / trigger a password in Firestore
-  const handleCallPassword = async (passwordNum: string, nameText: string) => {
-    if (!passwordNum) return;
-    
-    const cleanPass = passwordNum.trim().toUpperCase();
-    const cleanName = (nameText || 'Cliente Balcão').trim();
-    
-    // Create new history list (limit to 5 last)
-    const newHistoryItem = {
-      password: cleanPass,
-      name: cleanName,
-      timestamp: Date.now()
-    };
-    
-    const filteredHistory = [
-      newHistoryItem,
-      ...senhaHistory.filter(item => item.password !== cleanPass)
-    ].slice(0, 5);
-
-    try {
-      const docRef = doc(db, 'settings', 'called_senha');
-      await setDoc(docRef, {
-        currentPassword: cleanPass,
-        currentName: cleanName,
-        lastCalled: Date.now(),
-        history: filteredHistory
-      });
-    } catch (e) {
-      // Fallback local if firebase fails
-      setActivePassword(cleanPass);
-      setActiveName(cleanName);
-      setSenhaHistory(filteredHistory);
-      triggerTVAlert(cleanPass, cleanName);
-    }
-  };
-
-  // Helper to derive a clean ticket number or password from order
-  const getOrderSenhaNumber = (order: Order, index: number) => {
-    // If order has a specific code or we use last 3 digits of timestamp/ID
-    const rawTime = order.timestamp ? new Date(order.timestamp).getTime() : Date.now();
-    const orderIndex = String((index % 99) + 1).padStart(2, '0');
-    return orderIndex;
-  };
-
-  // Open standalone view in another tab
   const handleOpenTVTab = () => {
-    // This will open the same page but instruct the application to launch TV Mode directly.
-    const url = window.location.origin + '?mode=tv';
-    window.open(url, 'supreme_tv_screen');
+    const url = window.location.origin + '?mode=tv_menu';
+    window.open(url, 'supreme_tv_menu');
   };
 
   return (
-    <div className="w-full bg-slate-50 rounded-3xl border border-slate-150 p-5 min-h-[500px]">
+    <div className="w-full bg-slate-900 text-white rounded-3xl border border-slate-800 p-6 sm:p-8 min-h-[600px] shadow-2xl">
       
-      {/* Top Header Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-4 mb-5 gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl">
-            <Tv className="w-5 h-5" />
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-white/10 pb-5 mb-6 gap-4">
+        <div className="flex items-center gap-3">
+          <span className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20">
+            <Tv className="w-6 h-6 animate-pulse" />
           </span>
           <div className="text-left">
-            <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider">Painel Integrado de Senha para TV</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Sincronização instantânea na Smart TV via HDMI/Navegador</p>
+            <h3 className="text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
+              Cardápio Digital para TV / Exibição <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">ATIVO</span>
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Exibição completa de produtos com imagens, descrições e preços para Smart TV</p>
           </div>
         </div>
 
-        <div className="flex bg-slate-200/60 p-1 rounded-xl gap-1 shrink-0 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          <div className="font-mono text-xs font-black bg-white/5 px-4 py-2 rounded-xl text-emerald-400 border border-white/10 flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5" />
+            {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+
           <button
-            onClick={() => setViewMode('control')}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-              viewMode === 'control'
-                ? 'bg-white text-rose-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+            type="button"
+            onClick={handleOpenTVTab}
+            className="py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-700 hover:to-rose-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center gap-1.5 shadow-md transition-all active:scale-97"
           >
-            🕹️ Painel de Chamada
-          </button>
-          <button
-            onClick={() => setViewMode('tv')}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-              viewMode === 'tv'
-                ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            📺 Modo Exibição TV
+            <ExternalLink className="w-4 h-4" />
+            Tela Cheia TV (Nova Aba)
           </button>
         </div>
       </div>
 
-      {/* 1. OPERATOR CONTROL VIEW */}
-      {viewMode === 'control' && (
-        <div className="grid lg:grid-cols-12 gap-5 text-slate-800">
-          
-          {/* Left Column: Manual Dialer & Active TV Status */}
-          <div className="lg:col-span-4 space-y-4">
-            
-            {/* Quick Manual Call Box */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-xs space-y-4 text-left">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-                <Bell className="w-4 h-4 text-rose-500 animate-bounce" />
-                <h4 className="text-[10px] font-black uppercase text-slate-700 tracking-wider">Chamar Senha Manual</h4>
-              </div>
+      {/* Category filter tabs & search */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                selectedCategory === cat.id
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Número da Senha</label>
-                  <input
-                    type="text"
-                    maxLength={4}
-                    placeholder="EX: 42"
-                    value={manualPassword}
-                    onChange={(e) => setManualPassword(e.target.value.replace(/\D/g, ''))}
-                    className="w-full text-center text-lg font-mono font-black p-2.5 rounded-xl border border-slate-205 focus:ring-1 focus:ring-rose-500 outline-none text-slate-750"
-                  />
-                </div>
+        <div className="relative min-w-[220px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar produto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-white placeholder-slate-400 focus:outline-none focus:border-rose-500"
+          />
+        </div>
+      </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Nome do Cliente (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="EX: Bruno"
-                    value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-205 focus:ring-1 focus:ring-rose-500 outline-none font-bold text-slate-750"
-                  />
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (!manualPassword) {
-                      alert("Digite o número da senha para chamar.");
-                      return;
-                    }
-                    handleCallPassword(manualPassword, manualName);
-                    setManualPassword('');
-                    setManualName('');
-                  }}
-                  className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold uppercase text-[10px] tracking-wider rounded-xl cursor-pointer shadow-md shadow-rose-100 transition-all flex items-center justify-center gap-1.5 active:scale-97"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  Chamar na TV Agora
-                </button>
-              </div>
-            </div>
-
-            {/* Active Display Status Box */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-xs space-y-3 text-left">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="text-[10px] font-black uppercase text-slate-700 tracking-wider">Status Atual na TV</span>
-                <span className="text-[8px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">SINCRO ATIVO</span>
-              </div>
-
-              <div className="flex items-center gap-4 py-2">
-                <div className="bg-slate-900 border-2 border-slate-750 rounded-xl p-3 text-center min-w-[70px]">
-                  <span className="block text-[7px] text-slate-400 font-extrabold uppercase tracking-widest leading-none mb-1">Senha</span>
-                  <span className="font-mono text-2xl font-black text-emerald-400">{activePassword}</span>
-                </div>
-                <div>
-                  <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wide">Cliente Atendido</span>
-                  <span className="text-xs font-black text-slate-700 leading-tight block">{activeName}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleOpenTVTab}
-                className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-150 rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Abrir Painel da TV (Nova Aba)
-              </button>
-              <p className="text-[8.5px] text-slate-400 leading-normal text-center">💡 Coloque a tela da nova aba na TV de sua loja usando um cabo HDMI ou via Smart TV!</p>
-            </div>
-
-          </div>
-
-          {/* Right Column: Active Store Orders list for quick call */}
-          <div className="lg:col-span-8 flex flex-col bg-white rounded-3xl border border-slate-150 shadow-xs p-5 text-left">
-            
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-2">
+      {/* Menu Grid Display */}
+      {filteredItems.length === 0 ? (
+        <div className="py-20 text-center text-slate-400 space-y-2">
+          <Utensils className="w-10 h-10 text-slate-600 mx-auto" />
+          <p className="text-xs font-black uppercase tracking-wider">Nenhum produto encontrado nesta categoria</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+          {filteredItems.map((item) => (
+            <div 
+              key={item.id}
+              className="bg-slate-800/80 border border-slate-700/80 rounded-3xl overflow-hidden shadow-xl hover:border-rose-500/50 transition-all duration-300 flex flex-col justify-between group"
+            >
               <div>
-                <h4 className="text-[11px] font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
-                  <List className="w-4 h-4 text-indigo-500" />
-                  Pedidos do Dia • Chamar com 1 Clique
-                </h4>
-                <p className="text-[9px] text-slate-400 font-bold uppercase">Clique para enviar o pedido diretamente para o painel de senhas</p>
-              </div>
+                {/* Product Image */}
+                <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                  <LazyImage 
+                    src={item.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80" />
+                  
+                  {/* Price Tag Badge */}
+                  <div className="absolute bottom-3 right-3 bg-rose-600 text-white font-mono font-black text-sm px-3 py-1.5 rounded-2xl shadow-lg border border-rose-400/30">
+                    R$ {item.price.toFixed(2).replace('.', ',')}
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-[9px] text-slate-500 font-bold uppercase">Aguardando/Preparo</span>
-              </div>
-            </div>
-
-            {/* Orders list */}
-            <div className="space-y-2.5 overflow-y-auto max-h-[420px] pr-1">
-              {orders.filter(o => o.status === 'waiting' || o.status === 'preparing').length === 0 ? (
-                <div className="py-12 text-center text-slate-400 space-y-2">
-                  <Clock className="w-8 h-8 text-slate-300 mx-auto animate-pulse" />
-                  <p className="text-xs font-bold uppercase tracking-wider">Nenhum pedido em fila ativa no momento</p>
-                  <p className="text-[10px] font-semibold text-slate-300">Lance pedidos no PDV para listar aqui!</p>
+                  {/* Popular/Tag Badge */}
+                  {item.popular && (
+                    <span className="absolute top-3 left-3 bg-amber-500 text-slate-950 font-black text-[9px] uppercase px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-md">
+                      <Flame className="w-3 h-3 fill-slate-950" /> Mais Pedido
+                    </span>
+                  )}
                 </div>
-              ) : (
-                orders.filter(o => o.status === 'waiting' || o.status === 'preparing').map((order, index) => {
-                  const sNum = getOrderSenhaNumber(order, index);
-                  const name = order.details?.customerName || 'Cliente Balcão';
-                  const isPreparing = order.status === 'preparing';
 
-                  return (
-                    <div 
-                      key={order.id} 
-                      className="p-3 bg-slate-50 border border-slate-200 hover:border-indigo-200 rounded-2xl flex items-center justify-between transition-all gap-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-150 flex flex-col items-center justify-center shrink-0">
-                          <span className="text-[7px] text-indigo-500 font-extrabold uppercase leading-none mb-0.5">Senha</span>
-                          <span className="font-mono text-sm font-black text-indigo-800 leading-none">{sNum}</span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black text-slate-700">{name}</span>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
-                              isPreparing ? 'bg-amber-100 text-amber-800 border border-amber-200/50' : 'bg-rose-50 text-rose-700 border border-rose-100'
-                            }`}>
-                              {isPreparing ? 'Preparo' : 'Fila'}
-                            </span>
-                          </div>
-                          <span className="text-[9px] text-slate-400 font-mono font-bold block mt-0.5">
-                            Ref: {order.id.slice(-6).toUpperCase()} • {order.items.reduce((acc, i) => acc + i.quantity, 0)} itens • R$ {order.total.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
+                {/* Content */}
+                <div className="p-5 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-base font-black text-white group-hover:text-rose-400 transition-colors leading-tight">
+                      {item.name}
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed line-clamp-3">
+                    {item.description}
+                  </p>
+                </div>
+              </div>
 
-                      <button
-                        onClick={() => handleCallPassword(sNum, name)}
-                        className="py-1.5 px-4 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-extrabold uppercase text-[9px] tracking-wider rounded-xl cursor-pointer transition-all active:scale-97 flex items-center gap-1.5 shadow-sm"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                        Chamar na TV
-                      </button>
-                    </div>
-                  );
-                })
+              {/* Tags footer */}
+              {item.tags && item.tags.length > 0 && (
+                <div className="px-5 pb-5 pt-0 flex flex-wrap gap-1.5">
+                  {item.tags.map((tag, idx) => (
+                    <span key={idx} className="text-[9px] font-black uppercase bg-white/5 text-rose-300 px-2 py-0.5 rounded-lg border border-white/5">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
-
-            {/* Quick Simulated Voice Test */}
-            <div className="mt-4 pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl">
-              <div className="text-left">
-                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Teste de Alto-Falante</span>
-                <span className="text-[10px] text-slate-500 leading-tight block">Fale uma frase de teste no navegador local para testar o áudio:</span>
-              </div>
-              <button
-                onClick={() => {
-                  speakPassword("42", "Felipe");
-                }}
-                className="py-1.5 px-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[9px] font-extrabold uppercase rounded-lg cursor-pointer flex items-center gap-1.5"
-              >
-                📢 Falar Teste local
-              </button>
-            </div>
-
-          </div>
+          ))}
         </div>
       )}
 
-      {/* 2. TV SCREEN DISPLAY MODE */}
-      {viewMode === 'tv' && (
-        <div className={`rounded-3xl border-4 ${isFlashing ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-200'} p-6 sm:p-10 transition-all duration-300 text-center relative overflow-hidden min-h-[580px] flex flex-col justify-between select-none`}>
-          
-          {/* TV Top Header with Live Info */}
-          <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🍦</span>
-              <div className="text-left">
-                <h2 className="text-sm font-black uppercase tracking-wider text-white">SORVETERIA SUPREME</h2>
-                <p className="text-[9px] text-emerald-400 font-extrabold uppercase tracking-widest">Painel de Senhas Oficial</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Sound Controls directly on the screen for Smart TVs */}
-              <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
-                <button
-                  onClick={() => setTtsEnabled(!ttsEnabled)}
-                  className={`p-1 rounded-md cursor-pointer transition-colors ${ttsEnabled ? 'text-emerald-400' : 'text-slate-400'}`}
-                  title="Vocalizador de Voz (TTS)"
-                >
-                  {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={() => setChimeEnabled(!chimeEnabled)}
-                  className={`p-1 rounded-md cursor-pointer transition-colors ${chimeEnabled ? 'text-emerald-400' : 'text-slate-400'}`}
-                  title="Sinal Sonoro"
-                >
-                  <Bell className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="font-mono text-xs font-black bg-white/10 px-3 py-1.5 rounded-xl text-white">
-                {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Display Body */}
-          <div className="grid lg:grid-cols-12 gap-8 my-auto py-6 items-center">
-            
-            {/* Giant Active Password Box */}
-            <div className="lg:col-span-8 flex flex-col justify-center items-center space-y-4">
-              <div className="bg-white/5 backdrop-blur-xs rounded-3xl p-6 sm:p-10 border border-white/10 w-full shadow-2xl flex flex-col items-center">
-                <span className="text-xs font-black uppercase tracking-widest text-emerald-400 animate-pulse">
-                  ÚLTIMA CHAMADA
-                </span>
-                
-                {/* Active Ticket Number */}
-                <h1 className="font-mono text-7xl sm:text-9xl font-black text-white tracking-wide my-4 select-none drop-shadow-[0_4px_12px_rgba(255,255,255,0.15)] animate-bounce">
-                  {activePassword}
-                </h1>
-
-                {/* Client Name */}
-                <div className="bg-white/10 px-6 py-2.5 rounded-2xl border border-white/5 max-w-md">
-                  <span className="block text-[8px] font-black uppercase tracking-wider text-slate-400">Cliente</span>
-                  <span className="text-xl sm:text-2xl font-black text-white">{activeName}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* History of Called Passwords (Right Rail) */}
-            <div className="lg:col-span-4 bg-black/20 rounded-3xl border border-white/5 p-5 text-left flex flex-col justify-start space-y-4 h-full min-h-[300px]">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-400 border-b border-white/10 pb-2">
-                ⏱️ Senhas Anteriores
-              </h3>
-
-              <div className="space-y-3">
-                {senhaHistory.slice(1, 5).length === 0 ? (
-                  <div className="py-12 text-center text-slate-500 font-bold uppercase text-[9px] tracking-wider">
-                    Sem histórico de chamadas
-                  </div>
-                ) : (
-                  senhaHistory.slice(1, 5).map((item, idx) => (
-                    <div 
-                      key={idx} 
-                      className="p-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center">
-                          <span className="font-mono text-xs font-black text-emerald-400">{item.password}</span>
-                        </div>
-                        <div>
-                          <span className="block text-[7px] text-slate-400 font-extrabold uppercase">Cliente</span>
-                          <span className="text-[11px] font-black text-white leading-none">{item.name}</span>
-                        </div>
-                      </div>
-                      <span className="text-[8px] font-extrabold text-slate-500 uppercase">Chamado</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Footer Promotion Slide/Message */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between mt-4 text-left gap-2.5">
-            <div>
-              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Agradecemos a Preferência!</span>
-              <p className="text-[10px] text-slate-300 font-bold">Por favor, retire sua colher e guardanapos no balcão de atendimento.</p>
-            </div>
-            <div className="text-[11px] font-bold text-slate-400 bg-white/10 px-4 py-1.5 rounded-full border border-white/5">
-              🍦 Saboreie nossa Receita GOURMET!
-            </div>
-          </div>
-
+      {/* Footer Branding */}
+      <div className="mt-8 pt-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-slate-400 text-xs gap-3">
+        <div className="flex items-center gap-2">
+          <span>🍨</span>
+          <strong className="text-white">Sorveteria Supreme</strong> • Cardápio Digital Oficial para Exibição em TV
         </div>
-      )}
+        <p className="text-[10px] text-slate-400 font-semibold">
+          Atualizado em tempo real com o painel do administrador.
+        </p>
+      </div>
 
     </div>
   );
