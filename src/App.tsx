@@ -1396,69 +1396,90 @@ export default function App() {
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
   useEffect(() => {
-    if (document.visibilityState === 'hidden') return;
+    let unsubscribe: () => void = () => {};
 
-    const ordersCol = collection(db, 'orders');
-    const q = query(ordersCol, limit(100));
+    const setupListener = () => {
+      try {
+        const ordersCol = collection(db, 'orders');
+        const q = query(ordersCol, limit(100));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      trackFirestoreRead('orders', snapshot.size);
-      const fetchedOrders: Order[] = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        fetchedOrders.push({
-          id: data.id,
-          items: data.items,
-          total: data.total,
-          details: data.details,
-          status: data.status,
-          timestamp: data.timestamp,
-          archived: data.archived || false,
-        });
-      });
-      
-      fetchedOrders.sort((a, b) => {
-        const timeA = parseInt(a.id.match(/\d+$/)?.[0] || '0', 10);
-        const timeB = parseInt(b.id.match(/\d+$/)?.[0] || '0', 10);
-        return timeB - timeA;
-      });
-      
-      setOrders(fetchedOrders);
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            trackFirestoreRead('orders', snapshot.size);
+            const fetchedOrders: Order[] = [];
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              fetchedOrders.push({
+                id: data.id,
+                items: data.items,
+                total: data.total,
+                details: data.details,
+                status: data.status,
+                timestamp: data.timestamp,
+                archived: data.archived || false,
+              });
+            });
 
-      const isAdminMode = isAdmin;
-      if (!isAdminMode) {
-        localStorage.setItem('supreme_orders', JSON.stringify(fetchedOrders));
-      }
-    }, (error) => {
-      const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';
-      if (isQuota) {
-        console.warn('Firestore quota limit reached for orders query. Using local cached orders.');
-      } else {
-        console.error('Failed to subscribe to orders query:', error);
-        handleFirestoreError(error, OperationType.LIST, 'orders');
-      }
-      const savedOrders = localStorage.getItem('supreme_orders');
-      if (savedOrders) {
-        try {
-          setOrders(JSON.parse(savedOrders));
-        } catch (e) {
-          console.error('Error parsing saved orders', e);
-        }
-      }
-    });
+            fetchedOrders.sort((a, b) => {
+              const timeA = parseInt(a.id.match(/\d+$/)?.[0] || '0', 10);
+              const timeB = parseInt(b.id.match(/\d+$/)?.[0] || '0', 10);
+              return timeB - timeA;
+            });
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        unsubscribe();
+            setOrders(fetchedOrders);
+            if (!isAdmin) {
+              localStorage.setItem('supreme_orders', JSON.stringify(fetchedOrders));
+            }
+          },
+          (error) => {
+            console.error('[Orders Realtime onSnapshot Error]:', error);
+            if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+              console.error('[Firestore Index Required]: Missing composite index for orders query. Create index in Firebase Console:', error.message);
+            }
+            const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';
+            if (!isQuota) {
+              handleFirestoreError(error, OperationType.LIST, 'orders');
+            }
+            const savedOrders = localStorage.getItem('supreme_orders');
+            if (savedOrders) {
+              try {
+                setOrders(JSON.parse(savedOrders));
+              } catch (e) {
+                console.error('Error parsing saved orders fallback', e);
+              }
+            }
+          }
+        );
+      } catch (err) {
+        console.error('Error setting up orders onSnapshot listener:', err);
       }
     };
+
+    setupListener();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          unsubscribe();
+        } catch {}
+        setupListener();
+      } else if (document.visibilityState === 'hidden') {
+        try {
+          unsubscribe();
+        } catch {}
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      unsubscribe();
+      try {
+        unsubscribe();
+      } catch {}
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [currentUser, activeTab]);
+  }, []);
 
   // Keep active tracking order in sync with live Firestore document updates
   useEffect(() => {
