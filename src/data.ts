@@ -12,7 +12,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Escolha o tamanho da sua vontade, temos 4 tamanhos e em todos com cortesia leite condensado, leite em po, banana, morango e granola. O melhor acai preparado com ingredientes selecionados e de boa qualidade.',
     price: 21.00,
     category: 'acai',
-    image: '/assets/images/supreme_acai_cup_1781179584520.jpg',
+    image: '/src/assets/images/acai_gourmet_bowl_1795018444560.jpg',
     tags: ['Mais Vendido', 'Recomendado', 'Customizável'],
     popular: true,
     customizable: true
@@ -23,7 +23,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Milkshake irresistivelmente cremoso. Escolha 1 sabor de sorvete, se preferir selecione seu adicional favorito para deixar seu milkshake ainda mais saboroso',
     price: 20.90,
     category: 'milkshake',
-    image: '/assets/images/milkshake_supreme_1781189062620.jpg',
+    image: '/src/assets/images/milkshake_supreme_1795018446647.jpg',
     tags: ['Gourmet', 'Novidade', 'Customizável'],
     customizable: true
   },
