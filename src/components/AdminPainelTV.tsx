@@ -2,12 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Cardápio Digital para TV • Modo Apresentação (Uma imagem e nome por vez)
+ * Cardápio Digital para TV • Modo Apresentação (Imagem em tamanho original e nome, rolando automaticamente)
  */
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Tv, Clock, Search, ExternalLink, Utensils, ArrowLeft, Play, Pause, ChevronLeft, ChevronRight, Flame
+  Tv, ExternalLink, ArrowLeft, Play, Pause, ChevronLeft, ChevronRight, Flame
 } from 'lucide-react';
 import { MenuItem } from '../types';
 import { MENU_ITEMS } from '../data';
@@ -90,18 +90,18 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
 
   const currentItem = filteredItems[currentIndex] || filteredItems[0] || menuItems[0];
 
-  // If in standalone TV Mode, render Fullscreen Presentation (One product at a time)
+  // If in standalone TV Mode, render Fullscreen Presentation with original image size
   if (viewMode === 'tv') {
     return (
       <div className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-hidden flex flex-col justify-between select-none">
         
         {/* TV Header */}
-        <div className="flex items-center justify-between px-8 py-6 bg-gradient-to-b from-slate-950/90 to-transparent z-20 shrink-0">
+        <div className="flex items-center justify-between px-8 py-5 bg-gradient-to-b from-slate-950/90 to-transparent z-20 shrink-0">
           <div className="flex items-center gap-4">
             <span className="text-4xl">🍨</span>
             <div className="text-left">
               <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white">SORVETERIA GOURMET SUPREME</h1>
-              <p className="text-[10px] text-rose-400 font-extrabold uppercase tracking-widest">Cardápio Digital • Exibição Exclusiva</p>
+              <p className="text-[10px] text-rose-400 font-extrabold uppercase tracking-widest">Cardápio Digital • Exibição em TV</p>
             </div>
           </div>
 
@@ -127,43 +127,38 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
           </div>
         </div>
 
-        {/* Center Main Presentation: Huge Image & Name */}
-        <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-12 overflow-hidden">
+        {/* Center Main Presentation: Original Image Size & Name */}
+        <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-8 overflow-hidden">
           
           {filteredItems.length === 0 ? (
             <div className="text-center text-slate-400">
               <p className="text-xl font-bold">Nenhum produto encontrado nesta categoria.</p>
             </div>
           ) : (
-            <div className="relative w-full max-w-5xl h-[70vh] flex flex-col items-center justify-center">
+            <div className="relative w-full max-w-5xl h-[72vh] flex flex-col items-center justify-center">
               
-              {/* Giant Product Image */}
-              <div className="relative w-full h-[55vh] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/10 bg-slate-900 group">
+              {/* Image in Original Proportion (object-contain) */}
+              <div className="relative w-full h-[54vh] flex items-center justify-center rounded-3xl overflow-hidden bg-black/40 border-2 border-white/10 shadow-2xl group">
                 <LazyImage 
                   key={currentItem?.id}
                   src={currentItem?.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
                   alt={currentItem?.name}
-                  className="w-full h-full object-cover animate-fade-in transition-all duration-700"
+                  className="w-full h-full object-contain animate-fade-in transition-all duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
 
                 {currentItem?.popular && (
-                  <span className="absolute top-6 left-6 bg-amber-500 text-slate-950 font-black text-xs uppercase px-4 py-2 rounded-2xl flex items-center gap-1.5 shadow-2xl">
+                  <span className="absolute top-4 left-4 bg-amber-500 text-slate-950 font-black text-xs uppercase px-4 py-2 rounded-2xl flex items-center gap-1.5 shadow-2xl">
                     <Flame className="w-4 h-4 fill-slate-950" /> Destaque Supreme
                   </span>
                 )}
 
-                {/* Price Tag Floating */}
-                <div className="absolute top-6 right-6 bg-rose-600 text-white font-mono font-black text-2xl sm:text-3xl px-6 py-3 rounded-2xl shadow-2xl border-2 border-rose-400/40">
+                <div className="absolute top-4 right-4 bg-rose-600 text-white font-mono font-black text-2xl sm:text-3xl px-6 py-3 rounded-2xl shadow-2xl border-2 border-rose-400/40">
                   R$ {currentItem?.price?.toFixed(2).replace('.', ',')}
                 </div>
               </div>
 
-              {/* Giant Product Name & Category */}
-              <div className="mt-6 text-center space-y-2 z-10">
-                <span className="text-xs font-black uppercase tracking-widest text-rose-400 bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20">
-                  {currentItem?.category === 'acai' ? '🥣 Açaí Gourmet' : currentItem?.category === 'milkshake' ? '🥤 Milkshake' : '🍨 Copo Especial'}
-                </span>
+              {/* Giant Product Name */}
+              <div className="mt-5 text-center space-y-1.5 z-10">
                 <h2 className="text-3xl sm:text-5xl font-black text-white tracking-wide drop-shadow-lg">
                   {currentItem?.name}
                 </h2>
@@ -187,7 +182,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
         </div>
 
         {/* TV Bottom Footer Indicator */}
-        <div className="flex items-center justify-between px-8 py-5 bg-slate-900 border-t border-white/10 text-slate-400 text-xs shrink-0 z-20">
+        <div className="flex items-center justify-between px-8 py-4 bg-slate-900 border-t border-white/10 text-slate-400 text-xs shrink-0 z-20">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-white font-bold">Apresentação Automática Ativa</span>
@@ -224,7 +219,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <h3 className="text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
               Cardápio Digital para TV <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">ATIVO</span>
             </h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Modo Apresentação (Uma imagem e nome por vez para Smart TV)</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Modo Apresentação (Imagem em tamanho original e nome)</p>
           </div>
         </div>
 
@@ -278,7 +273,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             className="bg-slate-800/80 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg hover:border-rose-500 transition-all cursor-pointer group p-3 flex flex-col items-center text-center"
           >
             <div className="relative h-32 w-full overflow-hidden rounded-xl bg-slate-900 mb-3">
-              <LazyImage src={item.image || ''} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+              <LazyImage src={item.image || ''} alt={item.name} className="w-full h-full object-contain" />
             </div>
             <h4 className="text-xs font-black text-white group-hover:text-rose-400 transition-colors leading-tight mb-1">
               {item.name}
