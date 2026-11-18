@@ -1395,10 +1395,7 @@ export default function App() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'waiting' | 'preparing' | 'delivering' | 'completed'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
-  // 4. Real-time sync of orders from Firestore (limited and closed on hidden/non-visible tabs)
   useEffect(() => {
-    if (!currentUser) return;
-    if (activeTab !== 'tracker') return;
     if (document.visibilityState === 'hidden') return;
 
     const ordersCol = collection(db, 'orders');
