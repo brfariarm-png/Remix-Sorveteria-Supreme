@@ -66,11 +66,12 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
     { id: 'copos_especiais', name: '🍨 Copos Especiais' }
   ];
 
-  const filteredItems = menuItems.filter(item => {
+  const rawFiltered = menuItems.filter(item => {
     const matchesCat = selectedCategory === 'all' || item.category === selectedCategory || (selectedCategory === 'acai' && item.category?.includes('acai'));
     const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
+  const filteredItems = rawFiltered.length > 0 ? rawFiltered : (menuItems.length > 0 ? menuItems : MENU_ITEMS);
 
   // Auto-advance slideshow in TV mode
   useEffect(() => {
@@ -93,7 +94,10 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
   // If in standalone TV Mode, render Fullscreen Presentation with original image size and NO prices
   if (viewMode === 'tv') {
     return (
-      <div className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-hidden flex flex-col justify-between select-none">
+      <div 
+        style={{ backgroundColor: '#020617', color: '#ffffff', opacity: 1 }}
+        className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-hidden flex flex-col justify-between select-none"
+      >
         
         {/* TV Header */}
         <div className="flex items-center justify-between px-8 py-5 bg-gradient-to-b from-slate-950/90 to-transparent z-20 shrink-0">
