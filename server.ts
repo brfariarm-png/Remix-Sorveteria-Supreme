@@ -1116,9 +1116,10 @@ app.post(['/api/pausar-bot', '/api/whatsapp/pausar-bot'], async (req: Request, r
     }
     const { db } = await import('./src/firebase');
     const { doc, setDoc } = await import('firebase/firestore');
-    await setDoc(doc(db, 'whatsapp_conversations', phone), {
+    await setDoc(doc(db, 'conversas_bot', phone), {
       phone,
       botPausado: pausado,
+      pausadoEm: new Date().toISOString(),
       updatedAt: new Date()
     }, { merge: true });
     return res.json({ ok: true, phone, botPausado: pausado });

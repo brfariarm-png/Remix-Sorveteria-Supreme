@@ -17,6 +17,7 @@ const FIRESTORE_CONFIG_URL = `https://firestore.googleapis.com/v1/projects/${PRO
 const greetedContacts = new Map<string, number>();
 const processedMsgIds = new Set<string>();
 const recentReplies = new Map<string, number>();
+const botSentMsgIds = new Set<string>();
 const GREET_TTL_MS = 6 * 60 * 60 * 1000;
 
 interface WebhookLogItem {
@@ -335,13 +336,25 @@ async function getConversationRecord(phone: string): Promise<{ botPausado: boole
   try {
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     if (!cleanPhone) return { botPausado: false, ultimaAusencia: 0 };
-    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/whatsapp_conversations/${cleanPhone}`;
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/conversas_bot/${cleanPhone}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
     if (!res.ok) return { botPausado: false, ultimaAusencia: 0 };
     const json: any = await res.json();
     const fields = json?.fields || {};
-    const botPausado = fields.botPausado?.booleanValue === true;
+    let botPausado = fields.botPausado?.booleanValue === true;
     const ultimaAusencia = Number(fields.ultimaAusencia?.integerValue || fields.ultimaAusencia?.doubleValue || 0);
+
+    if (botPausado) {
+      const pausadoEmStr = fields.pausadoEm?.stringValue;
+      if (pausadoEmStr) {
+        const pausedTime = new Date(pausadoEmStr).getTime();
+        const TWO_HOURS = 2 * 60 * 60 * 1000;
+        if (!isNaN(pausedTime) && Date.now() - pausedTime > TWO_HOURS) {
+          botPausado = false;
+        }
+      }
+    }
+
     return { botPausado, ultimaAusencia };
   } catch {
     return { botPausado: false, ultimaAusencia: 0 };
@@ -352,7 +365,7 @@ async function updateAbsenceTimestamp(phone: string, timestamp: number): Promise
   try {
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     if (!cleanPhone) return;
-    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/whatsapp_conversations/${cleanPhone}?updateMask.fieldPaths=ultimaAusencia&updateMask.fieldPaths=phone`;
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/conversas_bot/${cleanPhone}?updateMask.fieldPaths=ultimaAusencia&updateMask.fieldPaths=phone`;
     const body = {
       fields: {
         phone: { stringValue: cleanPhone },
@@ -367,6 +380,29 @@ async function updateAbsenceTimestamp(phone: string, timestamp: number): Promise
     });
   } catch (err) {
     console.warn('Failed to update ultimaAusencia:', err);
+  }
+}
+
+async function setAutomaticBotPause(phone: string): Promise<void> {
+  try {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return;
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/conversas_bot/${cleanPhone}`;
+    const body = {
+      fields: {
+        phone: { stringValue: cleanPhone },
+        botPausado: { booleanValue: true },
+        pausadoEm: { stringValue: new Date().toISOString() }
+      }
+    };
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(2000)
+    });
+  } catch (err) {
+    console.warn('Failed to set automatic bot pause:', err);
   }
 }
 
@@ -515,6 +551,17 @@ async function sendWithRetry(evolutionUrl: string, instanceName: string, apiKey:
       const status = sendRes.status;
       const result = await sendRes.text();
       if (sendRes.ok) {
+        try {
+          const jsonRes = JSON.parse(result);
+          const sentId = jsonRes?.key?.id || jsonRes?.message?.key?.id || jsonRes?.id;
+          if (sentId) {
+            botSentMsgIds.add(String(sentId));
+            if (botSentMsgIds.size > 500) {
+              const first = botSentMsgIds.values().next().value;
+              if (first) botSentMsgIds.delete(first);
+            }
+          }
+        } catch {}
         return { ok: true, status, result };
       }
       lastStatus = status;
@@ -690,7 +737,16 @@ export default async function handler(req: any, res: any) {
 
     const effectiveText = incomingText.trim() || (hasMedia && !key.fromMe ? 'Oi' : '');
 
-    if (key.fromMe && !isSelfChat) {
+    if (key.fromMe) {
+      const msgId = key.id;
+      if (msgId && !botSentMsgIds.has(String(msgId))) {
+        const { displaySender } = buildSendCandidates(key, data);
+        const rawDigits = remoteJid.split(':')[0].split('@')[0].replace(/\D/g, '');
+        const targetPhone = displaySender || (rawDigits.length >= 10 ? normalizeToBrPhone(rawDigits) : rawDigits);
+        if (targetPhone) {
+          await setAutomaticBotPause(targetPhone);
+        }
+      }
       pushWebhookLog({
         from: remoteAltDigits || remoteBaseDigits || remoteJid,
         incomingText: effectiveText || '(sem texto)',

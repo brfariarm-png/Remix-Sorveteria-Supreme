@@ -50,8 +50,12 @@ service cloud.firestore {
       allow update, delete: if true;
     }
 
-    // Conversas do WhatsApp
+    // Conversas do WhatsApp e conversas_bot
     match /whatsapp_conversations/{phoneId} {
+      allow read, write: if true;
+    }
+
+    match /conversas_bot/{phoneId} {
       allow read, write: if true;
     }
 

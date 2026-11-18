@@ -423,7 +423,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    const unsub = onSnapshot(collection(db, 'whatsapp_conversations'), (snap) => {
+    const unsub = onSnapshot(collection(db, 'conversas_bot'), (snap) => {
       const map: Record<string, { botPausado: boolean }> = {};
       snap.docs.forEach((docSnap) => {
         const data = docSnap.data();
@@ -446,9 +446,10 @@ export default function App() {
       });
     } catch {
       try {
-        await setDoc(doc(db, 'whatsapp_conversations', cleanPhone), {
+        await setDoc(doc(db, 'conversas_bot', cleanPhone), {
           phone: cleanPhone,
           botPausado: !currentPaused,
+          pausadoEm: new Date().toISOString(),
           updatedAt: serverTimestamp()
         }, { merge: true });
       } catch (e) {
