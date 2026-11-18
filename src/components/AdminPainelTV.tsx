@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Cardápio Digital para TV • Modo Apresentação (Imagem em tamanho original e nome, rolando automaticamente)
+ * Cardápio Digital para TV • Modo Apresentação (Imagem em tamanho original e nome, sem valores)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -90,7 +90,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
 
   const currentItem = filteredItems[currentIndex] || filteredItems[0] || menuItems[0];
 
-  // If in standalone TV Mode, render Fullscreen Presentation with original image size
+  // If in standalone TV Mode, render Fullscreen Presentation with original image size and NO prices
   if (viewMode === 'tv') {
     return (
       <div className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-hidden flex flex-col justify-between select-none">
@@ -127,7 +127,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
           </div>
         </div>
 
-        {/* Center Main Presentation: Original Image Size & Name */}
+        {/* Center Main Presentation: Original Image Size & Name (NO prices) */}
         <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-8 overflow-hidden">
           
           {filteredItems.length === 0 ? (
@@ -138,7 +138,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <div className="relative w-full max-w-5xl h-[72vh] flex flex-col items-center justify-center">
               
               {/* Image in Original Proportion (object-contain) */}
-              <div className="relative w-full h-[54vh] flex items-center justify-center rounded-3xl overflow-hidden bg-black/40 border-2 border-white/10 shadow-2xl group">
+              <div className="relative w-full h-[56vh] flex items-center justify-center rounded-3xl overflow-hidden bg-black/40 border-2 border-white/10 shadow-2xl group">
                 <LazyImage 
                   key={currentItem?.id}
                   src={currentItem?.image || '/assets/images/supreme_acai_cup_1781179584520.jpg'} 
@@ -151,14 +151,10 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
                     <Flame className="w-4 h-4 fill-slate-950" /> Destaque Supreme
                   </span>
                 )}
-
-                <div className="absolute top-4 right-4 bg-rose-600 text-white font-mono font-black text-2xl sm:text-3xl px-6 py-3 rounded-2xl shadow-2xl border-2 border-rose-400/40">
-                  R$ {currentItem?.price?.toFixed(2).replace('.', ',')}
-                </div>
               </div>
 
               {/* Giant Product Name */}
-              <div className="mt-5 text-center space-y-1.5 z-10">
+              <div className="mt-6 text-center space-y-1.5 z-10">
                 <h2 className="text-3xl sm:text-5xl font-black text-white tracking-wide drop-shadow-lg">
                   {currentItem?.name}
                 </h2>
@@ -219,7 +215,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <h3 className="text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
               Cardápio Digital para TV <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">ATIVO</span>
             </h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Modo Apresentação (Imagem em tamanho original e nome)</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Modo Apresentação (Apenas imagem em tamanho original e nome)</p>
           </div>
         </div>
 
@@ -278,7 +274,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <h4 className="text-xs font-black text-white group-hover:text-rose-400 transition-colors leading-tight mb-1">
               {item.name}
             </h4>
-            <span className="text-rose-400 font-mono font-bold text-xs">R$ {item.price.toFixed(2)}</span>
+            <span className="text-slate-400 text-[10px] font-bold">Sem preço na TV</span>
           </div>
         ))}
       </div>
