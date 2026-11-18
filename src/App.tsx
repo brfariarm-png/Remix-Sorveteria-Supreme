@@ -1402,13 +1402,7 @@ export default function App() {
     if (document.visibilityState === 'hidden') return;
 
     const ordersCol = collection(db, 'orders');
-    let q;
-    const isRealDbAdmin = currentUser && currentUser.email === 'brfariarm@gmail.com' && currentUser.emailVerified;
-    if (isRealDbAdmin) {
-      q = query(ordersCol, limit(100));
-    } else {
-      q = query(ordersCol, where('ownerId', '==', currentUser.uid), limit(50));
-    }
+    const q = query(ordersCol, limit(100));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       trackFirestoreRead('orders', snapshot.size);
