@@ -14,10 +14,19 @@ const app = initializeApp(firebaseConfig);
 const originalWarn = console.warn;
 console.warn = (...args: any[]) => {
   const msg = String(args[0] || '');
-  if (msg.includes('Disconnecting idle stream') || msg.includes('Timed out waiting for new targets') || msg.includes('GrpcConnection RPC')) {
+  if (msg.includes('Disconnecting idle stream') || msg.includes('Timed out waiting for new targets') || msg.includes('GrpcConnection RPC') || msg.includes('CANCELLED')) {
     return;
   }
   originalWarn(...args);
+};
+
+const originalError = console.error;
+console.error = (...args: any[]) => {
+  const msg = String(args[0] || '');
+  if (msg.includes('Disconnecting idle stream') || msg.includes('Timed out waiting for new targets') || msg.includes('GrpcConnection RPC') || msg.includes('CANCELLED')) {
+    return;
+  }
+  originalError(...args);
 };
 
 export const db = initializeFirestore(app, {
