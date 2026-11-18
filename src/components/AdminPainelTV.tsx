@@ -2,12 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Cardápio Digital para TV com Modo Exibição de Tela Cheia 16:9 (Otimizado para Smart TV)
+ * Cardápio Digital para TV com Rolagem Automática Suave e Modo Exibição de Tela Cheia 16:9
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Tv, Clock, Search, ExternalLink, Utensils, Flame, ArrowLeft
+  Tv, Clock, Search, ExternalLink, Utensils, Flame, ArrowLeft, Play, Pause
 } from 'lucide-react';
 import { MenuItem } from '../types';
 import { MENU_ITEMS } from '../data';
@@ -32,6 +32,9 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [autoScrollActive, setAutoScrollActive] = useState<boolean>(true);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Load menu items from Firestore with localStorage cache
   useEffect(() => {
@@ -57,6 +60,42 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
     loadMenu();
   }, []);
 
+  // Smooth Auto-Scroll Effect for TV Mode
+  useEffect(() => {
+    if (viewMode !== 'tv' || !autoScrollActive) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    let scrollDirection = 1; // 1 = down, -1 = up
+    let pauseCounter = 0;
+
+    const interval = setInterval(() => {
+      if (!container) return;
+      
+      // If paused at top or bottom
+      if (pauseCounter > 0) {
+        pauseCounter--;
+        return;
+      }
+
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      if (maxScroll <= 0) return;
+
+      container.scrollTop += scrollDirection * 1.2; // Smooth scroll step
+
+      if (container.scrollTop >= maxScroll - 5) {
+        // Reached bottom, pause then reverse or jump to top
+        pauseCounter = 120; // pause for ~3 seconds at bottom
+        container.scrollTop = 0; // loop back to top smoothly
+      } else if (container.scrollTop <= 0) {
+        pauseCounter = 60; // pause at top
+      }
+    }, 35);
+
+    return () => clearInterval(interval);
+  }, [viewMode, autoScrollActive]);
+
   const categories = [
     { id: 'all', name: '✨ Todos os Produtos' },
     { id: 'acai', name: '🥣 Açaí Gourmet' },
@@ -76,12 +115,15 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
     window.open(url, 'supreme_tv_menu');
   };
 
-  // If in standalone TV Mode, render full-screen 16:9 optimized TV presentation
+  // If in standalone TV Mode, render full-screen 16:9 optimized TV presentation with auto-scroll
   if (viewMode === 'tv') {
     return (
-      <div className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-y-auto p-6 sm:p-10 flex flex-col justify-between select-none">
+      <div 
+        ref={containerRef}
+        className="fixed inset-0 z-[9999] bg-slate-950 text-white overflow-y-auto p-6 sm:p-10 flex flex-col justify-between select-none scroll-smooth"
+      >
         {/* TV Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
+        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8 shrink-0">
           <div className="flex items-center gap-4">
             <span className="text-4xl">🍨</span>
             <div className="text-left">
@@ -90,7 +132,17 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setAutoScrollActive(!autoScrollActive)}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase flex items-center gap-2 border cursor-pointer transition-all ${
+                autoScrollActive ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+              }`}
+            >
+              {autoScrollActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {autoScrollActive ? 'Pausar Rolagem' : 'Retomar Rolagem'}
+            </button>
+
             <div className="font-mono text-xl font-black bg-white/10 px-6 py-2.5 rounded-2xl text-emerald-400 border border-white/10 shadow-lg">
               {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </div>
@@ -99,13 +151,13 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
               onClick={() => setViewMode('control')}
               className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase rounded-xl border border-white/10 cursor-pointer flex items-center gap-2 transition-all"
             >
-              <ArrowLeft className="w-4 h-4" /> Voltar ao Painel
+              <ArrowLeft className="w-4 h-4" /> Voltar
             </button>
           </div>
         </div>
 
         {/* Categories Bar in TV Mode */}
-        <div className="flex items-center justify-center gap-3 mb-8 overflow-x-auto pb-2">
+        <div className="flex items-center justify-center gap-3 mb-8 overflow-x-auto pb-2 shrink-0">
           {categories.map(cat => (
             <button
               key={cat.id}
@@ -122,7 +174,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
         </div>
 
         {/* Full TV Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 my-auto text-left pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-12">
           {filteredItems.map((item) => (
             <div 
               key={item.id}
@@ -152,7 +204,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
                   <h3 className="text-xl font-black text-white leading-tight">
                     {item.name}
                   </h3>
-                  <p className="text-sm text-slate-300 font-medium leading-relaxed line-clamp-3">
+                  <p className="text-sm text-slate-300 font-medium leading-relaxed">
                     {item.description}
                   </p>
                 </div>
@@ -172,7 +224,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
         </div>
 
         {/* TV Footer Ticker */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between text-slate-300 text-sm gap-3 mt-auto">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between text-slate-300 text-sm gap-3 shrink-0 mt-8">
           <div className="flex items-center gap-2">
             <span className="text-xl">⭐</span>
             <strong className="text-white">Monte seu copo premium com adicionais ilimitados!</strong>
@@ -198,7 +250,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             <h3 className="text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
               Cardápio Digital para TV <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">ATIVO</span>
             </h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Exibição completa de produtos com imagens, descrições e preços</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Exibição completa de produtos com imagens, descrições e rolagem automática</p>
           </div>
         </div>
 
@@ -209,7 +261,7 @@ export default function AdminPainelTV({ storeSettings }: AdminPainelTVProps) {
             className="py-2.5 px-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer flex items-center gap-2 shadow-lg transition-all active:scale-97"
           >
             <Tv className="w-4 h-4" />
-            Entrar no Modo Exibição TV (Tela Cheia)
+            Entrar no Modo Exibição TV (Rolagem Automática)
           </button>
 
           <button
