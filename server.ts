@@ -258,9 +258,9 @@ function isStoreCurrentlyOpen() {
   }
 }
 
-// Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message ALWAYS triggers Welcome/Absence Message
+// Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message in 24h triggers Welcome/Absence Message once
 const greetedContacts = new Map<string, number>();
-const GREET_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const GREET_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Determine response text based on incoming message
 function processIncomingMessage(userText: string, pushName: string = 'Cliente', senderKey?: string) {
@@ -271,8 +271,16 @@ function processIncomingMessage(userText: string, pushName: string = 'Cliente', 
   const lastGreeted = senderKey ? greetedContacts.get(senderKey) : undefined;
   const isFirstContact = senderKey ? (!lastGreeted || Date.now() - lastGreeted > GREET_TTL_MS) : false;
 
-  if (senderKey) {
+  if (senderKey && isFirstContact) {
     greetedContacts.set(senderKey, Date.now());
+    if (greetedContacts.size > 1000) {
+      const now = Date.now();
+      for (const [k, ts] of greetedContacts.entries()) {
+        if (now - ts > 48 * 60 * 60 * 1000) {
+          greetedContacts.delete(k);
+        }
+      }
+    }
   }
 
   const storeOpen = isStoreCurrentlyOpen();
