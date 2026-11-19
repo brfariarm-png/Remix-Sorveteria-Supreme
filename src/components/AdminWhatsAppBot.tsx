@@ -533,7 +533,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
     if (!raw || raw.includes('.run.app')) return 'https://sorveteriasupreme.vercel.app';
     return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
   };
-  const [supportMsg, setSupportMsg] = useState(storeSettings.whatsappBotSupportMessage || `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para os nossos atendentes humanos na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`);
+  const [supportMsg, setSupportMsg] = useState(storeSettings.whatsappBotSupportMessage || `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para os nossos atendentes humanos na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!`);
   const [closedMsg, setClosedMsg] = useState(storeSettings.whatsappBotClosedMessage || `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`);
 
   // Settings saving state

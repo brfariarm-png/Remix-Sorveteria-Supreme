@@ -112,7 +112,7 @@ let cachedStoreConfig = {
   closedMsg: `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`,
   menuLink: 'https://sorveteriasupreme.vercel.app',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
-  supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
+  supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!`,
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
   openHours: '13:00 às 20:00',
   statusOverride: 'auto',
