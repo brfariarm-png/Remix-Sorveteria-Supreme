@@ -11,21 +11,26 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 
 // Suppress benign gRPC idle stream cancellation warnings from Firestore SDK
+const shouldSuppress = (args: any[]) => {
+  const fullStr = args.map(arg => String(arg || '')).join(' ');
+  return (
+    fullStr.includes('Disconnecting idle stream') ||
+    fullStr.includes('Timed out waiting for new targets') ||
+    fullStr.includes('GrpcConnection') ||
+    fullStr.includes('CANCELLED') ||
+    fullStr.includes('@firebase/firestore')
+  );
+};
+
 const originalWarn = console.warn;
 console.warn = (...args: any[]) => {
-  const msg = String(args[0] || '');
-  if (msg.includes('Disconnecting idle stream') || msg.includes('Timed out waiting for new targets') || msg.includes('GrpcConnection RPC') || msg.includes('CANCELLED')) {
-    return;
-  }
+  if (shouldSuppress(args)) return;
   originalWarn(...args);
 };
 
 const originalError = console.error;
 console.error = (...args: any[]) => {
-  const msg = String(args[0] || '');
-  if (msg.includes('Disconnecting idle stream') || msg.includes('Timed out waiting for new targets') || msg.includes('GrpcConnection RPC') || msg.includes('CANCELLED')) {
-    return;
-  }
+  if (shouldSuppress(args)) return;
   originalError(...args);
 };
 
