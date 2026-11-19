@@ -327,29 +327,38 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
   // Fetch past closeouts from Firebase with guaranteed local/production fallbacks
   const fetchPastCloseouts = async () => {
     let list: CloseoutData[] = [...pastCloseouts];
-    try {
-      const q = query(collection(db, 'closeouts'), orderBy('closedAt', 'desc'));
-      const snap = await getDocs(q);
-      snap.forEach((docSnap) => {
-        const data = docSnap.data();
-        const closeoutItem: CloseoutData = {
-          id: docSnap.id,
-          closedAt: data.closedAt,
-          closedBy: data.closedBy,
-          ordersCount: data.ordersCount,
-          totalSales: data.totalSales,
-          pixSales: data.pixSales,
-          cardSales: data.cardSales,
-          cashSales: data.cashSales,
-          notes: data.notes || '',
-          orderIds: data.orderIds || []
-        };
-        if (!list.some(item => item.id === closeoutItem.id)) {
-          list.push(closeoutItem);
+    const quotaExceeded = localStorage.getItem('supreme_quota_exceeded') === 'true';
+
+    if (!quotaExceeded) {
+      try {
+        const q = query(collection(db, 'closeouts'), orderBy('closedAt', 'desc'));
+        const snap = await getDocs(q);
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          const closeoutItem: CloseoutData = {
+            id: docSnap.id,
+            closedAt: data.closedAt,
+            closedBy: data.closedBy,
+            ordersCount: data.ordersCount,
+            totalSales: data.totalSales,
+            pixSales: data.pixSales,
+            cardSales: data.cardSales,
+            cashSales: data.cashSales,
+            notes: data.notes || '',
+            orderIds: data.orderIds || []
+          };
+          if (!list.some(item => item.id === closeoutItem.id)) {
+            list.push(closeoutItem);
+          }
+        });
+      } catch (err: any) {
+        if (err?.code === 'resource-exhausted' || /quota|resource-exhausted/i.test(err?.message || '')) {
+          localStorage.setItem('supreme_quota_exceeded', 'true');
+          console.warn('[Firestore Quota Reached]: Using local fallback for past closeouts.');
+        } else {
+          console.error('Failed to fetch past closeouts from Firestore (using local/fallback in production):', err);
         }
-      });
-    } catch (err: any) {
-      console.error('Failed to fetch past closeouts from Firestore (using local/fallback in production):', err);
+      }
     }
 
     // Merge with local closeouts if any exist
