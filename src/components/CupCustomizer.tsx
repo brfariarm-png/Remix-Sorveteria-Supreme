@@ -40,7 +40,16 @@ export default function CupCustomizer({
   const isSplit = customizingItem?.name?.toLowerCase()?.includes('banana split') || customizingItem?.name?.toLowerCase()?.includes('morango split') || customizingItem?.id?.toLowerCase()?.includes('banana-split') || customizingItem?.id?.toLowerCase()?.includes('morango-split');
   const isCopoTrufado = customizingItem?.name?.toLowerCase()?.includes('trufado') || customizingItem?.id?.toLowerCase()?.includes('trufado');
   const isFelicidade = Boolean(customizingItem?.name?.toLowerCase()?.includes('felicidade') || customizingItem?.id?.toLowerCase()?.includes('felicidade'));
-  const isBanoffee = Boolean(customizingItem?.name?.toLowerCase()?.includes('banoffee') || customizingItem?.id?.toLowerCase()?.includes('banoffee'));
+  const isBanoffee = Boolean(
+    customizingItem?.name?.toLowerCase()?.includes('banoffee') ||
+    customizingItem?.id?.toLowerCase()?.includes('banoffee') ||
+    customizingItem?.name?.toLowerCase()?.includes('ovomaltine') ||
+    customizingItem?.id?.toLowerCase()?.includes('ovomaltine') ||
+    customizingItem?.name?.toLowerCase()?.includes('oreo') ||
+    customizingItem?.id?.toLowerCase()?.includes('oreo') ||
+    customizingItem?.name?.toLowerCase()?.includes('disquete') ||
+    customizingItem?.id?.toLowerCase()?.includes('disquete')
+  );
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
     if (isBanoffee) {
