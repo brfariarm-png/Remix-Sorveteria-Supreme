@@ -85,7 +85,16 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
         .filter(Boolean)
         .join(', ');
 
-      const toppingNames = (config.toppings || [])
+      const courtesyOrder = ['gratis-leite-cond', 'gratis-leite-po', 'gratis-banana', 'gratis-morango', 'gratis-granola'];
+      const sortedToppings = [...(config.toppings || [])].sort((aId, bId) => {
+        const indexA = courtesyOrder.findIndex(c => aId.includes(c) || c.includes(aId));
+        const indexB = courtesyOrder.findIndex(c => bId.includes(c) || c.includes(bId));
+        const posA = indexA === -1 ? 99 : indexA;
+        const posB = indexB === -1 ? 99 : indexB;
+        return posA - posB;
+      });
+
+      const toppingNames = sortedToppings
         .map(tid => {
           const t = TOPPING_OPTIONS.find(x => x.id === tid)?.name || tid;
           return t.replace(/\s*\(cortesia\)/gi, '').replace(/\s*\(grátis\)/gi, '').replace(/\s*\(gratis\)/gi, '').trim();
