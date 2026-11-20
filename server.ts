@@ -166,14 +166,12 @@ async function syncStoreConfigFromDb() {
       }
     }
   } catch (err: any) {
-    console.warn('⚠️ [WhatsApp Bot] Erro não impeditivo ao ler Firestore:', err?.message || err);
+    // Read failed, using cached config
   }
 }
 
-// Initial sync on startup
+// Initial sync on startup (no periodic polling)
 syncStoreConfigFromDb();
-// Periodic refresh every 10 minutes
-setInterval(syncStoreConfigFromDb, 10 * 60 * 1000);
 
 // Evolution keepalive ping every 10 minutes to prevent Render free instance from sleeping
 async function pingEvolutionKeepAlive() {
@@ -261,6 +259,8 @@ function isStoreCurrentlyOpen() {
 // Track contacts greeted recently (key: sender digits/jid -> timestamp ms) so first message in 24h triggers Welcome/Absence Message once
 const greetedContacts = new Map<string, number>();
 const GREET_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const conversationPauseCache = new Map<string, { paused: boolean; expires: number }>();
+const processedWebhookMessageIds = new Set<string>();
 
 // Determine response text based on incoming message
 function processIncomingMessage(userText: string, pushName: string = 'Cliente', senderKey?: string) {
@@ -1130,6 +1130,7 @@ app.post(['/api/pausar-bot', '/api/whatsapp/pausar-bot'], async (req: Request, r
       pausadoEm: new Date().toISOString(),
       updatedAt: new Date()
     }, { merge: true });
+    conversationPauseCache.set(phone, { paused: pausado, expires: Date.now() + 5 * 60 * 1000 });
     return res.json({ ok: true, phone, botPausado: pausado });
   } catch (err: any) {
     console.error('Error pausing bot in server.ts:', err);
@@ -1659,9 +1660,47 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
       ? rawData[0]
       : (Array.isArray(rawData?.messages) ? rawData.messages[0] : rawData);
 
+    const msgId = data?.key?.id;
+    if (msgId && !isAdminTest) {
+      if (processedWebhookMessageIds.has(msgId)) {
+        if (!res.headersSent) {
+          return res.status(200).json({ received: true, ignored: 'duplicate-message' });
+        }
+        return;
+      }
+      processedWebhookMessageIds.add(msgId);
+      if (processedWebhookMessageIds.size > 500) {
+        const firstId = processedWebhookMessageIds.values().next().value;
+        if (firstId) processedWebhookMessageIds.delete(firstId);
+      }
+    }
+
     const cleanSender = data ? (
       String(data?.key?.remoteJidAlt || data?.key?.senderPn || data?.remoteJidAlt || data?.senderPn || data?.key?.remoteJid || '').split(':')[0].split('@')[0].replace(/\D/g, '')
     ) : '5519974118672';
+
+    let isPaused = false;
+    const cachedPause = conversationPauseCache.get(cleanSender);
+    if (cachedPause && cachedPause.expires > Date.now()) {
+      isPaused = cachedPause.paused;
+    } else {
+      try {
+        const { db } = await import('./src/firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const botDoc = await getDoc(doc(db, 'conversas_bot', cleanSender));
+        if (botDoc.exists()) {
+          isPaused = botDoc.data()?.botPausado === true;
+        }
+        conversationPauseCache.set(cleanSender, { paused: isPaused, expires: Date.now() + 5 * 60 * 1000 });
+      } catch (e) {}
+    }
+
+    if (isPaused) {
+      if (!res.headersSent) {
+        return res.status(200).json({ received: true, ignored: 'bot-paused' });
+      }
+      return;
+    }
 
     const pushName = data?.pushName || 'Cliente';
     const content = unwrapWhatsAppMessage(data?.message || payload?.message || { conversation: 'oi' });

@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rede de segurança: nega tudo por padrão
     match /{document=**} {
       allow read, write: if false;
     }
@@ -15,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'brfariarm@gmail.com';
     }
 
-    // Cardápio, sabores e adicionais: todos podem ler, SÓ o administrador altera
+    // Cardápio, sabores e adicionais: leitura pública, escrita só do administrador
     match /menu_items/{itemId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -42,32 +41,28 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Pedidos (livre para clientes criarem e lerem/listarem, admin gerencia)
+    // Pedidos: criados por clientes com validação de campos, lidos/atualizados/apagados somente por administrador
     match /orders/{orderId} {
-      allow create: if true;
-      allow get: if true;
-      allow list: if true;
-      allow update, delete: if true;
+      allow create: if request.resource.data.keys().hasAll(['id', 'items', 'total', 'status'])
+                    && request.resource.data.total is number
+                    && request.resource.data.items is list;
+      allow read, update, delete: if isAdmin();
     }
 
-    // Conversas do WhatsApp e conversas_bot
-    match /whatsapp_conversations/{phoneId} {
-      allow read, write: if true;
-    }
-
+    // Conversas do bot: somente administrador
     match /conversas_bot/{phoneId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
-    // Dados privados: SOMENTE o administrador lê e escreve
+    // Configurações privadas: somente administrador
     match /private_settings/{docId} {
       allow read, write: if isAdmin();
     }
 
-    // Solicitações de suporte humano (Opção 4 do bot de WhatsApp)
+    // Solicitações de suporte humano: criadas por qualquer um, gerenciadas pelo administrador
     match /support_requests/{requestId} {
       allow create: if true;
-      allow read, update, delete: if true;
+      allow read, update, delete: if isAdmin();
     }
   }
 }

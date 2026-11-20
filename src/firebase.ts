@@ -5,36 +5,13 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// Suppress benign gRPC idle stream cancellation warnings from Firestore SDK
-const shouldSuppress = (args: any[]) => {
-  const fullStr = args.map(arg => String(arg || '')).join(' ');
-  return (
-    fullStr.includes('Disconnecting idle stream') ||
-    fullStr.includes('Timed out waiting for new targets') ||
-    fullStr.includes('GrpcConnection') ||
-    fullStr.includes('CANCELLED') ||
-    fullStr.includes('@firebase/firestore')
-  );
-};
-
-const originalWarn = console.warn;
-console.warn = (...args: any[]) => {
-  if (shouldSuppress(args)) return;
-  originalWarn(...args);
-};
-
-const originalError = console.error;
-console.error = (...args: any[]) => {
-  if (shouldSuppress(args)) return;
-  originalError(...args);
-};
-
 export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   ignoreUndefinedProperties: true
 }, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
 export const auth = getAuth(app);
