@@ -52,7 +52,7 @@ export default function CupCustomizer({
   );
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
-    if (isBanoffee) {
+    if (isBanoffee || customizingItem?.sizeMode === 'single') {
       return 'single';
     }
     if (customizingItem?.sizeMode) {
@@ -62,7 +62,9 @@ export default function CupCustomizer({
       return 'single';
     }
     return 'default';
-  }, [customizingItem]);
+  }, [customizingItem, isBanoffee]);
+
+  const isSingleSize = resolvedSizeMode === 'single';
 
   const sizeOptions = useMemo(() => {
     if (resolvedSizeMode === 'single') {
@@ -640,8 +642,8 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {/* 3. Flavors / Polpas Selection - Ocultado para Banoffee (sabor e receita única) */}
-            {!isBanoffee && (
+            {/* 3. Flavors / Polpas Selection - Ocultado para copos de tamanho único */}
+            {!isSingleSize && (
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-sm font-bold text-slate-700">
@@ -697,8 +699,8 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {/* 4. Toppings Checklist (Tabs categorized) - Ocultado para Banoffee */}
-            {!isBanoffee && (
+            {/* 4. Toppings Checklist (Tabs categorized) - Ocultado para copos de tamanho único */}
+            {!isSingleSize && (
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   {isMilkshake ? '3. Escolha seus adicionais (Opcional):' : '4. Toppings & Adicionais Extra (À Vontade)'}
@@ -759,7 +761,7 @@ export default function CupCustomizer({
               </div>
             )}
 
-            {resolvedSizeMode === 'single' && !isBanoffee && (
+            {false && (
               <div className="bg-rose-50/60 border border-rose-200/50 rounded-2xl p-4 flex gap-3 text-rose-900">
                 <span className="text-xl">✨</span>
                 <div>
