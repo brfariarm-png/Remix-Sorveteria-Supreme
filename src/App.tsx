@@ -3334,6 +3334,20 @@ export default function App() {
                           💬 WhatsApp Bot
                         </button>
                         <button
+                          onClick={handleOpenWhatsAppAdmin}
+                          className="flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200/50 select-none relative group"
+                          title="Abrir WhatsApp"
+                        >
+                          <span className="flex items-center gap-1.5 z-10">
+                            <span className="text-xs">💬</span> WhatsApp
+                            {waitingConversationsCount > 0 && (
+                              <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-bounce">
+                                {waitingConversationsCount}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                        <button
                           onClick={() => setAdminSubTab('painel')}
                           className={`flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                             adminSubTab === 'painel'
@@ -6494,23 +6508,7 @@ E-mail: ${storeSettings.email}`;
         )}
       </AnimatePresence>
 
-      {/* Fixed Floating WhatsApp Button for Admin */}
-      {isAdmin && adminSubTab !== 'painel' && (
-        <button
-          type="button"
-          onClick={handleOpenWhatsAppAdmin}
-          className="fixed bottom-6 right-6 z-[9000] bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 cursor-pointer active:scale-95 transition-all border-2 border-white/40 group select-none"
-          title="Abrir WhatsApp"
-        >
-          <span className="text-xl group-hover:scale-110 transition-transform">💬</span>
-          <span className="text-xs uppercase tracking-wider font-extrabold">WhatsApp</span>
-          {waitingConversationsCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-bounce">
-              {waitingConversationsCount}
-            </span>
-          )}
-        </button>
-      )}
+
 
     </div>
   );
