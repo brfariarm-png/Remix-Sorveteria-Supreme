@@ -420,17 +420,42 @@ export default function App() {
   };
 
   const [whatsappConversationsState, setWhatsappConversationsState] = useState<Record<string, { botPausado: boolean }>>({});
+  const [waitingConversationsCount, setWaitingConversationsCount] = useState<number>(0);
+
+  const handleOpenWhatsAppAdmin = () => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = 'whatsapp://send';
+      const t = setTimeout(() => {
+        window.open('https://web.whatsapp.com', '_blank', 'noopener');
+      }, 1500);
+      const handleVis = () => {
+        if (document.hidden) {
+          clearTimeout(t);
+          document.removeEventListener('visibilitychange', handleVis);
+        }
+      };
+      document.addEventListener('visibilitychange', handleVis);
+    } else {
+      window.open('https://web.whatsapp.com', '_blank', 'noopener');
+    }
+  };
 
   useEffect(() => {
     if (!isAdmin) return;
     const unsub = onSnapshot(collection(db, 'conversas_bot'), (snap) => {
       const map: Record<string, { botPausado: boolean }> = {};
+      let waitingCount = 0;
       snap.docs.forEach((docSnap) => {
         const data = docSnap.data();
         const phoneDigits = String(data.phone || docSnap.id).replace(/\D/g, '');
         map[phoneDigits] = { botPausado: data.botPausado === true };
+        if (data.aguardandoResposta === true) {
+          waitingCount++;
+        }
       });
       setWhatsappConversationsState(map);
+      setWaitingConversationsCount(waitingCount);
     }, () => {});
     return () => unsub();
   }, [isAdmin]);
@@ -3340,6 +3365,20 @@ export default function App() {
                             <span className="text-xs group-hover:animate-bounce">🤖</span> App Play Store
                             {adminSubTab !== 'playstore' && (
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse border border-white" />
+                            )}
+                          </span>
+                        </button>
+                        <button
+                          onClick={handleOpenWhatsAppAdmin}
+                          className="flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200/50 select-none relative group"
+                          title="Abrir WhatsApp"
+                        >
+                          <span className="flex items-center gap-1.5 z-10">
+                            <span className="text-xs">💬</span> WhatsApp
+                            {waitingConversationsCount > 0 && (
+                              <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-bounce">
+                                {waitingConversationsCount}
+                              </span>
                             )}
                           </span>
                         </button>
@@ -6454,6 +6493,24 @@ E-mail: ${storeSettings.email}`;
           </div>
         )}
       </AnimatePresence>
+
+      {/* Fixed Floating WhatsApp Button for Admin */}
+      {isAdmin && adminSubTab !== 'painel' && (
+        <button
+          type="button"
+          onClick={handleOpenWhatsAppAdmin}
+          className="fixed bottom-6 right-6 z-[9000] bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 cursor-pointer active:scale-95 transition-all border-2 border-white/40 group select-none"
+          title="Abrir WhatsApp"
+        >
+          <span className="text-xl group-hover:scale-110 transition-transform">💬</span>
+          <span className="text-xs uppercase tracking-wider font-extrabold">WhatsApp</span>
+          {waitingConversationsCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-bounce">
+              {waitingConversationsCount}
+            </span>
+          )}
+        </button>
+      )}
 
     </div>
   );
