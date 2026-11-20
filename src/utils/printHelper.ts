@@ -75,7 +75,20 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
     if (item.isCustomCup && item.customCupConfig) {
       const config = item.customCupConfig;
       const sz = config.size || '400ml';
-      itemName = `Açaí (${sz})`;
+      const cat = (item.menuItem.category || '').toLowerCase();
+      const nameLower = (item.menuItem.name || '').toLowerCase();
+
+      if (cat.includes('milkshake') || nameLower.includes('milkshake')) {
+        itemName = `MILKSHAKE (${sz})`;
+      } else if (cat.includes('brownie') || nameLower.includes('brownie')) {
+        itemName = `BROWNIE (${sz})`;
+      } else if (cat.includes('sorvete') || nameLower.includes('sorvete') || config.base === 'sorvete') {
+        itemName = `SORVETE (${sz})`;
+      } else if (config.base === 'casadinho') {
+        itemName = `CASADINHO (${sz})`;
+      } else {
+        itemName = `AÇAI (${sz})`;
+      }
       
       const flavorNames = (config.flavors || [])
         .map(fid => {
