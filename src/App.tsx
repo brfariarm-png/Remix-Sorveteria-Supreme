@@ -2498,6 +2498,13 @@ export default function App() {
   const handlePlacePDVOrder = async (pdvOrder: Order, shouldPrint: boolean) => {
     const ownerId = (currentUser && !currentUser.isAnonymous) ? currentUser.uid : 'guest-pdv-fallback';
     
+    // Immediately update local state & localStorage so the order appears instantly
+    setOrders((prev) => {
+      const next = [pdvOrder, ...prev];
+      localStorage.setItem('supreme_orders', JSON.stringify(next));
+      return next;
+    });
+
     try {
       await setDoc(doc(db, 'orders', pdvOrder.id), {
         id: pdvOrder.id,
@@ -2509,9 +2516,9 @@ export default function App() {
         timestamp: pdvOrder.timestamp,
         createdAt: serverTimestamp()
       });
+      console.log("PDV order successfully written to Firestore:", pdvOrder.id);
     } catch (e: any) {
-      console.error('Failed to write PDV order to Firestore. Falling back locally:', e);
-      setOrders((prev) => [pdvOrder, ...prev]);
+      console.error('Failed to write PDV order to Firestore (saved locally):', e);
     }
 
     if (shouldPrint) {
