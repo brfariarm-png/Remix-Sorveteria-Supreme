@@ -515,7 +515,7 @@ export default function AdminImpressora({
                   {currentShowAddress && (
                     <div className="space-y-0.5">
                       <h4 className="font-extrabold text-[12px] text-slate-900 tracking-tight">{storeSettings.name.toUpperCase()}</h4>
-                      <p className="text-[8.5px] text-slate-600">Fone: {storeSettings.phone}</p>
+                      <p className="text-[8.5px] text-slate-600">WhatsApp (Somente Mensagens): {storeSettings.phone}</p>
                       <p className="text-[8px] text-slate-500 leading-tight">{storeSettings.address}</p>
                     </div>
                   )}

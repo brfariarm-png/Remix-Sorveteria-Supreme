@@ -175,7 +175,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
         
         <div class="header">
           <div class="title" style="font-size: ${fontSize + 3}px; font-weight: 900;">${storeSettings?.name || 'SORVETERIA SUPREME'}</div>
-          ${showAddress && storeSettings?.address ? `<div class="subtitle" style="font-size: ${fontSize - 2}px;">${storeSettings.address}<br/>Tel/WhatsApp: ${storeSettings.phone || ''}</div>` : ''}
+          ${showAddress && storeSettings?.address ? `<div class="subtitle" style="font-size: ${fontSize - 2}px;">${storeSettings.address}<br/>WhatsApp (Somente Mensagens): ${storeSettings.phone || ''}</div>` : ''}
           ${headerMessage ? `<div style="font-weight: bold; font-size: ${fontSize - 1}px; margin-top: 4px; text-transform: uppercase;">${headerMessage}</div>` : ''}
         </div>
 

@@ -1396,6 +1396,14 @@ export default function App() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'waiting' | 'preparing' | 'delivering' | 'completed'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
+  const getOpenWhatsAppUrl = (phoneRaw: string) => {
+    let digits = phoneRaw.replace(/\D/g, '');
+    if (!digits.startsWith('55') && digits.length >= 10 && digits.length <= 11) {
+      digits = `55${digits}`;
+    }
+    return `https://wa.me/${digits}`;
+  };
+
   useEffect(() => {
     let unsubscribe: () => void = () => {};
 
@@ -3792,27 +3800,55 @@ export default function App() {
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">ID: {o.id.slice(-6).toUpperCase()}</span>
                           <h4 className="font-extrabold text-slate-800 text-sm leading-snug">{o.details.customerName}</h4>
-                          <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            <span>📱 {o.details.customerPhone}</span>
-                            {(storeSettings.whatsappConnectionProvider === 'native' || storeSettings.whatsappConnectionProvider === 'evolution') ? (
-                              <button
-                                type="button"
-                                onClick={() => dispatchOrderWhatsApp(o, o.status, true)}
-                                className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase ml-1.5 transition-colors cursor-pointer"
-                              >
-                                WhatsApp 💬
-                              </button>
-                            ) : (
-                              <a
-                                href={getWhatsAppStatusUrl(o, o.status)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase ml-1.5 transition-colors"
-                              >
-                                WhatsApp 💬
-                              </a>
-                            )}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                             <span>📱 {o.details.customerPhone}</span>
+                             {(storeSettings.whatsappConnectionProvider === "native" || storeSettings.whatsappConnectionProvider === "evolution") ? (
+                               <button
+                                 type="button"
+                                 onClick={() => dispatchOrderWhatsApp(o, o.status, true)}
+                                 className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase transition-colors cursor-pointer"
+                               >
+                                 WhatsApp 💬
+                               </button>
+                             ) : (
+                               <a
+                                 href={getWhatsAppStatusUrl(o, o.status)}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase transition-colors"
+                               >
+                                 WhatsApp 💬
+                               </a>
+                             )}
+                             {isAdmin && (() => {
+                               const cleanPhone = (o.details?.customerPhone || "").replace(/\D/g, "");
+                               const isPaused = whatsappConversationsState[cleanPhone]?.botPausado === true;
+                               return (
+                                 <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:mt-0">
+                                   {isPaused && (
+                                     <span className="bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md animate-pulse">
+                                       Bot pausado ⏸️
+                                     </span>
+                                   )}
+                                   <button
+                                     type="button"
+                                     onClick={() => handleToggleBotPause(cleanPhone, isPaused)}
+                                     className={"px-2 py-0.5 rounded-md font-bold text-[9px] uppercase transition-colors cursor-pointer " + (isPaused ? "bg-amber-500 text-white hover:bg-amber-600 shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200")}
+                                   >
+                                     {isPaused ? "▶️ Retomar bot" : "⏸️ Pausar bot"}
+                                   </button>
+                                   <a
+                                     href={getOpenWhatsAppUrl(cleanPhone)}
+                                     target="_blank"
+                                     rel="noopener noreferrer"
+                                     className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 px-2 py-0.5 rounded-md font-bold text-[9px] uppercase transition-colors"
+                                   >
+                                     💬 Abrir WhatsApp
+                                   </a>
+                                 </div>
+                               );
+                             })()}
+                           </div>
                           <p className="text-[10px] text-stone-400 font-medium mt-0.5">Realizado às {o.timestamp}</p>
                         </div>
                         <div>
@@ -4371,7 +4407,7 @@ export default function App() {
                   </p>
                   <ul className="list-disc pl-5 space-y-1 text-[11px] text-slate-500">
                     <li><strong>Nome Completo:</strong> Para identificação do cliente no pedido.</li>
-                    <li><strong>Número de Telefone/WhatsApp:</strong> Para contato direto, suporte e atualizações de entrega.</li>
+                    <li><strong>Número de WhatsApp (Somente Mensagens):</strong> Para contato direto, suporte e atualizações de entrega.</li>
                     <li><strong>Endereço de Entrega:</strong> Para que possamos calcular rotas e entregar seu pedido corretamente.</li>
                     <li><strong>Tipo de Pagamento (PIX ou Cartão):</strong> Apenas para controle interno do método selecionado de pagamento (não processamos ou armazenamos dados confidenciais de cartões de segurança no aplicativo).</li>
                   </ul>
@@ -4403,7 +4439,7 @@ export default function App() {
                   </p>
                   <p className="bg-slate-50 p-3 rounded-2xl text-[10px] text-slate-700 font-mono space-y-1 mt-1 border border-slate-100">
                     <strong>{storeSettings.name}</strong><br />
-                    Telefone/WhatsApp: {storeSettings.phone}<br />
+                    WhatsApp (Somente Mensagens): {storeSettings.phone}<br />
                     Endereço: {storeSettings.address}<br />
                     E-mail: {storeSettings.email}
                   </p>
@@ -4424,7 +4460,7 @@ Este aplicativo ("${storeSettings.name}") foi desenvolvido para facilitar pedido
 2. Dados Coletados e Finalidade
 Para podermos processar pedidos e realizar a entrega com precisão, o aplicativo poderá solicitar:
 - Nome Completo: Para identificação do cliente no pedido.
-- Número de Telefone/WhatsApp: Para contato direto, suporte e atualizações de entrega.
+- Número de WhatsApp (Somente Mensagens): Para contato direto, suporte e atualizações de entrega.
 - Endereço de Entrega: Para que possamos calcular rotas e entregar seu pedido corretamente.
 - Tipo de Pagamento (PIX ou Cartão): Apenas para controle interno do método selecionado de pagamento (não processamos ou armazenamos dados confidenciais de cartões de segurança no aplicativo).
 
@@ -4440,7 +4476,7 @@ De acordo com a Lei Geral de Proteção de Dados (LGPD), você tem total control
 5. Responsável e Contato
 Para dúvidas adicionais, solicitações ou suporte, entre em contato diretamente com o responsável de atendimento ao cliente:
 ${storeSettings.name}
-Telefone/WhatsApp: ${storeSettings.phone}
+WhatsApp (Somente Mensagens): ${storeSettings.phone}
 Endereço: ${storeSettings.address}
 E-mail: ${storeSettings.email}`;
                     navigator.clipboard.writeText(txt);

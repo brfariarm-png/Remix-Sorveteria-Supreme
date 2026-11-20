@@ -314,7 +314,7 @@ function processIncomingMessage(userText: string, pushName: string = 'Cliente', 
 
   // 3. Location & Hours
   if (clean === '3' || clean.includes('localizacao') || clean.includes('localização') || clean.includes('onde fica') || clean.includes('endereco') || clean.includes('endereço') || clean.includes('horario') || clean.includes('horário')) {
-    return `📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 *Endereço:* ${cfg.address}\n⏰ *Horário de Funcionamento:* ${cfg.openHours}\n💬 *Telefone Comercial:* ${cfg.phone}\n\nStatus Atual: ${storeOpen ? '🟢 *ABERTO*' : '🔴 *FECHADO*'}`;
+    return `📍 *LOCALIZAÇÃO & HORÁRIOS SUPREME*\n\n🏠 *Endereço:* ${cfg.address}\n⏰ *Horário de Funcionamento:* ${cfg.openHours}\n💬 *WhatsApp (Somente Mensagens):* ${cfg.phone}\n\nStatus Atual: ${storeOpen ? '🟢 *ABERTO*' : '🔴 *FECHADO*'}`;
   }
 
   // 4. Human Support
