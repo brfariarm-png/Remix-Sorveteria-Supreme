@@ -219,6 +219,14 @@ export default function CupCustomizer({
         categories[topping.category].push(topping);
       }
     });
+
+    const courtesyOrder = ['gratis-leite-cond', 'gratis-leite-po', 'gratis-banana', 'gratis-morango', 'gratis-granola'];
+    categories['cortesia'].sort((a, b) => {
+      const idxA = courtesyOrder.indexOf(a.id);
+      const idxB = courtesyOrder.indexOf(b.id);
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
+
     return categories;
   }, [isMilkshake, customizingItem, toppingOptions]);
 
