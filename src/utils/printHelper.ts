@@ -77,6 +77,14 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
       const sz = config.size || '400ml';
       itemName = `Açaí (${sz})`;
       
+      const flavorNames = (config.flavors || [])
+        .map(fid => {
+          const f = FLAVOR_OPTIONS.find(x => x.id === fid)?.name || fid;
+          return f.replace(/\s*\(cortesia\)/gi, '').replace(/\s*\(grátis\)/gi, '').replace(/\s*\(gratis\)/gi, '').trim();
+        })
+        .filter(Boolean)
+        .join(', ');
+
       const toppingNames = (config.toppings || [])
         .map(tid => {
           const t = TOPPING_OPTIONS.find(x => x.id === tid)?.name || tid;
@@ -90,6 +98,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
 
       customDetails = `
         <div style="font-size: ${fontSize - 1}px; color: #333; margin-top: 2px; line-height: 1.3;">
+          ${flavorNames ? `<div><strong>SABORES:</strong> ${flavorNames}</div>` : ''}
           ${toppingNames ? `<div><strong>ADICIONAIS:</strong> ${toppingNames}</div>` : ''}
           <div><strong>Colher:</strong> ${spoonText}</div>
         </div>
