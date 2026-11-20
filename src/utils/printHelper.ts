@@ -71,29 +71,12 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
 
   const itemsHtml = groupedItems.map((item) => {
     let customDetails = '';
-    let itemName = item.menuItem.name;
-    const nameLower = (item.menuItem.name || '').toLowerCase();
-    if (nameLower.includes('banoffee')) {
-      const sz = item.customCupConfig?.size || item.menuItem.singleSizeLabel || '400ml';
-      itemName = `BANOFFEE (${sz})`;
-    } else if (item.isCustomCup && item.customCupConfig) {
+    const baseName = item.menuItem.name || 'Item';
+    let itemName = baseName;
+    if (item.isCustomCup && item.customCupConfig) {
       const config = item.customCupConfig;
-      const sz = config.size || '400ml';
-      const cat = (item.menuItem.category || '').toLowerCase();
-
-      if (cat.includes('milkshake') || nameLower.includes('milkshake')) {
-        itemName = `MILKSHAKE (${sz})`;
-      } else if (cat.includes('brownie') || nameLower.includes('brownie')) {
-        itemName = `BROWNIE (${sz})`;
-      } else if (nameLower.includes('banoffee')) {
-        itemName = `BANOFFEE (${sz})`;
-      } else if (cat.includes('sorvete') || nameLower.includes('sorvete') || config.base === 'sorvete') {
-        itemName = `SORVETE (${sz})`;
-      } else if (config.base === 'casadinho') {
-        itemName = `CASADINHO (${sz})`;
-      } else {
-        itemName = `AÇAI (${sz})`;
-      }
+      const sz = config.size || item.menuItem.singleSizeLabel || '400ml';
+      itemName = `${baseName} (${sz})`;
       
       const flavorNames = (config.flavors || [])
         .map(fid => {
