@@ -67,6 +67,23 @@ import {
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { secureRandomHex } from './utils/secureId';
 
+if (typeof window !== 'undefined') {
+  try {
+    const origSetItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = (key: string, value: string) => {
+      try {
+        origSetItem(key, value);
+      } catch (e) {
+        try {
+          localStorage.removeItem('supreme_completed_history');
+          localStorage.removeItem('supreme_orders');
+          origSetItem(key, value);
+        } catch (_) {}
+      }
+    };
+  } catch (_) {}
+}
+
 let sessionFirestoreReads = 0;
 function trackFirestoreRead(collectionName: string, count = 1) {
   sessionFirestoreReads += count;
@@ -1598,6 +1615,11 @@ export default function App() {
           }
         }
       });
+
+      if (historyList.length > 20) {
+        historyList = historyList.slice(0, 20);
+        changed = true;
+      }
 
       if (changed) {
         localStorage.setItem('supreme_completed_history', JSON.stringify(historyList));
