@@ -71,18 +71,12 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
 
   const itemsHtml = groupedItems.map((item) => {
     let customDetails = '';
+    let itemName = item.menuItem.name;
     if (item.isCustomCup && item.customCupConfig) {
       const config = item.customCupConfig;
-      const baseText = config.base === 'acai' ? 'Açaí' : config.base === 'sorvete' ? 'Sorvete' : 'Casadinho (Açaí + Sorvete)';
+      const sz = config.size || '400ml';
+      itemName = `Açaí (${sz})`;
       
-      const flavorNames = (config.flavors || [])
-        .map(fid => {
-          const f = FLAVOR_OPTIONS.find(x => x.id === fid)?.name || fid;
-          return f.replace(/\s*\(cortesia\)/gi, '').replace(/\s*\(grátis\)/gi, '').replace(/\s*\(gratis\)/gi, '').trim();
-        })
-        .filter(Boolean)
-        .join(', ');
-        
       const toppingNames = (config.toppings || [])
         .map(tid => {
           const t = TOPPING_OPTIONS.find(x => x.id === tid)?.name || tid;
@@ -91,26 +85,13 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
         .filter(Boolean)
         .join(', ');
 
-      const sz = config.size;
-      const isMilkshake = item.menuItem.category === 'milkshake';
-      const isLinhaBrownie = item.menuItem.tags?.includes('Linha Brownie');
-      const sizeLabel = isLinhaBrownie 
-        ? (sz === '400ml' ? (storeSettings?.brownieLabels?.['400ml'] || 'Copo Brownie 400ml')
-          : sz === '500ml' ? (storeSettings?.brownieLabels?.['500ml'] || 'Caixinha Brownie')
-          : (storeSettings?.brownieLabels?.['700ml'] || 'Balde Brownie 700ml'))
-        : isMilkshake
-          ? (storeSettings?.milkshakeLabels?.[sz] || sz)
-          : (storeSettings?.cupLabels?.[sz] || sz);
-
-      const spoonText = (item.needSpoon ?? config.needSpoon) !== undefined
-        ? ((item.needSpoon ?? config.needSpoon) ? 'Sim' : 'Não dispensada')
-        : '';
+      const spoonNeeded = (item.needSpoon ?? config.needSpoon) !== undefined ? (item.needSpoon ?? config.needSpoon) : true;
+      const spoonText = spoonNeeded ? 'SIM' : 'NÃO';
 
       customDetails = `
         <div style="font-size: ${fontSize - 1}px; color: #333; margin-top: 2px; line-height: 1.3;">
-          ${flavorNames ? `<div><strong>SABORES:</strong> ${flavorNames}</div>` : ''}
           ${toppingNames ? `<div><strong>ADICIONAIS:</strong> ${toppingNames}</div>` : ''}
-          ${spoonText ? `<div><strong>Colher:</strong> ${spoonText}</div>` : ''}
+          <div><strong>Colher:</strong> ${spoonText}</div>
         </div>
       `;
     }
@@ -131,7 +112,7 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
     return `
       <div style="margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 6px;">
         <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: ${fontSize + 1}px;">
-          <span>${item.quantity}x ${item.menuItem.name}</span>
+          <span>${item.quantity}x ${itemName}</span>
           <span>R$ ${totalPrice.toFixed(2)}</span>
         </div>
         ${item.quantity > 1 ? `<div style="font-size: ${fontSize - 2}px; color: #555; text-align: right;">(R$ ${unitPrice.toFixed(2)} cada)</div>` : ''}
@@ -165,10 +146,6 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
       ? `<div style="text-align: center; font-weight: 900; font-size: ${fontSize}px; border: 2px solid #000; padding: 4px; margin-bottom: 8px; text-transform: uppercase;">VIA ${copyIndex === 1 ? 'COZINHA / PREPARO' : copyIndex === 2 ? 'ENTREGA / CLIENTE' : 'CONTROLE'}</div>`
       : '';
 
-    const deliveryBadge = isDelivery
-      ? `<div style="text-align: center; font-weight: 900; font-size: ${fontSize + 1}px; border: 2px solid #000; padding: 4px; margin: 6px 0; text-transform: uppercase; background: #000; color: #fff;">🛵 ENTREGA EM DOMICÍLIO</div>`
-      : `<div style="text-align: center; font-weight: 900; font-size: ${fontSize + 1}px; border: 2px solid #000; padding: 4px; margin: 6px 0; text-transform: uppercase;">🛍️ RETIRADA NO BALCÃO</div>`;
-
     return `
       <div class="receipt-copy" style="page-break-after: always; padding: 4px; box-sizing: border-box;">
         ${copyLabel}
@@ -185,7 +162,6 @@ export const printOrderReceipt = (order: Order, storeSettings: any) => {
             <span>#${order.id.slice(-6).toUpperCase()}</span>
           </div>
           <div style="font-size: ${fontSize - 1}px; color: #333; margin-top: 2px;">Data/Hora: ${order.timestamp}</div>
-          ${deliveryBadge}
         </div>
 
         <div class="section" style="padding-bottom: 6px; margin-bottom: 8px;">
