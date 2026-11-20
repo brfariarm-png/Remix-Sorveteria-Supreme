@@ -115,6 +115,7 @@ import AdminFechamento from './components/AdminFechamento';
 import AdminImpressora from './components/AdminImpressora';
 import AdminCardapio from './components/AdminCardapio';
 import AdminWhatsAppBot from './components/AdminWhatsAppBot';
+import { BotConversationsAdmin } from './components/BotConversationsAdmin';
 import AdminPainelTV from './components/AdminPainelTV';
 import AdminTotem from './components/AdminTotem';
 import SupportCallAlert from './components/SupportCallAlert';
@@ -969,7 +970,7 @@ export default function App() {
   const [selectedRing, setSelectedRing] = useState(() => {
     return localStorage.getItem('selected_ring') || 'ifood';
   });
-  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp' | 'painel' | 'totem'>('orders');
+  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'pdv' | 'fechamento' | 'impressora' | 'cardapio' | 'playstore' | 'whatsapp' | 'conversas_bot' | 'painel' | 'totem'>('orders');
   const [isTotemActive, setIsTotemActive] = useState<boolean>(() => {
     return localStorage.getItem('supreme_totem_active') === 'true';
   });
@@ -3356,6 +3357,16 @@ export default function App() {
                           💬 WhatsApp Bot
                         </button>
                         <button
+                          onClick={() => setAdminSubTab('conversas_bot')}
+                          className={`flex-1 min-w-[135px] flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                            adminSubTab === 'conversas_bot'
+                              ? 'bg-white text-rose-650 shadow-sm'
+                              : 'text-slate-500 hover:text-slate-850'
+                          }`}
+                        >
+                          🤖 Conversas do bot
+                        </button>
+                        <button
                           onClick={handleOpenWhatsAppAdmin}
                           className="flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200/50 select-none relative group"
                           title="Abrir WhatsApp"
@@ -3476,6 +3487,8 @@ export default function App() {
                         menuItems={menuItems} 
                         orders={orders} 
                       />
+                    ) : adminSubTab === 'conversas_bot' ? (
+                      <BotConversationsAdmin />
                     ) : adminSubTab === 'painel' ? (
                       <AdminPainelTV orders={orders} storeSettings={storeSettings} />
                     ) : adminSubTab === 'totem' ? (

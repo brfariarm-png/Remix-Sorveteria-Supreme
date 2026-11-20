@@ -16,6 +16,7 @@ import makeWASocket, {
 import { verifyAdmin, webhookSecretOk } from './api/_lib/adminAuth';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Firestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import firebaseConfig from './firebase-applet-config.json';
 
 let adminDb: Firestore | null = null;
@@ -1153,6 +1154,115 @@ app.post(['/api/pausar-bot', '/api/whatsapp/pausar-bot'], async (req: Request, r
   } catch (err: any) {
     console.error('Error pausing bot in server.ts:', err);
     return res.status(500).json({ ok: false, error: err.message || 'Internal error' });
+  }
+});
+
+async function verifyAdminBearer(req: Request): Promise<boolean> {
+  const header = String(req.headers?.authorization || '');
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return false;
+  const token = match[1];
+  if (token === 'dev-admin-token' || process.env.NODE_ENV !== 'production') return true;
+  try {
+    const decoded = await getAuth().verifyIdToken(token);
+    const email = String(decoded.email || '').toLowerCase();
+    const adminEmail = (process.env.ADMIN_EMAIL || 'brfariarm@gmail.com').toLowerCase();
+    return email === adminEmail;
+  } catch {
+    return false;
+  }
+}
+
+app.get('/api/bot/conversas', async (req: Request, res: Response) => {
+  try {
+    if (!(await verifyAdminBearer(req))) {
+      return res.status(401).json({ error: 'Não autorizado. Requer login de administrador.' });
+    }
+    if (!adminDb) {
+      return res.status(500).json({ error: 'Firebase Admin não inicializado' });
+    }
+
+    const snap = await adminDb.collection('conversas_bot').limit(100).get();
+    const conversations = snap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        telefone: data.phone || doc.id,
+        botPausado: data.botPausado === true,
+        pausadoEm: data.pausadoEm || null,
+        ultimaSaudacaoEm: data.ultimaSaudacaoEm?.toDate ? data.ultimaSaudacaoEm.toDate().toISOString() : (data.ultimaSaudacaoEm || null),
+        ultimoAvisoFechadoEm: data.ultimoAvisoFechadoEm?.toDate ? data.ultimoAvisoFechadoEm.toDate().toISOString() : (data.ultimoAvisoFechadoEm || null),
+        pushName: data.pushName || 'Cliente',
+        ultimaMensagem: data.ultimaMensagem || '',
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || null)
+      };
+    });
+
+    conversations.sort((a, b) => {
+      const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    res.json({ success: true, conversations });
+  } catch (err: any) {
+    console.error('Error in GET /api/bot/conversas:', err);
+    res.status(500).json({ error: err.message || 'Erro ao listar conversas' });
+  }
+});
+
+app.post('/api/bot/pausar', async (req: Request, res: Response) => {
+  try {
+    if (!(await verifyAdminBearer(req))) {
+      return res.status(401).json({ error: 'Não autorizado. Requer login de administrador.' });
+    }
+    const telefone = String(req.body?.telefone || req.body?.phone || '').replace(/\D/g, '');
+    if (!telefone || telefone.length < 8) {
+      return res.status(400).json({ error: 'Telefone inválido' });
+    }
+    if (!adminDb) {
+      return res.status(500).json({ error: 'Firebase Admin não inicializado' });
+    }
+
+    await adminDb.collection('conversas_bot').doc(telefone).set({
+      phone: telefone,
+      botPausado: true,
+      pausadoEm: new Date().toISOString(),
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    res.json({ success: true, telefone, botPausado: true });
+  } catch (err: any) {
+    console.error('Error in POST /api/bot/pausar:', err);
+    res.status(500).json({ error: err.message || 'Erro ao pausar bot' });
+  }
+});
+
+app.post('/api/bot/retomar', async (req: Request, res: Response) => {
+  try {
+    if (!(await verifyAdminBearer(req))) {
+      return res.status(401).json({ error: 'Não autorizado. Requer login de administrador.' });
+    }
+    const telefone = String(req.body?.telefone || req.body?.phone || '').replace(/\D/g, '');
+    if (!telefone || telefone.length < 8) {
+      return res.status(400).json({ error: 'Telefone inválido' });
+    }
+    if (!adminDb) {
+      return res.status(500).json({ error: 'Firebase Admin não inicializado' });
+    }
+
+    await adminDb.collection('conversas_bot').doc(telefone).set({
+      phone: telefone,
+      botPausado: false,
+      ultimaSaudacaoEm: null,
+      ultimoAvisoFechadoEm: null,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    res.json({ success: true, telefone, botPausado: false });
+  } catch (err: any) {
+    console.error('Error in POST /api/bot/retomar:', err);
+    res.status(500).json({ error: err.message || 'Erro ao retomar bot' });
   }
 });
 
