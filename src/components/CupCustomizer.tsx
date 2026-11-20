@@ -477,10 +477,10 @@ export default function CupCustomizer({
             <h3 className="text-xl font-bold text-slate-800 leading-tight">
               {isFelicidade 
                 ? 'Personalize seu Copo da Felicidade' 
-                : isBanoffee
+                : (customizingItem?.name?.toLowerCase()?.includes('banoffee'))
                   ? 'Copo Banoffee Especial'
                   : resolvedSizeMode === 'single' 
-                    ? 'Adicionais e Acompanhamentos' 
+                    ? (customizingItem?.name ? `Personalize seu ${customizingItem.name}` : 'Adicionais e Acompanhamentos')
                     : isLinhaBrownie 
                       ? 'Escolha Seu Brownie Favorito e Adicionais' 
                       : isMilkshake 
