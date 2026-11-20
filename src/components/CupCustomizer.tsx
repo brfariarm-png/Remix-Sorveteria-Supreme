@@ -48,7 +48,20 @@ export default function CupCustomizer({
     customizingItem?.name?.toLowerCase()?.includes('oreo') ||
     customizingItem?.id?.toLowerCase()?.includes('oreo') ||
     customizingItem?.name?.toLowerCase()?.includes('disquete') ||
-    customizingItem?.id?.toLowerCase()?.includes('disquete')
+    customizingItem?.id?.toLowerCase()?.includes('disquete') ||
+    customizingItem?.name?.toLowerCase()?.includes('pudim') ||
+    customizingItem?.name?.toLowerCase()?.includes('biscoff') ||
+    customizingItem?.name?.toLowerCase()?.includes('brownie') ||
+    customizingItem?.name?.toLowerCase()?.includes('felicidade') ||
+    customizingItem?.name?.toLowerCase()?.includes('doce de leite') ||
+    customizingItem?.name?.toLowerCase()?.includes('affogatto') ||
+    customizingItem?.name?.toLowerCase()?.includes('frapuccino') ||
+    customizingItem?.name?.toLowerCase()?.includes('frappuccino') ||
+    customizingItem?.name?.toLowerCase()?.includes('stitch') ||
+    customizingItem?.name?.toLowerCase()?.includes('aranha') ||
+    customizingItem?.name?.toLowerCase()?.includes('unicornio') ||
+    customizingItem?.name?.toLowerCase()?.includes('barbie') ||
+    customizingItem?.name?.toLowerCase()?.includes('balde')
   );
 
   const resolvedSizeMode = useMemo<'default' | 'single' | 'custom'>(() => {
