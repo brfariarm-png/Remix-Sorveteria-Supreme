@@ -72,7 +72,7 @@ export const MENU_ITEMS: MenuItem[] = [
 ];
 
 export const FLAVOR_OPTIONS: FlavorOption[] = [
-  { id: 'acai-puro-organico', name: 'Açaí Puro Orgânico', color: '#311042', secondaryColor: '#1d052a', category: 'acai', description: 'Delicioso açaí natural e orgânico, rico em antioxidantes.' },
+  { id: 'acai-puro-organico', name: 'Açaí', color: '#311042', secondaryColor: '#1d052a', category: 'acai', description: 'Delicioso açaí natural, rico em antioxidantes.' },
   { id: 'cupuacu', name: 'Cupuaçu', color: '#fbf8eb', secondaryColor: '#ebd7a0', category: 'acai', description: 'Creme de cupuaçu silvestre super cremoso e azedinho.' },
   { id: 'chocolate', name: 'Chocolate', color: '#3d251d', secondaryColor: '#1c0f0a', category: 'sorvete', description: 'Chocolate cremoso e irresistível.' },
   { id: 'ninho-trufado', name: 'Ninho Trufado', color: '#fbf7e6', secondaryColor: '#cfb159', category: 'sorvete', description: 'Sorvete cremoso de leite em pó com fios de trufa branca.' },
