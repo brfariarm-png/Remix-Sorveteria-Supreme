@@ -14,6 +14,33 @@ import makeWASocket, {
   Browsers
 } from '@whiskeysockets/baileys';
 import { verifyAdmin, webhookSecretOk } from './api/_lib/adminAuth';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore, FieldValue, Firestore } from 'firebase-admin/firestore';
+import firebaseConfig from './firebase-applet-config.json';
+
+let adminDb: Firestore | null = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount),
+        projectId: firebaseConfig.projectId
+      });
+    }
+    const app = getApps()[0];
+    adminDb = getFirestore(app);
+    const dbId = firebaseConfig.firestoreDatabaseId;
+    if (dbId && dbId !== '(default)') {
+      adminDb.settings({ databaseId: dbId });
+    }
+    console.log('Firebase Admin conectado');
+  } else {
+    console.error('ERRO: Variável de ambiente FIREBASE_SERVICE_ACCOUNT_JSON não configurada. O bot do WhatsApp precisará desta chave para acessar o Firestore.');
+  }
+} catch (e: any) {
+  console.error('ERRO ao inicializar Firebase Admin:', e?.message || e);
+}
 
 for (const level of ['log', 'info', 'warn'] as const) {
   const original = (console as any)[level].bind(console);
@@ -126,11 +153,10 @@ let lastSyncedConfigStr = '';
 // Auto-sync configuration directly from Firestore settings/store_config
 async function syncStoreConfigFromDb() {
   try {
-    const { db } = await import('./src/firebase');
-    const { doc, getDoc } = await import('firebase/firestore');
-    const snap = await getDoc(doc(db, 'settings', 'store_config'));
-    if (snap.exists()) {
-      const data = snap.data();
+    if (!adminDb) return;
+    const snap = await adminDb.collection('settings').doc('store_config').get();
+    if (snap.exists) {
+      const data = snap.data() || {};
       const rawProv = data.whatsappConnectionProvider || cachedStoreConfig.connectionProvider || 'evolution';
       const effectiveProv = (!ENABLE_NATIVE && rawProv === 'native') ? 'evolution' : rawProv;
 
@@ -1113,13 +1139,14 @@ app.post(['/api/pausar-bot', '/api/whatsapp/pausar-bot'], async (req: Request, r
     if (!phone || phone.length < 8) {
       return res.status(400).json({ ok: false, error: 'Telefone inválido' });
     }
-    const { db } = await import('./src/firebase');
-    const { doc, setDoc } = await import('firebase/firestore');
-    await setDoc(doc(db, 'conversas_bot', phone), {
+    if (!adminDb) {
+      return res.status(500).json({ ok: false, error: 'Firebase Admin não inicializado' });
+    }
+    await adminDb.collection('conversas_bot').doc(phone).set({
       phone,
       botPausado: pausado,
       pausadoEm: new Date().toISOString(),
-      updatedAt: new Date()
+      updatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
     conversationPauseCache.set(phone, { paused: pausado, expires: Date.now() + 5 * 60 * 1000 });
     return res.json({ ok: true, phone, botPausado: pausado });
@@ -1684,32 +1711,35 @@ async function processConversationBotMessage({
     return { handled: false, reason: 'no-text' };
   }
 
-  const { db } = await import('./src/firebase');
-  const { doc, runTransaction, serverTimestamp } = await import('firebase/firestore');
+  if (!adminDb) {
+    console.error(`[WhatsApp Bot] erro_transacao: Firebase Admin não inicializado (falta FIREBASE_SERVICE_ACCOUNT_JSON)`);
+    return { handled: false, reason: 'erro_transacao' };
+  }
 
   const cleanMsgId = msgId || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  const msgRef = doc(db, 'mensagens_processadas', cleanMsgId);
-  const convRef = doc(db, 'conversas_bot', phone);
+  const msgRef = adminDb.collection('mensagens_processadas').doc(cleanMsgId);
+  const convRef = adminDb.collection('conversas_bot').doc(phone);
 
   let shouldRespond = false;
   let replyText = '';
   let decisionLog = '';
 
   try {
-    await runTransaction(db, async (transaction) => {
+    await adminDb.runTransaction(async (transaction) => {
       // 1. Check message deduplication
       const msgSnap = await transaction.get(msgRef);
-      if (msgSnap.exists()) {
+      if (msgSnap.exists) {
         decisionLog = 'ignorada: duplicada';
         return;
       }
 
       // 2. Check conversation state
       const convSnap = await transaction.get(convRef);
-      let convData = convSnap.exists() ? convSnap.data() : {};
+      let convData = convSnap.exists ? (convSnap.data() || {}) : {};
 
       let botPausado = convData.botPausado === true;
-      const updatedAtMs = convData.updatedAt?.toMillis?.() || (convData.updatedAt ? new Date(convData.updatedAt).getTime() : 0);
+      const updatedAtVal = convData.updatedAt;
+      const updatedAtMs = updatedAtVal?.toMillis ? updatedAtVal.toMillis() : (updatedAtVal ? new Date(updatedAtVal).getTime() : 0);
       const now = Date.now();
       const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
@@ -1720,13 +1750,15 @@ async function processConversationBotMessage({
 
       if (botPausado) {
         decisionLog = 'ignorada: pausado';
-        transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, reason: 'bot-paused' });
+        transaction.set(msgRef, { processedAt: FieldValue.serverTimestamp(), phone, msgId: cleanMsgId, reason: 'bot-paused' });
         return;
       }
 
       const storeOpen = isStoreCurrentlyOpen();
-      const ultimaSaudacaoMs = convData.ultimaSaudacaoEm?.toMillis?.() || (convData.ultimaSaudacaoEm ? new Date(convData.ultimaSaudacaoEm).getTime() : 0);
-      const ultimoAvisoFechadoMs = convData.ultimoAvisoFechadoEm?.toMillis?.() || (convData.ultimoAvisoFechadoEm ? new Date(convData.ultimoAvisoFechadoEm).getTime() : 0);
+      const ultimaSaudacaoVal = convData.ultimaSaudacaoEm;
+      const ultimaSaudacaoMs = ultimaSaudacaoVal?.toMillis ? ultimaSaudacaoVal.toMillis() : (ultimaSaudacaoVal ? new Date(ultimaSaudacaoVal).getTime() : 0);
+      const ultimoAvisoVal = convData.ultimoAvisoFechadoEm;
+      const ultimoAvisoFechadoMs = ultimoAvisoVal?.toMillis ? ultimoAvisoVal.toMillis() : (ultimoAvisoVal ? new Date(ultimoAvisoVal).getTime() : 0);
 
       const cleanText = incomingText.trim().toLowerCase();
       const isGreetingIntent = /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(cleanText);
@@ -1738,7 +1770,7 @@ async function processConversationBotMessage({
         if (needsGreeting || isGreetingIntent) {
           if (!needsGreeting && !isGreetingIntent) {
             decisionLog = 'ignorada: cooldown';
-            transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, reason: 'cooldown' });
+            transaction.set(msgRef, { processedAt: FieldValue.serverTimestamp(), phone, msgId: cleanMsgId, reason: 'cooldown' });
             return;
           }
           replyText = cachedStoreConfig.welcomeMsg.replace('{nome}', pushName);
@@ -1753,7 +1785,7 @@ async function processConversationBotMessage({
         if (needsClosedNotice || isGreetingIntent) {
           if (!needsClosedNotice && !isGreetingIntent) {
             decisionLog = 'ignorada: cooldown';
-            transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, reason: 'cooldown' });
+            transaction.set(msgRef, { processedAt: FieldValue.serverTimestamp(), phone, msgId: cleanMsgId, reason: 'cooldown' });
             return;
           }
           replyText = cachedStoreConfig.closedMsg.replace('{nome}', pushName).replace('{menu_link}', cachedStoreConfig.menuLink);
@@ -1766,21 +1798,21 @@ async function processConversationBotMessage({
       }
 
       // Reserve message ID and update conversation state atomically
-      transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, decision: decisionLog });
+      transaction.set(msgRef, { processedAt: FieldValue.serverTimestamp(), phone, msgId: cleanMsgId, decision: decisionLog });
 
       const updatePayload: any = {
         phone,
-        updatedAt: serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         aguardandoResposta: true,
         ultimaMensagem: incomingText,
         pushName
       };
 
       if (storeOpen && sentGreetingOrClosed) {
-        updatePayload.ultimaSaudacaoEm = serverTimestamp();
+        updatePayload.ultimaSaudacaoEm = FieldValue.serverTimestamp();
         updatePayload.botPausado = true;
       } else if (!storeOpen && sentGreetingOrClosed) {
-        updatePayload.ultimoAvisoFechadoEm = serverTimestamp();
+        updatePayload.ultimoAvisoFechadoEm = FieldValue.serverTimestamp();
         updatePayload.botPausado = true;
       }
 
@@ -1788,13 +1820,13 @@ async function processConversationBotMessage({
       shouldRespond = true;
     });
   } catch (txErr: any) {
-    console.error(`[WhatsApp Bot] Erro na transação Firestore para +${phone}:`, txErr);
     decisionLog = `erro_transacao: ${txErr?.message || txErr}`;
+    console.error(`[WhatsApp Bot] ${decisionLog} para +${phone}`);
   }
 
   console.log(`[WhatsApp Bot] Telefone: +${phone} | MsgID: ${cleanMsgId} | Decisão: ${decisionLog}`);
 
-  if (shouldRespond && replyText) {
+  if (shouldRespond && replyText && !decisionLog.startsWith('erro_transacao')) {
     try {
       await sendWhatsAppMessage(phone, replyText, cachedStoreConfig);
       addBotLog({
