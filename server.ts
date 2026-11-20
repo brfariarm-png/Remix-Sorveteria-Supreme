@@ -1609,7 +1609,57 @@ app.get('/api/webhook/whatsapp', async (req: Request, res: Response) => {
   });
 });
 
-// Centralized robust bot message processing with 12h cooldown, duplicate check, and botPausado auto-pause
+// Auto setup Evolution webhook on startup if BOT_ATIVO === 'true'
+async function autoSetupEvolutionWebhook() {
+  if (process.env.BOT_ATIVO !== 'true') return;
+  try {
+    await syncStoreConfigFromDb();
+    const cfg = cachedStoreConfig;
+    const cleanUrl = (cfg.evolutionUrl || '').trim().replace(/\/+$/, '');
+    const cleanInstance = (cfg.evolutionInstance || 'supreme-bot').trim();
+    const cleanToken = (cfg.evolutionToken || 'Rmfa1100@').trim();
+
+    if (!cleanUrl || !cleanInstance) {
+      console.log('⚠️ [Auto Webhook] Evolution URL ou Instância não configurados.');
+      return;
+    }
+
+    const webhookDestination = 'https://supreme-whatsapp-server.onrender.com/api/webhook/whatsapp';
+    const payload = {
+      enabled: true,
+      url: webhookDestination,
+      webhook_by_events: false,
+      webhook_base64: false,
+      events: ['MESSAGES_UPSERT'],
+      webhook: {
+        enabled: true,
+        url: webhookDestination,
+        byEvents: false,
+        base64: false,
+        events: ['MESSAGES_UPSERT']
+      }
+    };
+
+    const res = await fetch(`${cleanUrl}/webhook/set/${cleanInstance}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': cleanToken
+      },
+      body: JSON.stringify(payload)
+    });
+    const txt = await res.text();
+    if (res.ok) {
+      console.log(`✅ [Auto Webhook] Webhook configurado na Evolution API (${cleanInstance}) para ${webhookDestination}. Resposta:`, txt);
+    } else {
+      console.error(`❌ [Auto Webhook] Falha ao configurar webhook (${res.status}):`, txt);
+    }
+  } catch (err: any) {
+    console.error('❌ [Auto Webhook] Erro ao registrar webhook automaticamente:', err?.message || err);
+  }
+}
+
+// Centralized robust bot message processing with Firestore transaction, deduplication & 12h cooldown
 async function processConversationBotMessage({
   phone,
   pushName,
@@ -1623,111 +1673,154 @@ async function processConversationBotMessage({
   msgId?: string;
   fromMe?: boolean;
 }) {
-  if (fromMe) return { handled: false, reason: 'from-me' };
+  if (fromMe) {
+    console.log(`[WhatsApp Bot] Telefone: +${phone} | MsgID: ${msgId || 'N/A'} | Decisão: ignorada: fromMe`);
+    return { handled: false, reason: 'from-me' };
+  }
   if (!phone || phone.length < 8) return { handled: false, reason: 'invalid-phone' };
 
-  if (msgId) {
-    if (processedWebhookMessageIds.has(msgId) || repliedInboundMsgIds.has(msgId)) {
-      return { handled: false, reason: 'duplicate-message-id' };
-    }
-    processedWebhookMessageIds.add(msgId);
-    if (processedWebhookMessageIds.size > 500) {
-      const first = processedWebhookMessageIds.values().next().value;
-      if (first) processedWebhookMessageIds.delete(first);
-    }
+  if (!incomingText || !incomingText.trim()) {
+    console.log(`[WhatsApp Bot] Telefone: +${phone} | MsgID: ${msgId || 'N/A'} | Decisão: ignorada: sem_texto`);
+    return { handled: false, reason: 'no-text' };
   }
 
-  let data: any = {};
-  let docRef: any = null;
-  try {
-    const { db } = await import('./src/firebase');
-    const { doc, getDoc } = await import('firebase/firestore');
-    docRef = doc(db, 'conversas_bot', phone);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      data = snap.data();
-    }
-  } catch (e) {}
+  const { db } = await import('./src/firebase');
+  const { doc, runTransaction, serverTimestamp } = await import('firebase/firestore');
 
-  const now = Date.now();
-  const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+  const cleanMsgId = msgId || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const msgRef = doc(db, 'mensagens_processadas', cleanMsgId);
+  const convRef = doc(db, 'conversas_bot', phone);
 
-  let botPausado = data.botPausado === true;
-  const updatedAtMs = data.updatedAt?.toMillis?.() || (data.updatedAt ? new Date(data.updatedAt).getTime() : 0);
-  if (botPausado && updatedAtMs && now - updatedAtMs > TWELVE_HOURS) {
-    botPausado = false;
-  }
-
-  if (botPausado) {
-    return { handled: false, reason: 'bot-paused' };
-  }
-
-  const storeOpen = isStoreCurrentlyOpen();
-  const ultimaSaudacaoMs = data.ultimaSaudacaoEm?.toMillis?.() || (data.ultimaSaudacaoEm ? new Date(data.ultimaSaudacaoEm).getTime() : 0);
-  const ultimoAvisoFechadoMs = data.ultimoAvisoFechadoEm?.toMillis?.() || (data.ultimoAvisoFechadoEm ? new Date(data.ultimoAvisoFechadoEm).getTime() : 0);
-
+  let shouldRespond = false;
   let replyText = '';
-  let sentGreetingOrClosed = false;
+  let decisionLog = '';
 
-  const cleanText = incomingText.trim().toLowerCase();
+  try {
+    await runTransaction(db, async (transaction) => {
+      // 1. Check message deduplication
+      const msgSnap = await transaction.get(msgRef);
+      if (msgSnap.exists()) {
+        decisionLog = 'ignorada: duplicada';
+        return;
+      }
 
-  if (storeOpen) {
-    const needsGreeting = !ultimaSaudacaoMs || (now - ultimaSaudacaoMs > TWELVE_HOURS);
-    if (needsGreeting || /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(cleanText)) {
-      replyText = cachedStoreConfig.welcomeMsg.replace('{nome}', pushName);
-      sentGreetingOrClosed = true;
-    } else {
-      replyText = processIncomingMessage(incomingText, pushName, phone);
-    }
-  } else {
-    const needsClosedNotice = !ultimoAvisoFechadoMs || (now - ultimoAvisoFechadoMs > TWELVE_HOURS);
-    if (needsClosedNotice || /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(cleanText)) {
-      replyText = cachedStoreConfig.closedMsg.replace('{nome}', pushName).replace('{menu_link}', cachedStoreConfig.menuLink);
-      sentGreetingOrClosed = true;
-    } else {
-      replyText = processIncomingMessage(incomingText, pushName, phone);
+      // 2. Check conversation state
+      const convSnap = await transaction.get(convRef);
+      let convData = convSnap.exists() ? convSnap.data() : {};
+
+      let botPausado = convData.botPausado === true;
+      const updatedAtMs = convData.updatedAt?.toMillis?.() || (convData.updatedAt ? new Date(convData.updatedAt).getTime() : 0);
+      const now = Date.now();
+      const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+      // Auto unpause after 12 hours without interaction
+      if (botPausado && updatedAtMs && now - updatedAtMs > TWELVE_HOURS) {
+        botPausado = false;
+      }
+
+      if (botPausado) {
+        decisionLog = 'ignorada: pausado';
+        transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, reason: 'bot-paused' });
+        return;
+      }
+
+      const storeOpen = isStoreCurrentlyOpen();
+      const ultimaSaudacaoMs = convData.ultimaSaudacaoEm?.toMillis?.() || (convData.ultimaSaudacaoEm ? new Date(convData.ultimaSaudacaoEm).getTime() : 0);
+      const ultimoAvisoFechadoMs = convData.ultimoAvisoFechadoEm?.toMillis?.() || (convData.ultimoAvisoFechadoEm ? new Date(convData.ultimoAvisoFechadoEm).getTime() : 0);
+
+      const cleanText = incomingText.trim().toLowerCase();
+      const isGreetingIntent = /^(oi|olá|ola|oii+|bom dia|boa tarde|boa noite|inicio|início|começar|comecar|ajuda|menu inicial)\b/i.test(cleanText);
+
+      let sentGreetingOrClosed = false;
+
+      if (storeOpen) {
+        const needsGreeting = !ultimaSaudacaoMs || (now - ultimaSaudacaoMs > TWELVE_HOURS);
+        if (needsGreeting || isGreetingIntent) {
+          if (!needsGreeting && !isGreetingIntent) {
+            decisionLog = 'ignorada: cooldown';
+            transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, reason: 'cooldown' });
+            return;
+          }
+          replyText = cachedStoreConfig.welcomeMsg.replace('{nome}', pushName);
+          sentGreetingOrClosed = true;
+          decisionLog = 'enviada: saudação';
+        } else {
+          replyText = processIncomingMessage(incomingText, pushName, phone);
+          decisionLog = 'enviada: resposta_menu';
+        }
+      } else {
+        const needsClosedNotice = !ultimoAvisoFechadoMs || (now - ultimoAvisoFechadoMs > TWELVE_HOURS);
+        if (needsClosedNotice || isGreetingIntent) {
+          if (!needsClosedNotice && !isGreetingIntent) {
+            decisionLog = 'ignorada: cooldown';
+            transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, reason: 'cooldown' });
+            return;
+          }
+          replyText = cachedStoreConfig.closedMsg.replace('{nome}', pushName).replace('{menu_link}', cachedStoreConfig.menuLink);
+          sentGreetingOrClosed = true;
+          decisionLog = 'enviada: fechado';
+        } else {
+          replyText = processIncomingMessage(incomingText, pushName, phone);
+          decisionLog = 'enviada: resposta_fechado';
+        }
+      }
+
+      // Reserve message ID and update conversation state atomically
+      transaction.set(msgRef, { processedAt: serverTimestamp(), phone, msgId: cleanMsgId, decision: decisionLog });
+
+      const updatePayload: any = {
+        phone,
+        updatedAt: serverTimestamp(),
+        aguardandoResposta: true,
+        ultimaMensagem: incomingText,
+        pushName
+      };
+
+      if (storeOpen && sentGreetingOrClosed) {
+        updatePayload.ultimaSaudacaoEm = serverTimestamp();
+        updatePayload.botPausado = true;
+      } else if (!storeOpen && sentGreetingOrClosed) {
+        updatePayload.ultimoAvisoFechadoEm = serverTimestamp();
+        updatePayload.botPausado = true;
+      }
+
+      transaction.set(convRef, updatePayload, { merge: true });
+      shouldRespond = true;
+    });
+  } catch (txErr: any) {
+    console.error(`[WhatsApp Bot] Erro na transação Firestore para +${phone}:`, txErr);
+    decisionLog = `erro_transacao: ${txErr?.message || txErr}`;
+  }
+
+  console.log(`[WhatsApp Bot] Telefone: +${phone} | MsgID: ${cleanMsgId} | Decisão: ${decisionLog}`);
+
+  if (shouldRespond && replyText) {
+    try {
+      await sendWhatsAppMessage(phone, replyText, cachedStoreConfig);
+      addBotLog({
+        from: phone,
+        pushName,
+        incomingText,
+        replyText,
+        status: 'sent'
+      });
+    } catch (sendErr: any) {
+      console.error(`[WhatsApp Bot] Erro ao enviar mensagem para +${phone}:`, sendErr);
     }
   }
 
-  try {
-    const { db } = await import('./src/firebase');
-    const { doc, setDoc } = await import('firebase/firestore');
-    docRef = docRef || doc(db, 'conversas_bot', phone);
-
-    const updatePayload: any = {
-      phone,
-      updatedAt: new Date(),
-      aguardandoResposta: true,
-      ultimaMensagem: incomingText,
-      pushName
-    };
-
-    if (storeOpen && sentGreetingOrClosed) {
-      updatePayload.ultimaSaudacaoEm = new Date();
-      updatePayload.botPausado = true;
-    } else if (!storeOpen && sentGreetingOrClosed) {
-      updatePayload.ultimoAvisoFechadoEm = new Date();
-      updatePayload.botPausado = true;
-    }
-
-    await setDoc(docRef, updatePayload, { merge: true });
-  } catch (e) {}
-
-  await sendWhatsAppMessage(phone, replyText, cachedStoreConfig);
-
-  addBotLog({
-    from: phone,
-    pushName,
-    incomingText,
-    replyText,
-    status: 'sent'
-  });
-
-  return { handled: true, replyText };
+  return { handled: shouldRespond, replyText, decision: decisionLog };
 }
 
 // MAIN WEBHOOK RECEIVER: Evolution API calls this on incoming WhatsApp messages
 app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: Request, res: Response) => {
+  if (process.env.BOT_ATIVO !== 'true') {
+    if (!res.headersSent) {
+      return res.status(200).json({ ok: true, ignored: 'bot-ativo-not-true' });
+    }
+    return;
+  }
+
   if (req.method === 'GET' || req.query?.wakeup === '1') {
     let instanceState = 'open';
     try {
@@ -1775,6 +1868,7 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
 
     const fromMe = data?.key?.fromMe === true;
     if (fromMe && !isAdminTest) {
+      console.log(`[WhatsApp Bot] MsgID: ${data?.key?.id || 'N/A'} | Decisão: ignorada: fromMe`);
       if (!res.headersSent) return res.status(200).json({ received: true, ignored: 'from-me' });
       return;
     }
@@ -1786,6 +1880,7 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
       remoteJid.endsWith('@newsletter') ||
       remoteJid === 'status@broadcast'
     ) {
+      console.log(`[WhatsApp Bot] RemoteJid: ${remoteJid} | Decisão: ignorada: grupo`);
       if (!res.headersSent) return res.status(200).json({ received: true, ignored: 'group-or-broadcast' });
       return;
     }
@@ -1802,9 +1897,16 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
       content?.extendedTextMessage?.text ||
       content?.imageMessage?.caption ||
       content?.videoMessage?.caption ||
-      'oi';
+      '';
+
+    if (!incomingText || !incomingText.trim()) {
+      console.log(`[WhatsApp Bot] Telefone: +${cleanSender} | MsgID: ${msgId || 'N/A'} | Decisão: ignorada: sem_texto`);
+      if (!res.headersSent) return res.status(200).json({ received: true, ignored: 'no-text' });
+      return;
+    }
 
     if (cachedStoreConfig.botEnabled === false) {
+      console.log(`[WhatsApp Bot] Telefone: +${cleanSender} | MsgID: ${msgId || 'N/A'} | Decisão: ignorada: bot_desativado`);
       if (!res.headersSent) return res.status(200).json({ received: true, ignored: 'bot-disabled' });
       return;
     }
@@ -1910,6 +2012,7 @@ async function startServer() {
   }
 
   await syncStoreConfigFromDb();
+  await autoSetupEvolutionWebhook();
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor Supreme rodando na porta ${PORT}`);
