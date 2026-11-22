@@ -101,6 +101,34 @@ const DEFAULT_WEEKLY_HOURS: DaySchedule[] = [
   { dayOfWeek: 'sabado', dayName: 'Sábado', isOpen: true, openTime: '13:00', closeTime: '20:00' },
   { dayOfWeek: 'domingo', dayName: 'Domingo', isOpen: true, openTime: '13:00', closeTime: '20:00' },
 ];
+
+const DAY_NAMES_MAP: Record<string, string> = {
+  segunda: 'Segunda-feira',
+  terca: 'Terça-feira',
+  quarta: 'Quarta-feira',
+  quinta: 'Quinta-feira',
+  sexta: 'Sexta-feira',
+  sabado: 'Sábado',
+  domingo: 'Domingo'
+};
+
+function normalizeWeeklyHours(hours: any[]): DaySchedule[] {
+  if (!Array.isArray(hours)) return DEFAULT_WEEKLY_HOURS;
+  return DEFAULT_WEEKLY_HOURS.map(def => {
+    const found = hours.find((h: any) => h.dayOfWeek === def.dayOfWeek);
+    if (found) {
+      return {
+        ...def,
+        isOpen: found.isOpen ?? def.isOpen,
+        openTime: found.openTime ?? def.openTime,
+        closeTime: found.closeTime ?? def.closeTime,
+        dayName: DAY_NAMES_MAP[def.dayOfWeek] || def.dayName
+      };
+    }
+    return def;
+  });
+}
+
 import { MENU_ITEMS, FLAVOR_OPTIONS, TOPPING_OPTIONS, STORE_CONFIG } from './data';
 import { cleanDescriptionForSingleSize } from './utils/description';
 import CupCustomizer from './components/CupCustomizer';
@@ -277,7 +305,7 @@ export default function App() {
             { neighborhood: 'Jardim Moreira', fee: 6.50 },
             { neighborhood: 'Jardim Colina', fee: 6.00 }
           ],
-          weeklyHours: parsed.weeklyHours ?? DEFAULT_WEEKLY_HOURS
+          weeklyHours: normalizeWeeklyHours(parsed.weeklyHours)
         };
       } catch (e) {
         console.error('Error parsing store settings', e);
@@ -656,7 +684,7 @@ export default function App() {
           printerHeaderMessage: data.printerHeaderMessage ?? prev.printerHeaderMessage,
           printerFooterMessage: data.printerFooterMessage ?? prev.printerFooterMessage,
           deliveryFees: data.deliveryFees ?? prev.deliveryFees,
-          weeklyHours: data.weeklyHours ?? prev.weeklyHours,
+          weeklyHours: normalizeWeeklyHours(data.weeklyHours ?? prev.weeklyHours),
           customDomain: (data.customDomain === 'Sorveteria-Supreme.vercel.app') ? 'sorveteriasupreme.vercel.app' : (data.customDomain ?? prev.customDomain),
           instagram: (!data.instagram || data.instagram === '@sorveteriagourmetsupreme') 
             ? (prev.instagram === '@sorveteriagourmetsupreme' || !prev.instagram ? '@sorveteria.supreme' : prev.instagram) 
