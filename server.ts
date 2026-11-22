@@ -1211,6 +1211,20 @@ app.get('/api/bot/conversas', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/admin/store-config', async (_req: Request, res: Response) => {
+  try {
+    if (!adminDb) return res.status(500).json({ error: 'Firebase Admin not initialized' });
+    const snap = await adminDb.collection('settings').doc('store_config').get();
+    if (!snap.exists) return res.json({ success: true, exists: false, deliveryFees: [] });
+    const data = snap.data() || {};
+    res.json({ success: true, exists: true, deliveryFees: data.deliveryFees || [], data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 app.post('/api/bot/pausar', async (req: Request, res: Response) => {
   try {
     if (!(await verifyAdminBearer(req))) {
