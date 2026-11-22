@@ -96,7 +96,7 @@ const DEFAULT_WEEKLY_HOURS: DaySchedule[] = [
   { dayOfWeek: 'segunda', dayName: 'Segunda-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
   { dayOfWeek: 'terca', dayName: 'Terça-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
   { dayOfWeek: 'quarta', dayName: 'Quarta-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
-  { dayOfWeek: 'quinta', dayName: 'Terça-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
+  { dayOfWeek: 'quinta', dayName: 'Quinta-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
   { dayOfWeek: 'sexta', dayName: 'Sexta-feira', isOpen: true, openTime: '13:00', closeTime: '20:00' },
   { dayOfWeek: 'sabado', dayName: 'Sábado', isOpen: true, openTime: '13:00', closeTime: '20:00' },
   { dayOfWeek: 'domingo', dayName: 'Domingo', isOpen: true, openTime: '13:00', closeTime: '20:00' },
