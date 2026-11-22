@@ -383,8 +383,14 @@ export default function AdminTotem({
   // --- PIX CODE GENERATION FOR THE TOTEM ---
   const dynamicPixQrUrl = useMemo(() => {
     if (cartSubtotal <= 0) return '';
-    const key = storeSettings.pixKey || 'contato@sorveteriasupreme.com.br';
-    const receiver = storeSettings.pixReceiverName || 'Supreme Gelato';
+    const rawKey = (storeSettings.pixKey || '19974118672').replace(/\s+/g, '');
+    let key = rawKey;
+    if (/^\d{10,11}$/.test(rawKey)) {
+      key = `+55${rawKey}`;
+    } else if (/^55\d{10,11}$/.test(rawKey)) {
+      key = `+${rawKey}`;
+    }
+    const receiver = storeSettings.pixReceiverName || 'Mirian Miqueletti Faria';
     const city = storeSettings.pixReceiverCity || 'Monte Mor';
     const value = cartSubtotal.toFixed(2);
     

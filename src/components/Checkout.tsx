@@ -51,7 +51,13 @@ function calcCRC16(str: string): string {
 
 // Generate dynamic static BR Code Pix payload based on customized store credentials
 function generatePixPayload(key: string, name: string, city: string, amount: number): string {
-  const cleanKey = key.replace(/\s+/g, '');
+  const rawKey = key.replace(/\s+/g, '');
+  let cleanKey = rawKey;
+  if (/^\d{10,11}$/.test(rawKey)) {
+    cleanKey = `+55${rawKey}`;
+  } else if (/^55\d{10,11}$/.test(rawKey)) {
+    cleanKey = `+${rawKey}`;
+  }
   const cleanName = name
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
