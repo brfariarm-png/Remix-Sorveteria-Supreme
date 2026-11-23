@@ -781,6 +781,23 @@ export default function AdminCardapio({
     }
   };
 
+  const handleUpdateToppingPrice = async (id: string, nameTop: string, newPrice: number) => {
+    setSavingFlvTop(true);
+    try {
+      await setDoc(doc(db, 'topping_options', id), {
+        price: newPrice
+      }, { merge: true });
+      setSuccessMsg(`✅ Preço de "${nameTop}" atualizado para R$ ${newPrice.toFixed(2)}!`);
+      setTimeout(() => setSuccessMsg(''), 2000);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Erro ao atualizar preço do adicional');
+      setTimeout(() => setErrorMsg(''), 2500);
+    } finally {
+      setSavingFlvTop(false);
+    }
+  };
+
   const handleDeleteTopping = async (id: string, nameTop: string) => {
     setConfirmModal({
       show: true,
@@ -1659,25 +1676,48 @@ export default function AdminCardapio({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {toppingOptions.map((t) => (
                     <div key={t.id} className="p-3 bg-white border border-slate-150 rounded-xl flex justify-between items-center hover:border-slate-300 transition-colors">
-                      <div className="min-w-0 leading-tight">
+                      <div className="min-w-0 leading-tight flex-1 pr-2">
                         <span className="font-extrabold text-xs text-slate-800 block truncate">{t.name}</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex items-center gap-2 mt-1">
                           <span className="text-[8.5px] uppercase font-black px-1.5 py-0.5 rounded-sm bg-slate-100 text-slate-500">
                             {t.category === 'calda' ? 'Caldas' : t.category === 'fruta' ? 'Frutas' : t.category === 'crocante' ? 'Crocantes' : 'Pastas'}
                           </span>
-                          <span className="text-[9px] font-mono font-black text-emerald-650">
-                            {t.price === 0 ? 'Cortesia' : `R$ ${t.price.toFixed(2)}`}
-                          </span>
+                          <div className="relative flex items-center">
+                            <span className="text-[9px] font-bold text-slate-400 mr-1">R$</span>
+                            <input
+                              type="number"
+                              step="0.50"
+                              defaultValue={t.price}
+                              id={`topping-price-${t.id}`}
+                              className="w-20 text-xs p-1 font-mono font-black text-emerald-650 border border-slate-200 rounded-lg bg-slate-50 text-center"
+                            />
+                          </div>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTopping(t.id, t.name)}
-                        className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-650 rounded-lg transition-colors cursor-pointer"
-                        title="Excluir Adicional"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const inputEl = document.getElementById(`topping-price-${t.id}`) as HTMLInputElement;
+                            if (inputEl) {
+                              const val = parseFloat(inputEl.value.replace(',', '.')) || 0;
+                              handleUpdateToppingPrice(t.id, t.name, val);
+                            }
+                          }}
+                          className="p-1.5 hover:bg-emerald-50 text-slate-400 hover:text-emerald-650 rounded-lg transition-colors cursor-pointer"
+                          title="Salvar Novo Preço"
+                        >
+                          <Check className="w-3.5 h-3.5 text-emerald-650" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTopping(t.id, t.name)}
+                          className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-650 rounded-lg transition-colors cursor-pointer"
+                          title="Excluir Adicional"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
