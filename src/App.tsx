@@ -1537,16 +1537,32 @@ export default function App() {
               });
             });
 
-            fetchedOrders.sort((a, b) => {
+            // Merge with local cached orders (ensuring local PDV orders are never dropped due to permission/sync delay)
+            const savedOrdersStr = localStorage.getItem('supreme_orders');
+            let localOrders: Order[] = [];
+            if (savedOrdersStr) {
+              try {
+                localOrders = JSON.parse(savedOrdersStr);
+              } catch (e) {}
+            }
+
+            const orderMap = new Map<string, Order>();
+            fetchedOrders.forEach(o => orderMap.set(o.id, o));
+            localOrders.forEach(o => {
+              if (!orderMap.has(o.id)) {
+                orderMap.set(o.id, o);
+              }
+            });
+
+            const mergedOrders = Array.from(orderMap.values());
+            mergedOrders.sort((a, b) => {
               const timeA = parseInt(a.id.match(/\d+$/)?.[0] || '0', 10);
               const timeB = parseInt(b.id.match(/\d+$/)?.[0] || '0', 10);
               return timeB - timeA;
             });
 
-            setOrders(fetchedOrders);
-            if (!isAdmin) {
-              localStorage.setItem('supreme_orders', JSON.stringify(fetchedOrders));
-            }
+            setOrders(mergedOrders);
+            localStorage.setItem('supreme_orders', JSON.stringify(mergedOrders));
           },
           (error) => {
             const isQuota = error?.message?.includes('Quota limit exceeded') || error?.code === 'resource-exhausted';

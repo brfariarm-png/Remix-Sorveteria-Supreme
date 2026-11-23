@@ -81,7 +81,7 @@ export default function AdminPDV({
   const [customerAddress, setCustomerAddress] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>('cash_on_delivery'); // Standard Dinheiro no Balcão
   const [cashReceived, setCashReceived] = useState('');
-  const [initialStatus, setInitialStatus] = useState<OrderStatus>('completed'); // Default is completed for instant cashier checkout
+  const [initialStatus, setInitialStatus] = useState<OrderStatus>('waiting'); // Default to waiting so it appears in active orders queue
   const [generalNotes, setGeneralNotes] = useState('');
 
   // Customizable Cup Modal state (uses identical CupCustomizer as Web Menu)
@@ -935,8 +935,9 @@ export default function AdminPDV({
                       onChange={(e) => setInitialStatus(e.target.value as OrderStatus)}
                       className="w-full text-[10.5px] p-1.5 bg-white border border-slate-250 rounded-xl outline-none font-bold cursor-pointer"
                     >
-                      <option value="completed">✅ Concluído (Direto)</option>
+                      <option value="waiting">⌛ Pendente (Fila)</option>
                       <option value="preparing">🥣 Cozinha (Preparar)</option>
+                      <option value="completed">✅ Concluído (Direto)</option>
                     </select>
                   </div>
                 </div>
