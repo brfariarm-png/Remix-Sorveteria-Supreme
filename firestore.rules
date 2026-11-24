@@ -41,12 +41,13 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Pedidos: criados por clientes com validação de campos, lidos/atualizados/apagados somente por administrador
+    // Pedidos: criados e lidos por clientes/administradores com validação
     match /orders/{orderId} {
       allow create: if request.resource.data.keys().hasAll(['id', 'items', 'total', 'status'])
                     && request.resource.data.total is number
                     && request.resource.data.items is list;
-      allow read, update, delete: if isAdmin();
+      allow read: if true;
+      allow update, delete: if isAdmin();
     }
 
     // Conversas do bot: somente administrador
