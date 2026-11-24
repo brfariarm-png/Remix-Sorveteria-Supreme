@@ -638,6 +638,7 @@ export default function AdminCardapio({
   const [tagsString, setTagsString] = useState('');
   const [allowedToppings, setAllowedToppings] = useState<string[]>([]);
   const [allowedFlavors, setAllowedFlavors] = useState<string[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
 
   // New size-mode states for customizable products
   const [sizeMode, setSizeMode] = useState<'default' | 'single' | 'custom'>('default');
@@ -839,6 +840,7 @@ export default function AdminCardapio({
     setImageUrl(PRESET_IMAGES[0].url);
     setIsPopular(false);
     setIsCustomizable(true);
+    setIsPaused(false);
     setTagsString('Novidade, Customizável');
     setAllowedToppings(toppingOptions.map(t => t.id));
     setAllowedFlavors(flavorOptions.map(f => f.id));
@@ -866,6 +868,7 @@ export default function AdminCardapio({
     setImageUrl(item.image);
     setIsPopular(!!item.popular);
     setIsCustomizable(!!item.customizable);
+    setIsPaused(!!item.paused);
     setTagsString(item.tags ? item.tags.join(', ') : '');
     setAllowedToppings(item.allowedToppings !== undefined && item.allowedToppings !== null ? item.allowedToppings : toppingOptions.map(t => t.id));
     setAllowedFlavors(item.allowedFlavors !== undefined && item.allowedFlavors !== null ? item.allowedFlavors : flavorOptions.map(f => f.id));
@@ -931,6 +934,7 @@ export default function AdminCardapio({
       singleSizeLabel: isCustomizable && sizeMode === 'single' ? singleSizeLabel.trim() : undefined,
       singleSizePrice: isCustomizable && sizeMode === 'single' ? parseFloat(String(singleSizePrice).replace(',', '.')) : undefined,
       customSizes: isCustomizable && sizeMode === 'custom' ? customSizes : undefined,
+      paused: isPaused,
     };
 
     // If a brand new item, we give it a trailing index order
@@ -3256,6 +3260,11 @@ export default function AdminCardapio({
                           🎚️ Customizável
                         </span>
                       )}
+                      {item.paused && (
+                        <span className="bg-amber-600 text-white px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide rounded-md animate-pulse">
+                          ⏸️ Pausado
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -3497,8 +3506,8 @@ export default function AdminCardapio({
                   </div>
                 </div>
 
-                {/* Options Switches (Popular, Customizable) & Tags */}
-                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                {/* Options Switches (Popular, Customizable, Paused) & Tags */}
+                <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
                   <label className="flex items-center gap-2 cursor-pointer py-1">
                     <input
                       type="checkbox"
@@ -3508,7 +3517,7 @@ export default function AdminCardapio({
                     />
                     <div>
                       <span className="block text-[10px] font-bold text-slate-700">Destaque ⭐</span>
-                      <span className="text-[8px] text-slate-400 block font-normal leading-tight">Aparece na seção 'Mais Vendido'.</span>
+                      <span className="text-[8px] text-slate-400 block font-normal leading-tight">Mais Vendido.</span>
                     </div>
                   </label>
 
@@ -3521,7 +3530,20 @@ export default function AdminCardapio({
                     />
                     <div>
                       <span className="block text-[10px] font-bold text-slate-700">Customizável 🎚️</span>
-                      <span className="text-[8px] text-slate-400 block font-normal leading-tight">Escolha de caldas/adicionais e tamanhos.</span>
+                      <span className="text-[8px] text-slate-400 block font-normal leading-tight">Tamanhos.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer py-1">
+                    <input
+                      type="checkbox"
+                      checked={isPaused}
+                      onChange={(e) => setIsPaused(e.target.checked)}
+                      className="w-4 h-4 text-amber-600 border-slate-300 rounded-xs focus:ring-amber-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="block text-[10px] font-bold text-amber-800">Pausado ⏸️</span>
+                      <span className="text-[8px] text-amber-600 block font-normal leading-tight">Ocultar produto.</span>
                     </div>
                   </label>
                 </div>

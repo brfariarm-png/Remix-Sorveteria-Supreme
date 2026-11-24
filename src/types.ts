@@ -21,6 +21,7 @@ export interface MenuItem {
   singleSizeLabel?: string;
   singleSizePrice?: number;
   customSizes?: Record<string, { active: boolean; price: number; label: string }>;
+  paused?: boolean;
 }
 
 export interface ToppingOption {

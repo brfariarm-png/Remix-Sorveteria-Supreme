@@ -2414,6 +2414,7 @@ export default function App() {
   const filteredMenuItems = useMemo(() => {
     const excludedIds = ['cascao-duplo', 'banana-split', 'sundae-sensacao', 'gelato-supreme'];
     return menuItems.filter((item) => {
+      if (item.paused) return false;
       if (excludedIds.includes(item.id)) return false;
       const lowerName = item.name.toLowerCase();
       if (lowerName.includes('cascão trufado') || lowerName.includes('cascao trufado') || lowerName.includes('taça sorvete premium') || lowerName.includes('taca sorvete premium') || lowerName.includes('banana split supreme') || lowerName.includes('grand sundae especial')) {
