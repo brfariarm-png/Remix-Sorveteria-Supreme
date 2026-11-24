@@ -1593,26 +1593,11 @@ export default function App() {
 
     setupListener();
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          unsubscribe();
-        } catch {}
-        setupListener();
-      } else if (document.visibilityState === 'hidden') {
-        try {
-          unsubscribe();
-        } catch {}
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-
+    // Keep listener active even when tab is hidden so alerts and notifications work in background
     return () => {
       try {
         unsubscribe();
       } catch {}
-      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
