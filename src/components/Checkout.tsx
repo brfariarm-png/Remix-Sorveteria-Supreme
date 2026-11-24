@@ -339,8 +339,8 @@ export default function Checkout({
         return exactMatch;
       }
 
-      // 2. Match CEP range
-      const rangeMatch = deliveryFees.find(df => {
+      // 2. Match CEP ranges (sorting by specificity: smallest interval first)
+      const matchingRanges = deliveryFees.filter(df => {
         const startStr = (df.cepStart || '').replace(/\D/g, '').padEnd(8, '0');
         const endStr = (df.cepEnd || '').replace(/\D/g, '').padEnd(8, '9');
         if (!startStr || !endStr || startStr.length < 5 || endStr.length < 5) return false;
@@ -350,12 +350,19 @@ export default function Checkout({
         const endNum = parseInt(endStr, 10);
 
         const isMatch = !isNaN(clientNum) && !isNaN(startNum) && !isNaN(endNum) && clientNum >= startNum && clientNum <= endNum;
-        console.log(`   - Comparando Bloco CEP Bairro "${df.neighborhood}": DB [${df.cepStart} (${startStr}) até ${df.cepEnd} (${endStr})] VS CEP "${cleanCep}" -> ${isMatch ? '✅ MATCH' : '❌ Fora da faixa'}`);
         return isMatch;
       });
-      if (rangeMatch) {
-        console.log(`🎉 [Fee Calculator] Coincidência de Bloco CEP encontrada para o bairro "${rangeMatch.neighborhood}" com taxa de R$ ${rangeMatch.fee}`);
-        return rangeMatch;
+
+      if (matchingRanges.length > 0) {
+        // Sort by range size (endNum - startNum) ascending (most specific range first)
+        matchingRanges.sort((a, b) => {
+          const rangeA = parseInt((a.cepEnd || '').replace(/\D/g, '').padEnd(8, '9'), 10) - parseInt((a.cepStart || '').replace(/\D/g, '').padEnd(8, '0'), 10);
+          const rangeB = parseInt((b.cepEnd || '').replace(/\D/g, '').padEnd(8, '9'), 10) - parseInt((b.cepStart || '').replace(/\D/g, '').padEnd(8, '0'), 10);
+          return rangeA - rangeB;
+        });
+        const bestRange = matchingRanges[0];
+        console.log(`🎉 [Fee Calculator] Coincidência mais específica de Bloco CEP encontrada para o bairro "${bestRange.neighborhood}" com taxa de R$ ${bestRange.fee}`);
+        return bestRange;
       }
     }
 
