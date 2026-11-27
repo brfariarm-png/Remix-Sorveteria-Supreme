@@ -41,12 +41,9 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Pedidos: criados e lidos por clientes/administradores com validação
+    // Pedidos: criados e lidos por qualquer cliente, atualizados/excluídos por admin
     match /orders/{orderId} {
-      allow create: if request.resource.data.keys().hasAll(['id', 'items', 'total', 'status'])
-                    && request.resource.data.total is number
-                    && request.resource.data.items is list;
-      allow read: if true;
+      allow create, read: if true;
       allow update, delete: if isAdmin();
     }
 
