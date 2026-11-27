@@ -472,11 +472,6 @@ export default function Checkout({
   };
 
   const handleFinishCheckout = () => {
-    if (isOpen === false && !isAdmin) {
-      alert("⚠️ A loja encontra-se FECHADA no momento. Você pode visualizar o cardápio, mas os pedidos só podem ser realizados durante o horário de funcionamento!");
-      setIsSubmitting(false);
-      return;
-    }
     if (!validateStep2()) return;
 
     setIsSubmitting(true);
@@ -546,7 +541,11 @@ export default function Checkout({
         const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
         const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`;
         
-        window.open(waUrl, 'supreme_whatsapp');
+        try {
+          window.open(waUrl, 'supreme_whatsapp');
+        } catch (e) {
+          console.error("WhatsApp window open failed:", e);
+        }
       }
 
       setIsSubmitting(false);

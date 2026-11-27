@@ -2453,11 +2453,6 @@ export default function App() {
 
   // Handle Checkout finish & saving order
   const handlePlaceOrder = async (details: CheckoutDetails) => {
-    if (!isOpen && !isAdmin) {
-      alert("⚠️ A loja encontra-se FECHADA no momento. Não é possível enviar novos pedidos fora do horário de funcionamento.");
-      setIsCheckoutOpen(false);
-      return;
-    }
     const orderId = `ord-${secureRandomHex()}-${Date.now()}`;
     
     const cleanCep = details.address.cep ? details.address.cep.replace(/\D/g, '') : '';
