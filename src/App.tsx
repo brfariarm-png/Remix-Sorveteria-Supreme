@@ -1723,12 +1723,6 @@ export default function App() {
   // Proactively upload guest/local orders from localStorage to Firestore
   useEffect(() => {
     const syncExistingLocalOrders = async () => {
-      if (!currentUser) return; // Wait until an authenticated session is established
-      const isAdminMode = isAdmin;
-      if (isAdminMode) {
-        localStorage.removeItem('supreme_orders'); // Auto clear admin browser cache
-        return;
-      }
       const savedOrders = localStorage.getItem('supreme_orders');
       if (savedOrders) {
         try {
@@ -1738,8 +1732,6 @@ export default function App() {
               if (order.id.startsWith('ord-pdv-')) continue; // Skip POS orders
               const ordRef = doc(db, 'orders', order.id);
               
-              // CRITICAL: Check if document already exists on Firestore. If it does,
-              // we must NOT overwrite it with stale status/details from localStorage.
               const docSnap = await getDoc(ordRef);
               if (docSnap.exists()) {
                 continue;
@@ -1747,7 +1739,7 @@ export default function App() {
 
               await setDoc(ordRef, {
                 id: order.id,
-                ownerId: currentUser.uid,
+                ownerId: currentUser ? currentUser.uid : 'guest-sync',
                 items: JSON.parse(JSON.stringify(order.items)),
                 total: order.total,
                 details: JSON.parse(JSON.stringify(order.details)),
@@ -1756,11 +1748,10 @@ export default function App() {
                 createdAt: serverTimestamp()
               });
             }
-            console.log('Successfully synced guest orders to Firestore!');
-            localStorage.removeItem('supreme_orders');
+            console.log('Successfully synced local orders to Firestore!');
           }
         } catch (err) {
-          console.error('Failed to sync guest orders to Firestore on mount:', err);
+          console.error('Failed to sync local orders to Firestore on mount:', err);
         }
       }
     };
