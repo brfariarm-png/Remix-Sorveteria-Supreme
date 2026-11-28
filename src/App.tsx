@@ -589,11 +589,11 @@ export default function App() {
   const handleAuthError = (err: any) => {
     const code = err?.code || '';
     if (code === 'auth/unauthorized-domain') {
-      setAuthError(`O domínio "${window.location.hostname}" não está habilitado/autorizado no seu projeto Firebase. Para corrigir, acesse o Console do Firebase (https://console.firebase.google.com/), navegue até "Authentication" -> "Configurações" -> "Domínios Autorizados", e adicione o endereço "${window.location.hostname}" ao checklist. Isso é obrigatório para testar logins em celulares ou urls secundárias.`);
+      setAuthError(`O domínio "${window.location.hostname}" não está habilitado/autorizado no seu projeto Firebase. Para corrigir, acesse o Console do Firebase (https://console.firebase.google.com/), navegue até "Authentication" -> "Configurações" -> "Domínios Autorizados", e adicione o endereço "${window.location.hostname}" ao checklist. Isso é obrigatório para testar celulares ou urls secundárias.`);
     } else if (code === 'auth/operation-not-allowed') {
-      setAuthError('O provedor de login selecionado (Google ou Facebook) ou o login Anônimo não está habilitado no Console do Firebase. Para corrigir, acesse o Console (https://console.firebase.google.com/), navegue até "Authentication" -> "Sign-in method" (Método de login), e ative o "Google", o "Facebook" e o login "Anônimo".');
-    } else if (code === 'auth/popup-closed-by-user') {
-      setAuthError('A janela de login foi fechada antes de ser finalizada. Por favor, tente novamente.');
+      setAuthError('O provedor de login selecionado (Google) ou o login Anônimo não está habilitado no Console do Firebase. Para corrigir, acesse o Console (https://console.firebase.google.com/), navegue até "Authentication" -> "Sign-in method" (Método de login), e ative o "Google" e o login "Anônimo".');
+    } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      setAuthError('A janela de login foi fechada ou cancelada antes de ser finalizada. Por favor, tente novamente.');
     } else if (code === 'auth/popup-blocked') {
       setAuthError('O seu navegador bloqueou a janela pop-up de login. Por favor, ative as pop-ups nas configurações do navegador para entrar.');
     } else if (code === 'auth/account-exists-with-different-credential') {
@@ -603,9 +603,13 @@ export default function App() {
     }
   };
 
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
   // Sign in logic with Google popup or anonymous
   const handleSignIn = async (providerType: 'google' | 'anonymous') => {
+    if (isSigningIn) return;
     try {
+      setIsSigningIn(true);
       setAuthError(null);
       if (providerType === 'google') {
         const provider = new GoogleAuthProvider();
@@ -617,8 +621,12 @@ export default function App() {
         await signInAnonymously(auth);
       }
     } catch (e: any) {
-      console.error("Sign-In error:", e);
+      if (e?.code !== 'auth/popup-closed-by-user' && e?.code !== 'auth/cancelled-popup-request') {
+        console.error("Sign-In error:", e);
+      }
       handleAuthError(e);
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
