@@ -1514,6 +1514,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!isAdmin) return;
     let unsubscribe: () => void = () => {};
 
     const setupListener = () => {
@@ -1601,7 +1602,7 @@ export default function App() {
         unsubscribe();
       } catch {}
     };
-  }, []);
+  }, [isAdmin]);
 
   // Keep active tracking order in sync with live Firestore document updates
   useEffect(() => {
