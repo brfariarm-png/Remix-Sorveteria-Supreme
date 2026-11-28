@@ -144,9 +144,8 @@ import AdminImpressora from './components/AdminImpressora';
 import AdminCardapio from './components/AdminCardapio';
 import AdminWhatsAppBot from './components/AdminWhatsAppBot';
 import { BotConversationsAdmin } from './components/BotConversationsAdmin';
-import AdminPainelTV from './components/AdminPainelTV';
-import AdminTotem from './components/AdminTotem';
 import SupportCallAlert from './components/SupportCallAlert';
+import AdminTotem from './components/AdminTotem';
 
 const getWhatsAppChatUrl = (phone: string) => {
   const digits = String(phone || '').replace(/\D/g, '');
@@ -203,12 +202,6 @@ interface VisualNotification {
 export default function App() {
   // State for authenticated firebase user
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isTvMode, setIsTvMode] = useState<boolean>(false);
-  const [adminBypass, setAdminBypass] = useState<boolean>(() => {
-    return localStorage.getItem('supreme_admin_bypass') === 'true';
-  });
-  const [adminPasscode, setAdminPasscode] = useState('');
-  const [adminPasscodeError, setAdminPasscodeError] = useState('');
   // Store dynamic configurations with local persistence
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {
     const saved = localStorage.getItem('supreme_store_settings');
@@ -505,8 +498,8 @@ export default function App() {
   }, []);
 
   const isAdmin = useMemo(() => {
-    return (currentUser && currentUser.email === 'brfariarm@gmail.com') || isDevUrl || adminBypass;
-  }, [currentUser, isDevUrl, adminBypass]);
+    return !!(currentUser && currentUser.email === 'brfariarm@gmail.com');
+  }, [currentUser]);
 
   const getPublicShareUrl = () => {
     if (storeSettings?.customDomain) {
@@ -629,24 +622,6 @@ export default function App() {
     }
   };
 
-  const handleAdminPasscodeLogin = () => {
-    const cleanPass = adminPasscode.trim().toLowerCase();
-    if (
-      cleanPass === 'supremeadmin' || 
-      cleanPass === 'supreme9741' || 
-      cleanPass === 'supreme123' || 
-      cleanPass === '19974118672' || 
-      cleanPass === 'supreme'
-    ) {
-      localStorage.setItem('supreme_admin_bypass', 'true');
-      setAdminBypass(true);
-      setIsAuthModalOpen(false);
-      setAdminPasscode('');
-      setAdminPasscodeError('');
-    } else {
-      setAdminPasscodeError('Senha administrativa incorreta!');
-    }
-  };
 
   const handleSignInAuto = async () => {
     setIsAuthModalOpen(true);
@@ -1770,9 +1745,7 @@ export default function App() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'tv') {
-      setIsTvMode(true);
-    }
+
     if (params.get('privacy') === 'true' || params.get('politica') === 'true') {
       setIsPrivacyOpen(true);
     }
@@ -2609,14 +2582,6 @@ export default function App() {
     }
   };
 
-  if (isTvMode) {
-    return (
-      <div className="min-h-screen bg-slate-950 p-4 sm:p-8 flex flex-col justify-center text-slate-200">
-        <AdminPainelTV orders={orders} storeSettings={storeSettings} />
-      </div>
-    );
-  }
-
   if (isTotemActive) {
     return (
       <AdminTotem 
@@ -2857,7 +2822,7 @@ export default function App() {
           {/* Right Action panel */}
           <div className="flex items-center gap-2.5">
             {/* Firebase Auth Avatar & Controller */}
-            {(currentUser && !currentUser.isAnonymous) || adminBypass ? (
+            {currentUser && !currentUser.isAnonymous ? (
               <div className="flex items-center gap-2 bg-rose-50/55 p-1.5 pr-3.5 rounded-full border border-rose-100/40">
                 {currentUser?.photoURL ? (
                   <img 
@@ -2879,8 +2844,6 @@ export default function App() {
                   <button 
                     onClick={() => {
                       signOut(auth);
-                      localStorage.removeItem('supreme_admin_bypass');
-                      setAdminBypass(false);
                     }} 
                     className="text-[9px] font-black text-rose-500 hover:text-rose-700 text-left cursor-pointer uppercase tracking-wider inline-block mt-0.5"
                   >
@@ -3466,16 +3429,7 @@ export default function App() {
                             )}
                           </span>
                         </button>
-                        <button
-                          onClick={() => setAdminSubTab('painel')}
-                          className={`flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            adminSubTab === 'painel'
-                              ? 'bg-white text-rose-650 shadow-sm'
-                              : 'text-slate-500 hover:text-slate-850'
-                          }`}
-                        >
-                          📺 Painel de TV
-                        </button>
+
                         <button
                           onClick={() => setAdminSubTab('totem')}
                           className={`flex-1 min-w-[125px] flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
@@ -3575,8 +3529,7 @@ export default function App() {
                       />
                     ) : adminSubTab === 'conversas_bot' ? (
                       <BotConversationsAdmin />
-                    ) : adminSubTab === 'painel' ? (
-                      <AdminPainelTV orders={orders} storeSettings={storeSettings} />
+
                     ) : adminSubTab === 'totem' ? (
                       <AdminTotem 
                         menuItems={menuItems}
@@ -4936,40 +4889,6 @@ E-mail: ${storeSettings.email}`;
                   </button>
                 </div>
 
-                {/* Administrative Passcode bypass (hidden unless toggled via header icon) */}
-                {showAdminSection && (
-                  <div className="pt-3 border-t border-slate-100 space-y-2">
-                    <h4 className="text-[10.5px] font-black text-amber-600 uppercase tracking-widest text-left flex items-center gap-1">
-                      👑 Acesso do Administrador
-                    </h4>
-                    <div className="space-y-1.5">
-                      <input
-                        type="password"
-                        placeholder="Digite a senha de administrador"
-                        value={adminPasscode}
-                        onChange={(e) => {
-                          setAdminPasscode(e.target.value);
-                          setAdminPasscodeError('');
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleAdminPasscodeLogin();
-                          }
-                        }}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-rose-300 focus:outline-none text-xs text-slate-800"
-                      />
-                      {adminPasscodeError && (
-                        <p className="text-[10px] text-rose-500 font-bold text-left">{adminPasscodeError}</p>
-                      )}
-                      <button
-                        onClick={handleAdminPasscodeLogin}
-                        className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition-all cursor-pointer shadow-sm"
-                      >
-                        Acessar Painel Master
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* Guest Account option */}
                 <div className="pt-2 border-t border-slate-100 space-y-2">
