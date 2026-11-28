@@ -11,10 +11,22 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'brfariarm@gmail.com';
+      return isSignedIn() && request.auth.token.email == 'brfariarm@gmail.com' && request.auth.token.email_verified == true;
     }
 
-    // Cardápio, sabores e adicionais: leitura pública, escrita só do admin
+    match /orders/{orderId} {
+      allow create: if request.resource.data.keys().hasAll(['id', 'items', 'total', 'status'])
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.items is list
+                    && request.resource.data.items.size() > 0
+                    && request.resource.data.items.size() <= 50;
+      allow get: if true;
+      allow list: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
     match /menu_items/{itemId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -30,32 +42,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Configurações da loja: leitura pública, escrita só do admin
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Fechamento de caixa: só admin
     match /closeouts/{closeoutId} {
       allow read, write: if isAdmin();
     }
 
-    // Pedidos: Clientes criam e leem. Admin lê todos, atualiza e arquiva. Ninguém apaga.
-    match /orders/{orderId} {
-      allow create: if true;
-      allow read: if true;
-      allow update: if true;
-      allow delete: if false;
-    }
-
-    // Conversas e mensagens do bot: acesso geral para webhook e painel
     match /conversas_bot/{phoneId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
     match /mensagens_processadas/{msgId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
     match /private_settings/{docId} {

@@ -4,7 +4,7 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -14,7 +14,11 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   ignoreUndefinedProperties: true
 }, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
+
 export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch((e) => {
+  console.error("Failed to set auth persistence:", e);
+});
 
 export enum OperationType {
   CREATE = 'create',
@@ -61,8 +65,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   console.warn('Firestore Warning/Non-blocking Error: ', JSON.stringify(errInfo));
   
-  // Only throw uncaught error for mutations where the UI needs a fallback trigger, 
-  // let reads (get, list) fall back to local caching without crashing the applet.
   const isMutation = [OperationType.CREATE, OperationType.UPDATE, OperationType.DELETE, OperationType.WRITE].includes(operationType);
   if (isMutation) {
     throw new Error(JSON.stringify(errInfo));
@@ -71,7 +73,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 export async function testConnection() {
   try {
-    // Attempt standard connection test doc
     const { doc, getDocFromServer } = await import('firebase/firestore');
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
