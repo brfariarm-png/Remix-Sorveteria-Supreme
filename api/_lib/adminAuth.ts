@@ -49,9 +49,8 @@ export function webhookSecretOk(req: any): boolean {
     console.error('❌ ERRO CRÍTICO: WEBHOOK_SECRET não definido nas variáveis de ambiente do servidor. Webhook recusado por segurança.');
     return false;
   }
-  const fromQuery = String(req?.query?.secret || '');
   const fromHeader = String(req?.headers?.['x-webhook-secret'] || '');
-  const provided = fromHeader || fromQuery;
+  const provided = fromHeader;
   if (!provided) return false;
   try {
     const expectedBuf = Buffer.from(expected);

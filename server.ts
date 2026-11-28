@@ -1793,8 +1793,7 @@ async function autoSetupEvolutionWebhook() {
     }
 
     const webhookSecret = process.env.WEBHOOK_SECRET || '';
-    const secretParam = webhookSecret ? `?secret=${webhookSecret}` : '';
-    const webhookDestination = `https://supreme-whatsapp-server.onrender.com/api/webhook/whatsapp${secretParam}`;
+    const webhookDestination = 'https://supreme-whatsapp-server.onrender.com/api/webhook/whatsapp';
     const payload = {
       enabled: true,
       url: webhookDestination,
@@ -1819,11 +1818,10 @@ async function autoSetupEvolutionWebhook() {
       },
       body: JSON.stringify(payload)
     });
-    const txt = await res.text();
     if (res.ok) {
-      console.log(`✅ [Auto Webhook] Webhook configurado na Evolution API (${cleanInstance}) para ${webhookDestination}. Resposta:`, txt);
+      console.log(`✅ [Auto Webhook] Webhook configurado na Evolution API (${cleanInstance}) para ${webhookDestination}`);
     } else {
-      console.error(`❌ [Auto Webhook] Falha ao configurar webhook (${res.status}):`, txt);
+      console.error(`❌ [Auto Webhook] Falha ao configurar webhook (${res.status})`);
     }
   } catch (err: any) {
     console.error('❌ [Auto Webhook] Erro ao registrar webhook automaticamente:', err?.message || err);
