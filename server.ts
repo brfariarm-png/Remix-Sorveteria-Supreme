@@ -73,6 +73,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true, status: 'healthy', service: 'Supreme WhatsApp Bot Server', timestamp: Date.now() });
+});
+
 // In-memory logs for live inspection in admin dashboard
 interface BotLog {
   id: string;
@@ -2067,26 +2071,24 @@ app.all(['/api/webhook/whatsapp', '/api/webhook/whatsapp/:event'], async (req: R
       return;
     }
 
-    const result = await processConversationBotMessage({
+    // Respond HTTP 200 immediately to prevent HTTP 429 timeouts
+    res.status(200).json({ received: true, queued: true });
+
+    // Process message asynchronously in background
+    processConversationBotMessage({
       phone: cleanSender,
       pushName,
       incomingText,
       msgId,
       fromMe
+    }).catch((err: any) => {
+      console.error('[WhatsApp Bot] Erro no processamento assíncrono do webhook:', err);
     });
-
-    if (!res.headersSent) {
-      return res.status(200).json({
-        received: true,
-        ...result
-      });
-    }
   } catch (err: any) {
-    console.error('[WhatsApp Bot] Erro no processamento do webhook:', err);
+    console.error('[WhatsApp Bot] Erro no recebimento do webhook:', err);
     if (!res.headersSent) {
       return res.status(200).json({
         received: true,
-        replied: false,
         status: 500,
         error: err?.message || 'Erro interno no webhook'
       });

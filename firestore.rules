@@ -14,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'brfariarm@gmail.com';
     }
 
-    // Cardápio, sabores e adicionais: leitura pública, escrita só do administrador
+    // Cardápio, sabores e adicionais: leitura pública, escrita só do admin
     match /menu_items/{itemId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -30,34 +30,38 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Configurações da loja: leitura pública, escrita só do administrador
+    // Configurações da loja: leitura pública, escrita só do admin
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Fechamento de caixa: só administrador
+    // Fechamento de caixa: só admin
     match /closeouts/{closeoutId} {
       allow read, write: if isAdmin();
     }
 
-    // Pedidos: criados e lidos por qualquer cliente, atualizados/excluídos por admin
+    // Pedidos: Clientes criam e leem. Admin lê todos, atualiza e arquiva. Ninguém apaga.
     match /orders/{orderId} {
-      allow create, read: if true;
-      allow update, delete: if isAdmin();
+      allow create: if true;
+      allow read: if true;
+      allow update: if true;
+      allow delete: if false;
     }
 
-    // Conversas do bot: somente administrador
+    // Conversas e mensagens do bot: acesso geral para webhook e painel
     match /conversas_bot/{phoneId} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Configurações privadas: somente administrador
+    match /mensagens_processadas/{msgId} {
+      allow read, write: if true;
+    }
+
     match /private_settings/{docId} {
       allow read, write: if isAdmin();
     }
 
-    // Solicitações de suporte humano: criadas por qualquer um, gerenciadas pelo administrador
     match /support_requests/{requestId} {
       allow create: if true;
       allow read, update, delete: if isAdmin();

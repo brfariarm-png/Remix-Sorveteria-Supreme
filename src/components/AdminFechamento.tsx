@@ -181,15 +181,16 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
   };
 
   // Purge completed orders from Firestore to free up database space/quota
+  // Archive completed orders instead of deleting them permanently
   const handlePurgeCompletedOrders = async () => {
-    if (!window.confirm('⚠️ Tem certeza que deseja excluir DEFINITIVAMENTE todos os pedidos concluídos do banco de dados? Isso vai liberar espaço no banco. Certifique-se de ter baixado o backup antes!')) {
+    if (!window.confirm('⚠️ Tem certeza que deseja arquivar todos os pedidos concluídos da tela atual? Eles ficarão salvos com segurança no banco sem exclusão definitiva.')) {
       return;
     }
     setLoading(true);
     try {
-      const completedOrders = safeOrders.filter(o => o.status === 'completed');
+      const completedOrders = safeOrders.filter(o => o.status === 'completed' && !(o as any).archived);
       if (completedOrders.length === 0) {
-        setSuccessMsg('Nenhum pedido concluído para limpar.');
+        setSuccessMsg('Nenhum pedido concluído para arquivar.');
         setLoading(false);
         setTimeout(() => setSuccessMsg(''), 3000);
         return;
@@ -197,21 +198,20 @@ export default function AdminFechamento({ orders, storeSettings, onRefreshOrders
       const batch = writeBatch(db);
       completedOrders.forEach(o => {
         const ref = doc(db, 'orders', o.id);
-        batch.delete(ref);
+        batch.update(ref, { archived: true });
       });
       await batch.commit();
 
       if (setOrders) {
-        setOrders(prev => prev.filter(o => o.status !== 'completed'));
+        setOrders(prev => prev.map(o => o.status === 'completed' ? { ...o, archived: true } : o));
       }
-      localStorage.removeItem('supreme_orders');
-      setSuccessMsg(`✅ ${completedOrders.length} pedidos concluídos foram apagados permanentemente do banco, liberando espaço!`);
+      setSuccessMsg(`✅ ${completedOrders.length} pedidos concluídos foram arquivados com segurança no banco.`);
       setLoading(false);
       setTimeout(() => setSuccessMsg(''), 4000);
       onRefreshOrders();
     } catch (err: any) {
-      console.error('Error purging completed orders:', err);
-      setErrorMsg('Erro ao limpar pedidos do banco: ' + err.message);
+      console.error('Error archiving completed orders:', err);
+      setErrorMsg('Erro ao arquivar pedidos: ' + err.message);
       setLoading(false);
       setTimeout(() => setErrorMsg(''), 3000);
     }
