@@ -49,7 +49,7 @@ export default function PlayStoreMobileHub({ customDomain }: PlayStoreMobileHubP
           : `https://${domain}`;
       }
     }
-    return 'https://sorveteriasupreme.vercel.app';
+    return 'https://sorveteriasupreme.com.br';
   };
 
   const copyAppUrl = () => {

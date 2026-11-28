@@ -80,7 +80,7 @@ const DEFAULT_CONFIG: StoreBotConfig = {
   evolutionInstance: 'supreme-bot',
   evolutionToken: 'Rmfa1100@',
   welcomeMsg: `Olá, *{nome}*! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\n⭐️ *Cardápio & Pedidos Online*:\n👉 {menu_link}\n\n⏰ *Horário de Funcionamento*:\n{open_hours}\n\nEscolha uma das opções abaixo enviando o número:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
-  menuLink: 'https://sorveteriasupreme.vercel.app',
+  menuLink: 'https://sorveteriasupreme.com.br',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
   supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!\n\nSe preferir ligar diretamente, use o número comercial:\n👉 *{telefone}*`,
   closedMsg: `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`,
@@ -644,7 +644,7 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         ok: true,
         service: 'Supreme WhatsApp Webhook (Vercel)',
-        clientUrl: 'https://sorveteriasupreme.vercel.app',
+        clientUrl: 'https://sorveteriasupreme.com.br',
         ...(renderStatus ? { renderStatus } : {}),
         ...(instanceState ? { instanceState } : {}),
         recentLogs: recentWebhookLogs.slice(0, 15)

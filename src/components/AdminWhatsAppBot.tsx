@@ -42,7 +42,7 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [webhookUrl, setWebhookUrl] = useState(
     (storeSettings.whatsappWebhookUrl && !String(storeSettings.whatsappWebhookUrl).includes('api.empresa.com'))
       ? storeSettings.whatsappWebhookUrl
-      : 'https://sorveteriasupreme.vercel.app/api/webhook/whatsapp'
+      : 'https://sorveteriasupreme.com.br/api/webhook/whatsapp'
   );
   const [apiSecret, setApiSecret] = useState(storeSettings.whatsappApiKey || '');
   const [botName, setBotName] = useState(storeSettings.whatsappBotName || 'Supreme Bot Premium 💜');
@@ -526,11 +526,11 @@ export default function AdminWhatsAppBot({ storeSettings, onUpdateSettings, menu
   const [menuLink, setMenuLink] = useState(
     (storeSettings.whatsappBotMenuLink && !storeSettings.whatsappBotMenuLink.includes('.run.app'))
       ? storeSettings.whatsappBotMenuLink
-      : 'https://sorveteriasupreme.vercel.app'
+      : 'https://sorveteriasupreme.com.br'
   );
   const getClientBaseUrl = () => {
-    const raw = (menuLink || storeSettings.whatsappBotMenuLink || storeSettings.customDomain || 'https://sorveteriasupreme.vercel.app').trim().replace(/\/+$/, '');
-    if (!raw || raw.includes('.run.app')) return 'https://sorveteriasupreme.vercel.app';
+    const raw = (menuLink || storeSettings.whatsappBotMenuLink || storeSettings.customDomain || 'https://sorveteriasupreme.com.br').trim().replace(/\/+$/, '');
+    if (!raw || raw.includes('.run.app')) return 'https://sorveteriasupreme.com.br';
     return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
   };
   const [supportMsg, setSupportMsg] = useState(storeSettings.whatsappBotSupportMessage || `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para os nossos atendentes humanos na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!`);

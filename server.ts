@@ -67,6 +67,8 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const allowedOrigins = [
+  'https://sorveteriasupreme.com.br',
+  'https://www.sorveteriasupreme.com.br',
   'https://sorveteriasupreme.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173',
@@ -155,7 +157,7 @@ let cachedStoreConfig = {
   evolutionToken: 'Rmfa1100@',
   welcomeMsg: `Olá! Seja muito bem-vindo ao assistente automático da *Sorveteria Gourmet Supreme*! 🍨\n\nSou o *Supreme Bot Premium 💜*.\n\nEscolha uma das opções abaixo enviando o número ou digitando sua dúvida:\n\n*1* - 🥣 Ver Cardápio & Fazer Pedido\n*2* - 🛵 Rastrear Pedido Ativo\n*3* - 📍 Localização e Horários\n*4* - 💬 Falar com Atendente Humano`,
   closedMsg: `🌙 *ESTABELECIMENTO FECHADO NO MOMENTO*\n\nOlá, *{nome}*! No momento nossa sorveteria encontra-se fechada. 🍨\n\nVocê pode navegar pelo nosso cardápio online e programar seu pedido para quando abrirmos, ou deixar sua mensagem que responderemos assim que a loja abrir!\n\n👉 Cardápio: {menu_link}`,
-  menuLink: 'https://sorveteriasupreme.vercel.app',
+  menuLink: 'https://sorveteriasupreme.com.br',
   menuMsg: `⭐️ *CARDÁPIO DIGITAL SUPREME* ⭐️\n\nPreparamos tudo com ingredientes selecionados e entrega rápida!\n\nAcesse nosso cardápio online para montar seu copo premium com adicionais ilimitados:\n👉 {menu_link}\n\nEnvie *1* para fazer pedido ou *4* para falar com atendente!`,
   supportMsg: `🙋‍♂️ *CONECTANDO À NOSSA EQUIPE*\n\nEntendi! Estou transferindo seu atendimento para a nossa equipe na loja física. Nosso tempo médio de resposta é de menos de 4 minutos!`,
   address: 'Rua Chequer Assis, 195 - ao lado do extra supermercado - Monte Mor/SP',
@@ -1669,7 +1671,7 @@ app.post('/api/bot/setup-webhook', async (req: Request, res: Response) => {
     const rawHost = publicAppUrl || `${req.protocol}://${req.get('host')}`;
     const isTempPreview = rawHost.includes('.run.app') || rawHost.includes('localhost') || rawHost.includes('127.0.0.1');
     const appHost = isTempPreview
-      ? (cachedStoreConfig.menuLink && !cachedStoreConfig.menuLink.includes('.run.app') ? cachedStoreConfig.menuLink : 'https://sorveteriasupreme.vercel.app')
+      ? (cachedStoreConfig.menuLink && !cachedStoreConfig.menuLink.includes('.run.app') ? cachedStoreConfig.menuLink : 'https://sorveteriasupreme.com.br')
       : rawHost;
     const secretParam = process.env.WEBHOOK_SECRET ? `?secret=${encodeURIComponent(process.env.WEBHOOK_SECRET)}` : '';
     const webhookDestination = `${appHost.replace(/\/$/, '')}/api/webhook/whatsapp${secretParam}`;

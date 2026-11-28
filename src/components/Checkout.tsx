@@ -524,7 +524,7 @@ export default function Checkout({
         const rawClientDomain = storeSettings?.customDomain ? storeSettings.customDomain.trim().replace(/\/+$/, '') : '';
         const clientOrderUrl = (rawClientDomain && !rawClientDomain.includes('.run.app'))
           ? (rawClientDomain.startsWith('http://') || rawClientDomain.startsWith('https://') ? rawClientDomain : `https://${rawClientDomain}`)
-          : 'https://sorveteriasupreme.vercel.app';
+          : 'https://sorveteriasupreme.com.br';
 
         const waText = `🍨 *NOVO PEDIDO CONFIRMADO* 🍨\n\n` +
                        `👤 *Cliente:* ${customerName}\n` +

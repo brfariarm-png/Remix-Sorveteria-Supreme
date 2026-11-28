@@ -135,5 +135,5 @@ export const STORE_CONFIG = {
   phone: "(19) 97411-8672",
   email: "contato@sorveteriasupreme.com.br",
   instagram: "@sorveteria.supreme",
-  customDomain: "sorveteriasupreme.vercel.app"
+  customDomain: "sorveteriasupreme.com.br"
 };

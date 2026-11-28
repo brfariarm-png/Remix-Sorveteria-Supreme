@@ -510,7 +510,7 @@ export default function App() {
           : `https://${domain}`;
       }
     }
-    return 'https://sorveteriasupreme.vercel.app';
+    return 'https://sorveteriasupreme.com.br';
   };
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -723,7 +723,7 @@ export default function App() {
           printerFooterMessage: data.printerFooterMessage ?? prev.printerFooterMessage,
           deliveryFees: data.deliveryFees ?? prev.deliveryFees,
           weeklyHours: normalizeWeeklyHours(data.weeklyHours ?? prev.weeklyHours),
-          customDomain: (data.customDomain === 'Sorveteria-Supreme.vercel.app') ? 'sorveteriasupreme.vercel.app' : (data.customDomain ?? prev.customDomain),
+           customDomain: (data.customDomain === 'Sorveteria-Supreme.vercel.app' || data.customDomain === 'sorveteriasupreme.vercel.app') ? 'sorveteriasupreme.com.br' : (data.customDomain ?? prev.customDomain),
           instagram: (!data.instagram || data.instagram === '@sorveteriagourmetsupreme') 
             ? (prev.instagram === '@sorveteriagourmetsupreme' || !prev.instagram ? '@sorveteria.supreme' : prev.instagram) 
             : data.instagram,
@@ -752,7 +752,7 @@ export default function App() {
           whatsappBotSupportMessage: data.whatsappBotSupportMessage ?? prev.whatsappBotSupportMessage,
           whatsappBotMenuLink: (data.whatsappBotMenuLink && !String(data.whatsappBotMenuLink).includes('.run.app'))
             ? data.whatsappBotMenuLink
-            : (prev.whatsappBotMenuLink && !prev.whatsappBotMenuLink.includes('.run.app') ? prev.whatsappBotMenuLink : 'https://sorveteriasupreme.vercel.app'),
+            : (prev.whatsappBotMenuLink && !prev.whatsappBotMenuLink.includes('.run.app') ? prev.whatsappBotMenuLink : 'https://sorveteriasupreme.com.br'),
           whatsappConnectionProvider: data.whatsappConnectionProvider ?? prev.whatsappConnectionProvider ?? 'simulator',
           whatsappBackendUrl: data.whatsappBackendUrl ?? prev.whatsappBackendUrl ?? '',
           whatsappEvolutionUrl: data.whatsappEvolutionUrl ?? prev.whatsappEvolutionUrl,
@@ -2237,7 +2237,7 @@ export default function App() {
     const rawDomain = storeSettings.customDomain ? storeSettings.customDomain.trim().replace(/\/+$/, '') : '';
     const cleanDomain = (rawDomain && !rawDomain.includes('.run.app'))
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) 
-      : 'https://sorveteriasupreme.vercel.app';
+      : 'https://sorveteriasupreme.com.br';
     const trackingLink = `${cleanDomain}?track=${order.id}`;
     const logoLink = cleanDomain;
 
@@ -5183,7 +5183,7 @@ E-mail: ${storeSettings.email}`;
                         <label className="block text-[10px] font-black uppercase text-rose-550 tracking-wider">Domínio Personalizado (Link de Rastreio)</label>
                         <input
                           type="text"
-                          placeholder="sorveteriasupreme.vercel.app"
+                          placeholder="sorveteriasupreme.com.br"
                           value={storeSettings.customDomain || ''}
                           onChange={(e) => setStoreSettings({ ...storeSettings, customDomain: e.target.value })}
                           className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white font-medium text-rose-650"
