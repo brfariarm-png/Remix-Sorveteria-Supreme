@@ -230,6 +230,14 @@ async function pingEvolutionKeepAlive() {
 setTimeout(pingEvolutionKeepAlive, 5000);
 setInterval(pingEvolutionKeepAlive, 10 * 60 * 1000);
 
+app.use(['/api/bot', '/api/evolution', '/api/whatsapp/native'], async (req: Request, res: Response, next: Function) => {
+  const ok = await verifyAdmin(req);
+  if (!ok) {
+    return res.status(401).json({ error: 'Não autorizado. Requer token de administrador válido.' });
+  }
+  next();
+});
+
 // Protect native routes if ENABLE_NATIVE is false
 app.use('/api/whatsapp/native', (req: Request, res: Response, next: Function) => {
   if (!ENABLE_NATIVE) {
@@ -1052,19 +1060,6 @@ app.post('/api/whatsapp/native/pairing-code', async (req: Request, res: Response
   }
 });
 
-// Native WhatsApp Web (Baileys): Status polling
-app.get('/api/whatsapp/native/status', (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    status: nativeStatus,
-    isPaired: nativeStatus === 'connected',
-    ownerJid: nativeOwnerJid,
-    qrDataUrl: nativeQrDataUrl,
-    pairingCode: nativePairingCode,
-    lastError: nativeLastError,
-    recentLogs: recentBotLogs.slice(0, 10)
-  });
-});
 
 // Native WhatsApp Web (Baileys): Disconnect
 app.post('/api/whatsapp/native/disconnect', async (_req: Request, res: Response) => {
