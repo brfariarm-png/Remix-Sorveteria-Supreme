@@ -66,10 +66,23 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
+const allowedOrigins = [
+  'https://sorveteriasupreme.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000'
+];
+
 app.use(cors({
-  origin: '*',
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.run.app') || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'apikey']
+  allowedHeaders: ['Content-Type', 'Authorization', 'apikey', 'x-webhook-secret']
 }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -1779,7 +1792,9 @@ async function autoSetupEvolutionWebhook() {
       return;
     }
 
-    const webhookDestination = 'https://supreme-whatsapp-server.onrender.com/api/webhook/whatsapp';
+    const webhookSecret = process.env.WEBHOOK_SECRET || '';
+    const secretParam = webhookSecret ? `?secret=${webhookSecret}` : '';
+    const webhookDestination = `https://supreme-whatsapp-server.onrender.com/api/webhook/whatsapp${secretParam}`;
     const payload = {
       enabled: true,
       url: webhookDestination,
@@ -1791,7 +1806,8 @@ async function autoSetupEvolutionWebhook() {
         url: webhookDestination,
         byEvents: false,
         base64: false,
-        events: ['MESSAGES_UPSERT']
+        events: ['MESSAGES_UPSERT'],
+        headers: webhookSecret ? { 'x-webhook-secret': webhookSecret } : undefined
       }
     };
 
